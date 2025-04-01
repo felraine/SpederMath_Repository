@@ -1,6 +1,1 @@
-/* Import Tailwind's default styles */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Add custom styles if necessary (e.g., fonts, custom colors) */
+@import "tailwindcss";
