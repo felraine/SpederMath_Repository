@@ -15,8 +15,8 @@ public class TeacherService {
         // Test the connection by saving a new teacher and checking if it exists in the database
         // This is a simple test and should be replaced with proper unit tests in a real application
         Teacher teacher = new Teacher();
-        teacher.setName("Test Teacher");
-        teacher.setEmail("test@example.com");
+        teacher.setName("Test Teacher 1");
+        teacher.setEmail("test23@example.com");
         teacher.setPassword("password");
         teacher.setCreatedAt(java.time.LocalDateTime.parse("2025-03-29T00:00:00"));
 
