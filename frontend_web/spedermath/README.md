@@ -25,3 +25,9 @@ Follow the steps below to install React Router in your project:
 
     ```bash
     npm install
+
+5. **NEW: Install Framer Motion**  
+    To add Framer Motion for animations in your app, run:
+
+    ```bash
+    npm install framer motion

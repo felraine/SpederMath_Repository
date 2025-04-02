@@ -2,6 +2,9 @@ package edu.cit.spedermath.service;
 
 import edu.cit.spedermath.model.Teacher;
 import edu.cit.spedermath.repository.TeacherRepository;
+
+import java.time.LocalDateTime;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,10 +21,23 @@ public class TeacherService {
         teacher.setName("Test Teacher 1");
         teacher.setEmail("test23@example.com");
         teacher.setPassword("password");
-        teacher.setCreatedAt(java.time.LocalDateTime.parse("2025-03-29T00:00:00"));
+        teacher.setCreatedAt(java.time.LocalDateTime.now());
 
         teacherRepository.save(teacher);
 
         return teacherRepository.findById(teacher.getId()).isPresent() ? "Connection successful!" : "Connection failed!";
+    }
+
+        public String registerTeacher(String name, String email, String password) {
+        // Check if email is already registered
+        if (teacherRepository.findByEmail(email).isPresent()) {
+            return "Email already registered!";
+        }
+ 
+        // Create and save teacher
+        Teacher teacher = new Teacher(name, email, password, LocalDateTime.now());
+        teacherRepository.save(teacher);
+ 
+        return "Registration successful!";
     }
 }

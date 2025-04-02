@@ -5,7 +5,7 @@ function Register() {
   const navigate = useNavigate();
 
   const goToLogin = () => {
-    navigate("/login");
+    navigate("/teacher-login");
   };
 
   return (
