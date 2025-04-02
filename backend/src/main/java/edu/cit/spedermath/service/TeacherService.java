@@ -2,42 +2,52 @@ package edu.cit.spedermath.service;
 
 import edu.cit.spedermath.model.Teacher;
 import edu.cit.spedermath.repository.TeacherRepository;
-
-import java.time.LocalDateTime;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 public class TeacherService {
-
     @Autowired
     private TeacherRepository teacherRepository;
 
-    public String testConnection() {
-        // Test the connection by saving a new teacher and checking if it exists in the database
-        // This is a simple test and should be replaced with proper unit tests in a real application
-        Teacher teacher = new Teacher();
-        teacher.setName("Test Teacher 1");
-        teacher.setEmail("test23@example.com");
-        teacher.setPassword("password");
-        teacher.setCreatedAt(java.time.LocalDateTime.now());
-
-        teacherRepository.save(teacher);
-
-        return teacherRepository.findById(teacher.getId()).isPresent() ? "Connection successful!" : "Connection failed!";
-    }
-
-        public String registerTeacher(String name, String email, String password) {
+    public String registerTeacher(String name, String email, String password) {
         // Check if email is already registered
         if (teacherRepository.findByEmail(email).isPresent()) {
             return "Email already registered!";
         }
- 
-        // Create and save teacher
+        
+        // Create and save teacher with plain text password
         Teacher teacher = new Teacher(name, email, password, LocalDateTime.now());
         teacherRepository.save(teacher);
- 
         return "Registration successful!";
+    }
+
+    public String loginTeacher(String email, String password) {
+        Optional<Teacher> teacherOptional = teacherRepository.findByEmail(email);
+        if (teacherOptional.isEmpty()) {
+            return "Invalid email or password!";
+        }
+        
+        Teacher teacher = teacherOptional.get();
+        // Direct string comparison instead of password matching
+        if (password.equals(teacher.getPassword())) {
+            return "Login successful!";
+        } else {
+            return "Invalid email or password!";
+        }
+    }
+
+    public String testConnection() {
+        Teacher teacher = new Teacher();
+        teacher.setName("Test Teacher");
+        teacher.setEmail("test@example.com");
+        teacher.setPassword("password"); // Plain text password
+        teacher.setCreatedAt(LocalDateTime.now());
+        teacherRepository.save(teacher);
+        return teacherRepository.findById(teacher.getId()).isPresent() ? 
+               "Connection successful!" : 
+               "Connection failed!";
     }
 }
