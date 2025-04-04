@@ -12,11 +12,10 @@ function Register() {
     <div className="min-h-screen bg-white flex flex-col">
       
       
-      <div className="w-full px-50 pt-8">
-        <h1 className="text-xl font-bold text-black font-patrick-hand">
-          spedermath
-        </h1>
+      <div className="flex items-start justify-start p-5 text-2xl font-bold text-black">
+        SpederMath
       </div>
+
 
       
       <div className="flex justify-center items-center flex-1">
