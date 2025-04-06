@@ -10,6 +10,7 @@ function Login() {
 
   const handleLogin = async () => {
     try {
+      //test server
       const response = await fetch("http://localhost:8080/api/teachers/login", {
         method: "POST",
         headers: {
@@ -17,12 +18,20 @@ function Login() {
         },
         body: JSON.stringify({ email, password }),
       });
+      //production servers
+      /*const response = await fetch("https://52.220.207.155:8080/api/teachers/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });*/
 
       const result = await response.text();
 
       if (response.ok) {
         // Login successful
-        localStorage.setItem("token", "dummy-token"); // You can store real token later
+        localStorage.setItem("token", "dummy-token"); // store real token later
         navigate("/teacher-dashboard");
       } else {
         setErrorMsg(result);
