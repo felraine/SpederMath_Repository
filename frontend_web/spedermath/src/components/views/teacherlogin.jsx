@@ -35,9 +35,9 @@ function Login() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Title */}
-      <div className="p-5 text-3xl md:text-4xl font-bold text-black">
+      <a href="/" className="p-5 text-3xl md:text-4xl font-bold text-black">
         SpederMath
-      </div>
+      </a>
 
       {/* Main Container */}
       <div className="flex justify-center items-center flex-1 p-4">
