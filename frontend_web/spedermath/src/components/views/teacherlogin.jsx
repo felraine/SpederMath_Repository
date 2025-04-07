@@ -57,7 +57,7 @@ function Login() {
             <h2 className="text-[40px] sm:text-[50px] md:text-[60px] lg:text-[70px] font-neucha text-center leading-none mb-2">LOGIN</h2>
             <p className="text-sm font-semibold text-center mb-6">Welcome back!</p>
 
-            <form className="flex flex-col gap-4" onSubmit={handleLogin}>
+            <form className="flex flex-col gap-4">
               <input 
                 type="email" 
                 placeholder="Email"
@@ -78,8 +78,9 @@ function Login() {
               )}
 
               <button 
-                type="submit"
+                type="button"
                 className="w-full py-3 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-600 transition"
+                onClick={handleLogin}
               >
                 Login
               </button>
