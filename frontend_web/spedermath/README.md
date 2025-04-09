@@ -31,3 +31,4 @@ Follow the steps below to install React Router in your project:
 
     ```bash
     npm install framer motion
+    npm install lucide-react

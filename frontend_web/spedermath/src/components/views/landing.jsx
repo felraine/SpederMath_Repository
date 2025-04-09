@@ -12,7 +12,8 @@ function Landing() {
         initial={{ opacity: 0, y: 0 }}
         animate={{ opacity: 1, y: 0 }} 
         transition={{ duration: 1 }}   
-        className="absolute top-6 left-10 text-xl font-bold text-black"
+        className="p-5 text-3xl md:text-4xl font-bold text-black"
+
       >
         SpederMath
       </motion.div>
