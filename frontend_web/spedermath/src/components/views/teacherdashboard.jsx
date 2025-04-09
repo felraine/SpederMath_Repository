@@ -17,7 +17,7 @@ function Dashboard() {
         <nav className="mt-5">
           <ul>
             <li className="p-3 bg-gray-800 text-white rounded-md">Dashboard</li>
-            <li className="p-3 hover:bg-gray-300 rounded-md">Manage Students</li>
+            <li className="p-3 hover:bg-gray-300 rounded-md" onClick={() => {navigate("/manage-students")}}>Manage Students</li>
             <li className="p-3 hover:bg-gray-300 rounded-md">Settings</li>
             <li className="p-3 hover:bg-gray-300 rounded-md cursor-pointer" onClick={handleLogout}>Logout</li>
           </ul>
@@ -33,7 +33,7 @@ function Dashboard() {
             <div>
               {/*Placeholder teacher name, to be changed */}
               <h3 className="font-semibold">Teacher Leilah Garcia</h3>
-              <p className="text-sm text-gray-500">Hello, welcome back!</p>
+              <p className="text-sm text-gray-500">Hello! Welcome back!</p>
             </div>
           </div>
           <p className="text-sm text-gray-500">Premium Plan</p>

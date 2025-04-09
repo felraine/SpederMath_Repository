@@ -56,7 +56,7 @@ function Register() {
         setTimeout(() => {
           setShowSuccess(false);
           navigate("/teacher-login");
-        }, 3500);
+        }, 500);
       } else {
         setServerError(result);
       }
@@ -76,7 +76,7 @@ function Register() {
 
       {/* Main */}
       <div className="flex justify-center items-center flex-1 relative z-10">
-        <div className="w-11/12 max-w-5xl bg-white rounded-xl flex overflow-hidden items-center shadow-xl">
+        <div className="w-11/12 max-w-5xl bg-white rounded-xl flex overflow-hidden items-center">
           {/* Left - Image */}
           <div className="w-1/2 flex justify-center p-6">
             <img
