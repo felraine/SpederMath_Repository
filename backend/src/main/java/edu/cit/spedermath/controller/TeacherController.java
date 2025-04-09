@@ -10,6 +10,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.Optional;
 
+//testing CORS with localhost:3000
+//@CrossOrigin(origins = "http://localhost:3000")
+//production CORS with web app
+@CrossOrigin(origins = "https://spedermath.web.app")
 @RestController
 @RequestMapping("/api/teachers")
 public class TeacherController {

@@ -172,17 +172,15 @@ function Register() {
               </button>
             </form>
 
-            <p className="text-sm text-center mt-6 text-gray-700">
-              Already have an account?{" "}
-              <span
-                className="font-semibold text-black hover:text-blue-600 cursor-pointer"
-                onClick={goToLogin}
-              >
-                Sign in
-              </span>
-            </p>
-          </div>
-        </div>
+        <p className="text-sm text-center mt-6 text-gray-700">
+          Already have an account?{" "}
+          <span
+            className="font-semibold text-black hover:text-blue-600 cursor-pointer"
+            onClick={goToLogin}
+          >
+            Sign in
+          </span>
+        </p>
       </div>
 
       {/* Success Popup */}
@@ -248,6 +246,8 @@ function Register() {
         </style>
 
     </div>
+  </div>
+</div>
   );
 }
 

@@ -39,7 +39,7 @@ public class TeacherService {
     public String testConnection() {
         Teacher teacher = new Teacher();
         teacher.setName("Test Teacher");
-        teacher.setEmail("test@example.com");
+        teacher.setEmail("admin@example.com");
         teacher.setPassword("password");
         teacher.setCreatedAt(LocalDateTime.now());
         teacherRepository.save(teacher);
