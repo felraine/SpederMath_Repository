@@ -1,10 +1,10 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Login from "./components/views/teacherlogin";
-import Register from "./components/views/register";
-import Landing from "./components/views/landing";
-import Dashboard from "./components/views/teacherdashboard";
-import ManageStudent from "./components/views/manageStudents";
+import Login from "./components/views/TeacherLogin";
+import Register from "./components/views/Register";
+import Landing from "./components/views/Landing";
+import Dashboard from "./components/views/TeacherDashboard";
+import ManageStudent from "./components/views/ManageStudents";
 import PrivateRoute from "./components/PrivateRoute";
 
 function App() {

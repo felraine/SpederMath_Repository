@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 
 //testing CORS with localhost:3000
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:5173")
 //production CORS with web app
 //@CrossOrigin(origins = "https://spedermath.web.app")
 @RestController
@@ -34,15 +34,17 @@ public class TeacherController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> loginTeacher(@RequestBody Map<String, String> request) {
+    public ResponseEntity<Map<String, String>> loginTeacher(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         String password = request.get("password");
-
-        String response = teacherService.loginTeacher(email, password);
-        return response.equals("Login successful!") ?
-                new ResponseEntity<>(response, HttpStatus.OK) :
-                new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
-    }
+    
+        Map<String, String> response = teacherService.loginTeacher(email, password);
+        if (response.containsKey("token")) {
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+        }
+    }    
 
     @GetMapping("/test-connection")
     public ResponseEntity<String> testConnection() {

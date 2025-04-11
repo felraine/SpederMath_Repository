@@ -1,5 +1,7 @@
 package edu.cit.spedermath.service;
 
+import edu.cit.spedermath.model.Teacher;
+import edu.cit.spedermath.repository.TeacherRepository;
 import edu.cit.spedermath.model.Student;
 import edu.cit.spedermath.repository.StudentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,10 @@ public class StudentService {
 
     @Autowired
     private StudentRepository studentRepository;
+
+    @Autowired
+    private TeacherRepository teacherRepository;
+
 
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
@@ -47,7 +53,9 @@ public class StudentService {
     }
 
     // Create new student
-    public Student createStudent(String fname, String lname, String username, LocalDate birthdate, MultipartFile profilePicture) throws IOException {
+    public Student createStudent(String fname, String lname, String username, LocalDate birthdate, MultipartFile profilePicture, Long teacherId) throws IOException {
+        Teacher teacher = teacherRepository.findById(teacherId)
+            .orElseThrow(() -> new RuntimeException("Teacher not found."));
         int level = 1;
         Optional<Student> existingStudent = studentRepository.findByUsername(username);
         if (existingStudent.isPresent()) {
@@ -62,7 +70,7 @@ public class StudentService {
             profilePictureBytes = profilePicture.getBytes();
         }
     
-        Student student = new Student(fname, lname, username, generatedPassword, birthdate, LocalDate.now(), level, profilePictureBytes);
+        Student student = new Student(fname, lname, username, generatedPassword, birthdate, LocalDate.now(), level, profilePictureBytes, teacher);
         return studentRepository.save(student);
     }
 
@@ -77,7 +85,10 @@ public class StudentService {
     }
 
     // Edit student
-    public Student updateStudent(Long studentID, String fname, String lname, String username, int level, MultipartFile profilePicture) throws IOException {
+    public Student updateStudent(Long studentID, String fname, String lname, String username, int level, MultipartFile profilePicture, Long teacherId) throws IOException {
+        Teacher teacher = teacherRepository.findById(teacherId)
+        .orElseThrow(() -> new RuntimeException("Teacher not found."));
+
         Optional<Student> existingStudent = studentRepository.findById(studentID);
         if (!existingStudent.isPresent()) {
             throw new RuntimeException("Student not found.");
@@ -93,6 +104,7 @@ public class StudentService {
         student.setLName(lname);
         student.setUsername(username);
         student.setLevel(level);
+        student.setTeacher(teacher);
 
         if (profilePicture != null) {
             student.setProfilePicture(profilePicture.getBytes());
@@ -115,4 +127,8 @@ public class StudentService {
     public List<Student> getAllStudents() {
         return studentRepository.findAll();
     }
+
+    public List<Student> getStudentsByTeacher(Teacher teacher) {
+        return studentRepository.findByTeacher(teacher);
+    }    
 }

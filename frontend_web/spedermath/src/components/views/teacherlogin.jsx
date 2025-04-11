@@ -10,36 +10,33 @@ function Login() {
 
   const handleLogin = async () => {
     try {
-      //test server
       const response = await fetch("http://localhost:8080/api/teachers/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password }), // Assuming email and password are being correctly handled
       });
-      //production servers
-      /*const response = await fetch("https://52.220.207.155:8080/api/teachers/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });*/
-
-      const result = await response.text();
-
+  
+      const result = await response.json();
+  
       if (response.ok) {
-        // Login successful
-        localStorage.setItem("token", "dummy-token"); // store real token later
-        navigate("/teacher-dashboard");
+        if (result.token) {
+          // Store the token in localStorage if it's available in the response
+          localStorage.setItem("token", result.token);
+          navigate("/teacher-dashboard"); // Redirect to the teacher dashboard
+        } else {
+          setErrorMsg("Login failed: No token received.");
+        }
       } else {
-        setErrorMsg(result);
+        setErrorMsg(result.message || "Login failed: Unknown error.");
       }
     } catch (error) {
+      console.error("Login error:", error); // Log the error for debugging purposes
       setErrorMsg("An error occurred. Please try again.");
     }
   };
+  
 
   return (
     <div className="min-h-screen bg-white flex flex-col">

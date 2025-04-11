@@ -1,7 +1,10 @@
 package edu.cit.spedermath.controller;
 
 import edu.cit.spedermath.model.Student;
+import edu.cit.spedermath.model.Teacher;
 import edu.cit.spedermath.service.StudentService;
+import edu.cit.spedermath.repository.TeacherRepository; 
+import edu.cit.spedermath.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +17,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletRequest;
+
+@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/students")
 public class StudentController {
@@ -21,22 +27,35 @@ public class StudentController {
     @Autowired
     private StudentService studentService;
 
-    // Create new student
-    @PostMapping
-public ResponseEntity<Student> createStudent(@RequestParam String fname,
-                                             @RequestParam String lname,
-                                             @RequestParam String username,
-                                             @RequestParam String birthdate,
-                                             @RequestParam(required = false) MultipartFile profilePicture) {
-    try {
-        LocalDate parsedBirthdate = LocalDate.parse(birthdate);
-        Student student = studentService.createStudent(fname, lname, username, parsedBirthdate, profilePicture);
-        return new ResponseEntity<>(student, HttpStatus.CREATED);
-    } catch (IOException | RuntimeException e) {
-        return ResponseEntity.badRequest().build();
-    }
-}
+    @Autowired
+    private JwtUtil jwtUtil;
 
+    @Autowired
+    private TeacherRepository teacherRepository;  // Autowire TeacherRepository
+
+    // Create new student
+    @PostMapping("/create")
+    public ResponseEntity<Student> createStudent(@RequestParam String fname,
+                                                 @RequestParam String lname,
+                                                 @RequestParam String username,
+                                                 @RequestParam String birthdate,
+                                                 @RequestParam(required = false) MultipartFile profilePicture,
+                                                 @RequestHeader("Authorization") String authHeader) {
+        try {
+            // Extract teacherId from JWT token
+            String token = authHeader.substring(7);  // Remove "Bearer " prefix
+            Long teacherId = jwtUtil.extractTeacherId(token); // Extract teacherId
+    
+            // Parse birthdate
+            LocalDate parsedBirthdate = LocalDate.parse(birthdate);
+    
+            // Create student
+            Student student = studentService.createStudent(fname, lname, username, parsedBirthdate, profilePicture, teacherId);
+            return new ResponseEntity<>(student, HttpStatus.CREATED);
+        } catch (IOException | RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
 
     // Get student by username
     @GetMapping("/username/{username}")
@@ -55,13 +74,19 @@ public ResponseEntity<Student> createStudent(@RequestParam String fname,
     // Edit student
     @PutMapping("/{studentID}")
     public ResponseEntity<Student> updateStudent(@PathVariable Long studentID,
-                                                 @RequestParam String fname,
-                                                 @RequestParam String lname,
-                                                 @RequestParam String username,
-                                                 @RequestParam int level,
-                                                 @RequestParam(required = false) MultipartFile profilePicture) {
+                                                  @RequestParam String fname,
+                                                  @RequestParam String lname,
+                                                  @RequestParam String username,
+                                                  @RequestParam int level,
+                                                  @RequestParam(required = false) MultipartFile profilePicture,
+                                                  @RequestHeader("Authorization") String authHeader) {
         try {
-            Student updatedStudent = studentService.updateStudent(studentID, fname, lname, username, level, profilePicture);
+            // Extract teacherId from JWT token
+            String token = authHeader.substring(7);  // Remove "Bearer " prefix
+            Long teacherId = jwtUtil.extractTeacherId(token); // Extract teacherId
+    
+            // Update student
+            Student updatedStudent = studentService.updateStudent(studentID, fname, lname, username, level, profilePicture, teacherId);
             return new ResponseEntity<>(updatedStudent, HttpStatus.OK);
         } catch (IOException | RuntimeException e) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -81,20 +106,30 @@ public ResponseEntity<Student> createStudent(@RequestParam String fname,
 
     // Get all students
     @GetMapping("/all")
-    public ResponseEntity<List<Student>> getAllStudents() {
-        List<Student> students = studentService.getAllStudents();
-        
-        // Format the created_at field for each student
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM d, yyyy"); // Format: "Month day, year"
-        
+    public ResponseEntity<List<Student>> getAllStudents(HttpServletRequest request) {
+        String token = jwtUtil.extractToken(request);
+    
+        if (token == null) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+    
+        Long teacherId = jwtUtil.extractTeacherId(token);
+        System.out.println("Teacher ID: " + teacherId);  // Debugging
+    
+        Teacher teacher = teacherRepository.findById(teacherId)
+                .orElseThrow(() -> new RuntimeException("Teacher not found"));
+    
+        List<Student> students = studentService.getStudentsByTeacher(teacher);
+    
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM d, yyyy");
+    
         for (Student student : students) {
             if (student.getCreatedAt() != null) {
-                // Format the created_at field to the desired format
                 String formattedDate = student.getCreatedAt().format(formatter);
-                student.setFormattedCreatedAt(formattedDate); // Set the formatted date
+                student.setFormattedCreatedAt(formattedDate);
             }
         }
-        
+    
         return new ResponseEntity<>(students, HttpStatus.OK);
     }    
 }
