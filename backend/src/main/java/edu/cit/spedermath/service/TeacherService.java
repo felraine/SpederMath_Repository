@@ -1,11 +1,14 @@
 package edu.cit.spedermath.service;
 
+import edu.cit.spedermath.util.JwtUtil;
 import edu.cit.spedermath.model.Teacher;
 import edu.cit.spedermath.repository.TeacherRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -13,6 +16,9 @@ public class TeacherService {
 
     @Autowired
     private TeacherRepository teacherRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     public String registerTeacher(String name, String email, String password) {
         if (teacherRepository.findByEmail(email.toLowerCase()).isPresent()) {
@@ -23,16 +29,24 @@ public class TeacherService {
         return "Registration successful!";
     }
 
-    public String loginTeacher(String email, String password) {
+    public Map<String, String> loginTeacher(String email, String password) {
         Optional<Teacher> teacherOptional = teacherRepository.findByEmail(email.toLowerCase());
+        Map<String, String> response = new HashMap<>();
+
         if (teacherOptional.isEmpty()) {
-            return "Invalid email or password!";
+            response.put("error", "Invalid email or password!");
+            return response;
         }
+
         Teacher teacher = teacherOptional.get();
         if (password.equals(teacher.getPassword())) {
-            return "Login successful!";
+            String token = jwtUtil.generateToken(teacher.getId());
+            response.put("token", token);
+            response.put("message", "Login successful!");
+            return response;
         } else {
-            return "Invalid email or password!";
+            response.put("error", "Invalid email or password!");
+            return response;
         }
     }
 
@@ -43,16 +57,13 @@ public class TeacherService {
         teacher.setPassword("password");
         teacher.setCreatedAt(LocalDateTime.now());
         teacherRepository.save(teacher);
-        return teacherRepository.findById(teacher.getId()).isPresent() ?
-               "Connection successful!" :
-               "Connection failed!";
+        return teacherRepository.findById(teacher.getId()).isPresent() ? "Connection successful!" : "Connection failed!";
     }
 
     public Optional<Teacher> getTeacherByEmail(String email) {
         return teacherRepository.findByEmail(email.toLowerCase());
     }
 
-    // 🔥 Forgot Password Logic
     @Transactional
     public String updatePassword(String email, String newPassword) {
         Optional<Teacher> teacherOptional = teacherRepository.findByEmail(email.toLowerCase());

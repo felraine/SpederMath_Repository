@@ -3,6 +3,8 @@ package edu.cit.spedermath.model;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "student")
 public class Student {
@@ -39,12 +41,17 @@ public class Student {
     @Column(name = "profile_picture")
     private byte[] profilePicture;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "teacher_id", nullable = false)
+    @JsonIgnore
+    private Teacher teacher;
+
     // Default constructor
     public Student() {
     }
 
-    // Constructor with fields
-    public Student(String fname, String lname, String username, String password, LocalDate birthdate, LocalDate createdAt, int level, byte[] profilePicture) {
+    // Constructor with all fields except ID
+    public Student(String fname, String lname, String username, String password, LocalDate birthdate, LocalDate createdAt, int level, byte[] profilePicture, Teacher teacher) {
         this.fname = fname;
         this.lname = lname;
         this.username = username;
@@ -52,11 +59,12 @@ public class Student {
         this.birthdate = birthdate;
         this.createdAt = createdAt;
         this.level = level;
-        this.profilePicture = profilePicture; // Initialize profile picture
+        this.profilePicture = profilePicture;
+        this.teacher = teacher;
     }
 
     // Getters and Setters
-    public Long getStudentID() {  
+    public Long getStudentID() {
         return studentID;
     }
 
@@ -80,7 +88,7 @@ public class Student {
         this.lname = lname;
     }
 
-    public String getUsername() {  
+    public String getUsername() {
         return username;
     }
 
@@ -128,10 +136,18 @@ public class Student {
         this.profilePicture = profilePicture;
     }
 
+    public Teacher getTeacher() {
+        return teacher;
+    }
+
+    public void setTeacher(Teacher teacher) {
+        this.teacher = teacher;
+    }
+
     public String getFormattedCreatedAt() {
         return formattedCreatedAt;
     }
-    
+
     public void setFormattedCreatedAt(String formattedCreatedAt) {
         this.formattedCreatedAt = formattedCreatedAt;
     }
