@@ -85,7 +85,7 @@ public class StudentService {
     }
 
     // Edit student
-    public Student updateStudent(Long studentID, String fname, String lname, String username, int level, MultipartFile profilePicture, Long teacherId) throws IOException {
+    public Student updateStudent(Long studentID, String fname, String lname, String username, Integer level, MultipartFile profilePicture, Long teacherId) throws IOException {
         Teacher teacher = teacherRepository.findById(teacherId)
         .orElseThrow(() -> new RuntimeException("Teacher not found."));
 

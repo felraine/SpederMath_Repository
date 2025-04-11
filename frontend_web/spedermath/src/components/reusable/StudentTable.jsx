@@ -1,8 +1,7 @@
-// StudentTable.js
 import React from "react";
 import StudentRow from "./StudentRow";
 
-function StudentTable({ students, togglePassword }) {
+function StudentTable({ students, togglePassword, onEdit }) {
   return (
     <div className="overflow-x-auto max-h-96">
       <table className="min-w-full table-auto text-sm text-left">
@@ -18,7 +17,12 @@ function StudentTable({ students, togglePassword }) {
         </thead>
         <tbody>
           {students.map((student) => (
-            <StudentRow key={student.studentID} student={student} togglePassword={togglePassword} />
+            <StudentRow
+            key={student.studentID}
+            student={student}
+            togglePassword={togglePassword}
+            onEdit={onEdit}
+            />          
           ))}
         </tbody>
       </table>

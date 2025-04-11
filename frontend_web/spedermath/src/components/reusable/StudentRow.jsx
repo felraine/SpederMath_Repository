@@ -1,8 +1,7 @@
-// StudentRow.js
 import React from "react";
 import { Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 
-function StudentRow({ student, togglePassword }) {
+function StudentRow({ student, togglePassword, onEdit }) {
   return (
     <tr key={student.studentID} className="border-b hover:bg-gray-50">
       <td className="p-3">{`${student.fname} ${student.lname}`}</td>
@@ -32,8 +31,8 @@ function StudentRow({ student, togglePassword }) {
       </td>
       <td className="p-3">{student.level}</td>
       <td className="p-3 text-center">
-        <button className="text-yellow-600 hover:text-yellow-800">
-          <Pencil />
+        <button onClick={() => onEdit(student)}>
+          <Pencil className="text-blue-600 hover:text-blue-800" />
         </button>
         <button className="ml-2 text-red-600 hover:text-red-800">
           <Trash2 />

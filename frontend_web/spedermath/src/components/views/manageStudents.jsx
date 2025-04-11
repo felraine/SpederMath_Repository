@@ -1,4 +1,3 @@
-// ManageStudent.js
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../reusable/Sidebar";
@@ -12,6 +11,8 @@ function ManageStudent() {
   const [students, setStudents] = useState([]);
   const [formData, setFormData] = useState({ fname: "", lname: "", birthdate: "", username: "", profilePicture: null });
   const [showForm, setShowForm] = useState(false);
+  const [editingStudentID, setEditingStudentID] = useState(null);
+
 
   // Fetch students from the API
   useEffect(() => {
@@ -60,32 +61,59 @@ function ManageStudent() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-
+  
     const form = new FormData();
     form.append("fname", formData.fname);
     form.append("lname", formData.lname);
     form.append("username", formData.username);
     form.append("birthdate", formData.birthdate);
-
+    form.append("level", formData.level);
+  
     if (formData.profilePicture) {
       form.append("profilePicture", formData.profilePicture);
     }
 
+    if (formData.level != null) {
+      form.append("level", formData.level);
+    }
+  
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.post("http://localhost:8080/api/students/create", form, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          "Authorization": `Bearer ${token}`,
-        },
-      });
-      setStudents((prevStudents) => [...prevStudents, response.data]);
+      const headers = {
+        "Content-Type": "multipart/form-data",
+        "Authorization": `Bearer ${token}`,
+      };
+  
+      let response;
+      if (editingStudentID) {
+        response = await axios.put(`http://localhost:8080/api/students/${editingStudentID}`, form, { headers });
+        setStudents(prev => prev.map(s => s.studentID === editingStudentID ? { ...response.data, showPassword: false } : s));
+      } else {
+        response = await axios.post("http://localhost:8080/api/students/create", form, { headers });
+        setStudents(prev => [...prev, { ...response.data, showPassword: false }]);
+      }
+  
       setShowForm(false);
       setFormData({ fname: "", lname: "", birthdate: "", username: "", profilePicture: null });
+      setEditingStudentID(null);
     } catch (error) {
-      console.error("Error creating student:", error);
+      console.error("Error submitting student form:", error);
     }
   };
+  
+  const handleEdit = (student) => {
+    setFormData({
+      fname: student.fname,
+      lname: student.lname,
+      birthdate: student.birthdate,
+      username: student.username,
+      profilePicture: null,
+      studentID: student.studentID, 
+      level: student.level,
+    });
+    setEditingStudentID(student.studentID);
+    setShowForm(true);
+  };  
 
   return (
     <div className="flex h-screen w-full bg-gray-200">
@@ -107,9 +135,13 @@ function ManageStudent() {
             </button>
           </div>
 
-          {showForm && <CreateStudentForm formData={formData} handleInputChange={handleInputChange} handleFileChange={handleFileChange} handleFormSubmit={handleFormSubmit} setShowForm={setShowForm} />}
+          {showForm && <CreateStudentForm formData={formData} handleInputChange={handleInputChange} handleFileChange={handleFileChange} handleFormSubmit={handleFormSubmit} setShowForm={setShowForm} editingStudentID={editingStudentID}/>}
 
-          <StudentTable students={students} togglePassword={togglePassword} />
+          <StudentTable
+          students={students}
+          togglePassword={togglePassword}
+          onEdit={handleEdit}
+          />
         </section>
       </main>
     </div>

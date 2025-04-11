@@ -77,7 +77,7 @@ public class StudentController {
                                                   @RequestParam String fname,
                                                   @RequestParam String lname,
                                                   @RequestParam String username,
-                                                  @RequestParam int level,
+                                                  @RequestParam(required = false) Integer level,
                                                   @RequestParam(required = false) MultipartFile profilePicture,
                                                   @RequestHeader("Authorization") String authHeader) {
         try {
