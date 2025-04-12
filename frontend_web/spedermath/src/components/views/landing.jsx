@@ -55,14 +55,14 @@ function Landing() {
         >
           <motion.button
             onClick={() => navigate("/teacher-login")}
-            className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px]   transition"
+            className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px] cursor-pointer  transition"
           >
             Educator
           </motion.button>
 
           <motion.button
             onClick={() => navigate("/student-login")}
-            className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px] font-neucha transition"
+            className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px] font-neucha cursor-pointer transition"
           >
             Student
           </motion.button>
