@@ -1,7 +1,9 @@
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link,useNavigate } from "react-router-dom";
 function StudentLogin() {
-
+    
+    //temporary navigates to student dashboard without credentials
+    const navigate = useNavigate();
     return (
         
         <div className="relative min-h-screen bg-white overflow-hidden font-sans">
@@ -57,14 +59,16 @@ function StudentLogin() {
                     className="border border-gray-300 rounded-[12px] px-4 py-3 text-[16px] font-neucha focus:outline-none focus:ring-2 focus:ring-[#6a4fa3] transition"
                 />
                   <motion.button
-                    onClick={() => navigate("/teacher-login")}
-                    className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px]  font-neucha transition"
+                    onClick={() => navigate("/student-dashboard")}
+                    className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px] cursor-pointer font-neucha transition"
                   >
                     Login
                   </motion.button>
         
                 </motion.div>
               </div>
+
+              {/* Background Images */}
         
               <motion.img
                 src="/red.png"
