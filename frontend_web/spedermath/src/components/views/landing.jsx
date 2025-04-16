@@ -12,7 +12,7 @@ function Landing() {
         initial={{ opacity: 0, y: 0 }}
         animate={{ opacity: 1, y: 0 }} 
         transition={{ duration: 1 }}   
-        className="p-5 text-3xl md:text-4xl font-bold text-black"
+        className="p-5 text-3xl md:text-4xl font-bold text-black z-50 relative"
 
       >
         SpederMath
@@ -55,14 +55,14 @@ function Landing() {
         >
           <motion.button
             onClick={() => navigate("/teacher-login")}
-            className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px] font-['Inria_Sans'] transition"
+            className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px] cursor-pointer  transition"
           >
             Educator
           </motion.button>
 
           <motion.button
             onClick={() => navigate("/student-login")}
-            className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px] font-['Inria_Sans'] transition"
+            className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px] font-neucha cursor-pointer transition"
           >
             Student
           </motion.button>
