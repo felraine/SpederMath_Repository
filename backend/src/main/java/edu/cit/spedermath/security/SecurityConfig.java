@@ -10,6 +10,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 
 import java.util.List;
 
@@ -31,15 +32,28 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/teachers/login", "/api/teachers/register", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/api/students/**").authenticated() // Allow access to student routes for authenticated users
+                        // Allow CORS preflight requests (very important for React dev or Swagger UI)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Allow unauthenticated access to Swagger and auth routes
+                        // add url to test here
+                        .requestMatchers(
+                                "/api/teachers/login",
+                                "/api/teachers/register",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+
+                        // Secure your student API
+                        .requestMatchers("/api/students/**").authenticated()
+
+                        // Default rule: secure everything else
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
-    // CORS configuration for development (allow requests from frontend running on localhost)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
@@ -52,7 +66,7 @@ public class SecurityConfig {
         return source;
     }
 
-    // Production server CORS configuration (uncomment when deploying to production)
+    // Production CORS configuration (uncomment when deploying)
     /*
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

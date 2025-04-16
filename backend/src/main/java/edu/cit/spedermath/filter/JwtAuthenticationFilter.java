@@ -26,35 +26,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     // Override the doFilterInternal method as required by OncePerRequestFilter
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
-        // Get the token from the Authorization header (Bearer token)
+        String path = request.getRequestURI();
+        // Allow access to Swagger UI and API docs without authentication
+        // Also allow access to login and register endpoints for teachers
+        if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")
+            || path.startsWith("/api/teachers/login") || path.startsWith("/api/teachers/register")) {
+            filterChain.doFilter(request, response); // Skip token validation
+            return;
+        }
+    
         String token = request.getHeader("Authorization");
     
         if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);  // Remove the "Bearer " prefix
-            
+            token = token.substring(7);  // Remove "Bearer " prefix
+    
             try {
-                // Validate token and extract teacher ID
                 Long teacherId = jwtUtil.extractTeacherId(token);
-                
-                // Create authentication based on the teacher ID
                 UserDetails userDetails = new User(String.valueOf(teacherId), "", new ArrayList<>());
-                
-                // Set authentication in the security context
+    
                 UsernamePasswordAuthenticationToken authenticationToken = 
                     new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-                
+    
             } catch (Exception e) {
-                // Log the exception (e.g., token expired or tampered)
                 logger.error("Invalid token: ", e);
-                
-                // Send unauthorized error response
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token.");
                 return;
             }
         }
     
-        // Continue with the next filter in the chain
         filterChain.doFilter(request, response);
-    }    
+    }      
 }
