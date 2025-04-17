@@ -2,8 +2,11 @@ package edu.cit.spedermath.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.util.ArrayList;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import java.util.List;
 
 @Entity
 @Table(name = "student")
@@ -45,6 +48,10 @@ public class Student {
     @JoinColumn(name = "teacher_id", nullable = false)
     @JsonIgnore
     private Teacher teacher;
+
+    @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<StudentProgress> progressRecords = new ArrayList<>();
 
     // Default constructor
     public Student() {
@@ -150,5 +157,12 @@ public class Student {
 
     public void setFormattedCreatedAt(String formattedCreatedAt) {
         this.formattedCreatedAt = formattedCreatedAt;
+    }
+
+    public List<StudentProgress> getProgressRecords() {
+        return progressRecords;
+    }
+    public void setProgressRecords(List<StudentProgress> progressRecords) {
+        this.progressRecords = progressRecords;
     }
 }

@@ -34,6 +34,15 @@ public class JwtUtil {
                 .compact();
     }
 
+    public String generateStudentToken(Long studentId) {
+        return Jwts.builder()
+                .setSubject(String.valueOf(studentId))  // Set the student ID as the subject
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10)) // 10 hours
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }    
+
     // Method to get teacher ID from token
     public Long extractTeacherId(String token) {
         return Long.parseLong(Jwts.parserBuilder()
@@ -43,6 +52,20 @@ public class JwtUtil {
                 .getBody()
                 .getSubject());
     }
+
+    public Long extractStudentId(String token) {
+        try {
+            return Long.parseLong(Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody()
+                    .getSubject());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid student ID in token", e);
+        }
+    }
+    
 
     // Method to extract claims from token
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {

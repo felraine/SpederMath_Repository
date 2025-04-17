@@ -25,27 +25,30 @@ public class SecurityConfig {
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
-
+    
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .cors(withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Allow CORS preflight requests (very important for React dev or Swagger UI)
+                        // Allow CORS preflight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // Allow unauthenticated access to Swagger and auth routes
                         // add url to test here
                         .requestMatchers(
-                                "/api/teachers/login",
-                                "/api/teachers/register",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**"
+                            "/api/teachers/login",
+                            "/api/teachers/register",
+                            "/api/students/student-login",
+                            "/swagger-ui/**", 
+                            "/swagger-ui.html", 
+                            "/v3/api-docs/**",
+                            "/api/lessons/**"
                         ).permitAll()
 
                         // Secure your student API
-                        .requestMatchers("/api/students/**").authenticated()
+                        .requestMatchers("/api/students/**", "/api/student-progress/**").authenticated()
 
                         // Default rule: secure everything else
                         .anyRequest().authenticated()
@@ -57,9 +60,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("http://localhost:*")); // Allow your frontend server
+        config.setAllowedOriginPatterns(List.of("http://localhost:5173")); // Allow your frontend server
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "*"));
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

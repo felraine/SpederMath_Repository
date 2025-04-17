@@ -7,12 +7,15 @@ import edu.cit.spedermath.repository.StudentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import edu.cit.spedermath.util.JwtUtil;
 
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class StudentService {
@@ -22,6 +25,9 @@ public class StudentService {
 
     @Autowired
     private TeacherRepository teacherRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
 
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -130,5 +136,27 @@ public class StudentService {
 
     public List<Student> getStudentsByTeacher(Teacher teacher) {
         return studentRepository.findByTeacher(teacher);
-    }    
+    }
+
+    //student login
+    public Map<String, String> loginStudent (String username, String password) {
+        Optional<Student> studentOptional = studentRepository.findByUsername(username);
+        Map<String, String> response = new HashMap<>();
+
+        if (studentOptional.isEmpty()) {
+            response.put("error", "Invalid email or password!");
+            return response;
+        }
+
+        Student student = studentOptional.get();
+        if (password.equals(student.getPassword())) {
+            String token = jwtUtil.generateToken(student.getStudentID());
+            response.put("token", token);
+            response.put("message", "Login successful!");
+            return response;
+        } else {
+            response.put("error", "Invalid email or password!");
+            return response;
+        }
+    }
 }

@@ -6,8 +6,9 @@ import Landing from "./components/views/Landing";
 import Dashboard from "./components/views/TeacherDashboard";
 import ManageStudent from "./components/views/ManageStudents";
 import PrivateRoute from "./components/PrivateRoute";
-import StudentLogin from "./components/views/studentlogin";
-import StudentDashboard from "./components/views/studentdashboard";
+import StudentLogin from "./components/views/StudentLogin";
+import StudentDashboard from "./components/views/StudentDashboard";
+import Test from "./components/views/test";
 
 function App() {
   return (
@@ -17,7 +18,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/teacher-login" element={<Login />} />
         <Route path="/student-login" element={<StudentLogin />} />
-        <Route path="/student-dashboard" element={<StudentDashboard />} />
+        <Route path="/test" element={<Test />} />
 
         {/* Add Protected Routes Here*/}
         <Route
@@ -33,6 +34,14 @@ function App() {
           element={
             <PrivateRoute>
               <ManageStudent />
+            </PrivateRoute>
+          }
+          />
+          <Route
+          path="/student-dashboard"
+          element={
+            <PrivateRoute>
+              <StudentDashboard />
             </PrivateRoute>
           }
           />
