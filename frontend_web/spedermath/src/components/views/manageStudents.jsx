@@ -19,6 +19,7 @@ function ManageStudent() {
     const fetchStudents = async () => {
       try {
         const token = localStorage.getItem("token");
+        console.log("Token:", token);
 
         if (!token) {
           console.error("No token found, user is not authenticated.");

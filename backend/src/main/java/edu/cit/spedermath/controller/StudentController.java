@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -131,5 +132,18 @@ public class StudentController {
         }
     
         return new ResponseEntity<>(students, HttpStatus.OK);
-    }    
+    }   
+    
+    @PostMapping("/student-login")
+    public ResponseEntity<Map<String, String>> loginStudent(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String password = request.get("password");
+    
+        Map<String, String> response = studentService.loginStudent(username, password);
+        if (response.containsKey("token")) {
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+        }
+    }
 }

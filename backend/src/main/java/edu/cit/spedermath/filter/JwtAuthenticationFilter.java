@@ -27,34 +27,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
         String path = request.getRequestURI();
+
         // Allow access to Swagger UI and API docs without authentication
-        // Also allow access to login and register endpoints for teachers
         if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")
             || path.startsWith("/api/teachers/login") || path.startsWith("/api/teachers/register")) {
-            filterChain.doFilter(request, response); // Skip token validation
+            filterChain.doFilter(request, response);
             return;
         }
-    
+
         String token = request.getHeader("Authorization");
-    
+
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);  // Remove "Bearer " prefix
-    
             try {
-                Long teacherId = jwtUtil.extractTeacherId(token);
-                UserDetails userDetails = new User(String.valueOf(teacherId), "", new ArrayList<>());
-    
-                UsernamePasswordAuthenticationToken authenticationToken = 
-                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-    
+                if (path.startsWith("/api/students") || path.startsWith("/api/student-progress")) {
+                    Long studentId = jwtUtil.extractStudentId(token);
+                    System.out.println("Extracted Student ID: " + studentId);
+                    UserDetails userDetails = new User(String.valueOf(studentId), "", new ArrayList<>());
+                    UsernamePasswordAuthenticationToken authenticationToken =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+        
+                } else if (path.startsWith("/api/teachers")) {
+                    Long teacherId = jwtUtil.extractTeacherId(token);
+                    UserDetails userDetails = new User(String.valueOf(teacherId), "", new ArrayList<>());
+                    UsernamePasswordAuthenticationToken authenticationToken =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                }
             } catch (Exception e) {
                 logger.error("Invalid token: ", e);
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token.");
                 return;
             }
-        }
-    
+        }        
+
         filterChain.doFilter(request, response);
-    }      
+    }
 }
