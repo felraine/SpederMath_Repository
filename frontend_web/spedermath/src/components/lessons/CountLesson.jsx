@@ -1,22 +1,10 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import LessonLayout from '../reusable/LessonLayout';
-
-const mainLessonPhase = [
-    { sequence: [1, 2, 3, null, 5], correct: 4, choices: [4, 6, 7, 3] },
-    { sequence: [2, 3, null, 5], correct: 4, choices: [1, 4, 6, 3] },
-    { sequence: [null, 1, 2, 3], correct: 0, choices: [0, 1, 2, 3] },
-    { sequence: [3, 4, null, 6], correct: 5, choices: [4, 5, 6, 7] },
-    { sequence: [4, null, 6, 7], correct: 5, choices: [5, 4, 6, 3] },
-    { sequence: [null, 10, 11, 12], correct: 9, choices: [9, 8, 10, 11] },
-    { sequence: [5, null, 7, 8], correct: 6, choices: [6, 5, 7, 4] },
-    { sequence: [8, 9, null, 11], correct: 10, choices: [10, 9, 8, 12] },
-    { sequence: [null, 2, 3, 4], correct: 1, choices: [1, 0, 2, 3] },
-    { sequence: [6, null, 8, 9], correct: 7, choices: [7, 6, 8, 5] },
-  ];
+import { generateLessons } from '../lessons/RandomNumGen'; 
   
-
 const CountLesson = () => {
+  const [mainLessonPhase] = useState(generateLessons(10));
   const [currentStep, setCurrentStep] = useState(0);
   const [selected, setSelected] = useState(null);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -76,7 +64,7 @@ const CountLesson = () => {
 
   return (
     <LessonLayout
-      lesson={{ lessonid: 1, title: 'Number Explorer' }}
+      lesson={{ lessonid: 1, title: 'Missing Number Quest' }}
       progress={`${Math.min(currentStep + 1, mainLessonPhase.length)}/${mainLessonPhase.length}`}
     >
      <h2 className="text-[30px] -mt-5 mb-4 font-neucha text-left w-full">
