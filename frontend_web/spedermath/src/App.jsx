@@ -9,7 +9,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import StudentLogin from "./components/views/StudentLogin";
 import StudentDashboard from "./components/views/StudentDashboard";
 import Test from "./components/views/test";
-import CountLesson from "./components/views/CountLesson";
+import LessonLoader from "./components/views/LessonLoader";  // <-- new
 
 function App() {
   return (
@@ -21,7 +21,7 @@ function App() {
         <Route path="/student-login" element={<StudentLogin />} />
         <Route path="/test" element={<Test />} />
 
-        {/* Add Protected Routes Here*/}
+        {/* Protected Routes */}
         <Route
           path="/teacher-dashboard"
           element={
@@ -37,23 +37,25 @@ function App() {
               <ManageStudent />
             </PrivateRoute>
           }
-          />
-          <Route
+        />
+        <Route
           path="/student-dashboard"
           element={
             <PrivateRoute>
               <StudentDashboard />
             </PrivateRoute>
           }
-          />
-          <Route
-          path="/lessons/1"
+        />
+
+        {/* Dynamic Lesson Route */}
+        <Route
+          path="/lessons/:lessonId"
           element={
             <PrivateRoute>
-              <CountLesson />
+              <LessonLoader />
             </PrivateRoute>
           }
-          />
+        />
       </Routes>
     </Router>
   );
