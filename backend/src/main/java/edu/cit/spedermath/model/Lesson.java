@@ -32,9 +32,12 @@ public class Lesson {
     @Column(name = "max_score", nullable = false)
     private int max_score;
 
+    @Column(name = "lesson_order")
+    private int lessonOrder;
+
     @OneToMany(mappedBy = "lesson", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    private List<StudentProgress> progressRecords = new ArrayList<>();    
+    @JsonManagedReference("lesson-progress") 
+    private List<StudentProgress> progressRecords = new ArrayList<>();  
 
     // Getters and Setters
     public Long getLessonID() {
@@ -81,5 +84,17 @@ public class Lesson {
     }
     public void setProgressRecords(List<StudentProgress> progressRecords) {
         this.progressRecords = progressRecords;
+    }
+    public int getMax_score() {
+        return max_score;
+    }
+    public void setMax_score(int max_score) {
+        this.max_score = max_score;
+    }
+    public int getLessonOrder() {
+        return lessonOrder;
+    }
+    public void setLessonOrder(int lessonOrder) {
+        this.lessonOrder = lessonOrder;
     }
 }
