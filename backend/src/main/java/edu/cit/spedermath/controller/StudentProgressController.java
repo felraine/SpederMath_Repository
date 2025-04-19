@@ -2,10 +2,6 @@ package edu.cit.spedermath.controller;
 
 import edu.cit.spedermath.model.StudentProgress;
 import edu.cit.spedermath.service.StudentProgressService;
-import edu.cit.spedermath.util.JwtUtil;
-import jakarta.servlet.http.HttpServletRequest;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -24,9 +20,6 @@ public class StudentProgressController {
     public StudentProgressController(StudentProgressService service) {
         this.service = service;
     }
-
-    @Autowired
-    private JwtUtil jwtUtil;
 
     // Endpoint to fetch all progress for the authenticated student
     @GetMapping("/my")
@@ -54,11 +47,12 @@ public ResponseEntity<List<StudentProgress>> getMyProgress(@AuthenticationPrinci
 
     // Endpoint to submit lesson progress
     @PostMapping("/submit")
-    public ResponseEntity<StudentProgress> submitLesson(@RequestBody StudentProgress progress, @AuthenticationPrincipal Authentication authentication) {
+    public ResponseEntity<StudentProgress> submitLesson(@RequestBody StudentProgress progress,
+                                                        Authentication authentication) {
         Long studentId = extractStudentIdFromAuthentication(authentication);
-        StudentProgress submittedProgress = service.submitLessonProgress(progress, studentId);
-        return ResponseEntity.ok(submittedProgress);
-    }
+        StudentProgress updatedProgress = service.submitLessonProgress(progress, studentId);
+        return ResponseEntity.ok(updatedProgress);
+    }    
 
     // Endpoint to save partial progress
     @PostMapping("/save")

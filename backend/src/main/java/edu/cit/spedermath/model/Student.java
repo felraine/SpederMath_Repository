@@ -50,7 +50,7 @@ public class Student {
     private Teacher teacher;
 
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
+    @JsonManagedReference("student-progress")
     private List<StudentProgress> progressRecords = new ArrayList<>();
 
     // Default constructor

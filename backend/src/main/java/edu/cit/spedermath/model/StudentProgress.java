@@ -30,12 +30,12 @@ public class StudentProgress {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference("student-progress")
     private Student student;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lesson_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference("lesson-progress")
     private Lesson lesson;
 
     // Default constructor

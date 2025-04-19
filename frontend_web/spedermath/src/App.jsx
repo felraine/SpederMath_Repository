@@ -9,6 +9,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import StudentLogin from "./components/views/StudentLogin";
 import StudentDashboard from "./components/views/StudentDashboard";
 import Test from "./components/views/test";
+import CountLesson from "./components/views/CountLesson";
 
 function App() {
   return (
@@ -42,6 +43,14 @@ function App() {
           element={
             <PrivateRoute>
               <StudentDashboard />
+            </PrivateRoute>
+          }
+          />
+          <Route
+          path="/lessons/1"
+          element={
+            <PrivateRoute>
+              <CountLesson />
             </PrivateRoute>
           }
           />

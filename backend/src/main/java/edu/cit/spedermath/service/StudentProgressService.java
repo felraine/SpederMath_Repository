@@ -41,22 +41,53 @@ public class StudentProgressService {
     // Submit completed lesson progress for a student
     public StudentProgress submitLessonProgress(StudentProgress incomingProgress, Long studentId) {
         // Check if student exists
-        Student student = studentRepo.findById(studentId).orElseThrow(() -> new RuntimeException("Student not found."));
-        
+        Student student = studentRepo.findById(studentId)
+                .orElseThrow(() -> new RuntimeException("Student not found."));
+
         // Check if lesson exists
         Lesson lesson = lessonRepo.findById(incomingProgress.getLesson().getLessonID())
                 .orElseThrow(() -> new RuntimeException("Lesson not found."));
-        
-        // Set up incoming progress
+
         incomingProgress.setStudent(student);
         incomingProgress.setLesson(lesson);
         incomingProgress.setStatus(Status.COMPLETED);
-        incomingProgress.setUnlocked(true);
         incomingProgress.setLastUpdated(LocalDate.now());
 
-        // Save and return the progress
+        // Unlock current lesson if score meets threshold
+        if (incomingProgress.getScore() >= lesson.getUnlockThreshold()) {
+            incomingProgress.setUnlocked(true);
+
+            // Unlock next lesson if it exists
+            Optional<Lesson> nextLessonOpt = lessonRepo.findFirstByLessonOrderGreaterThanOrderByLessonOrderAsc(lesson.getLessonOrder());
+
+            if (nextLessonOpt.isPresent()) {
+                Lesson nextLesson = nextLessonOpt.get();
+
+                // Check if progress already exists for next lesson
+                Optional<StudentProgress> nextProgressOpt = progressRepo.findByStudent_StudentIDAndLesson_LessonID(studentId, nextLesson.getLessonID());
+
+                StudentProgress nextProgress;
+                if (nextProgressOpt.isPresent()) {
+                    nextProgress = nextProgressOpt.get();
+                } else {
+                    nextProgress = new StudentProgress();
+                    nextProgress.setStudent(student);
+                    nextProgress.setLesson(nextLesson);
+                }
+
+                nextProgress.setUnlocked(true);
+                nextProgress.setStatus(Status.NOT_STARTED);
+                nextProgress.setLastUpdated(LocalDate.now());
+
+                progressRepo.save(nextProgress);
+            }
+
+        } else {
+            incomingProgress.setUnlocked(false);
+        }
+
         return progressRepo.save(incomingProgress);
-    }
+    }  
 
     // Save partial progress (In-progress state)
     public StudentProgress savePartialProgress(StudentProgress incomingProgress, Long studentId) {
@@ -111,5 +142,14 @@ public class StudentProgressService {
 
         // Delete the progress
         progressRepo.deleteById(progressId);
+    }
+
+    public StudentProgress getStudentProgressById(Long progressId) {
+        return progressRepo.findById(progressId)
+                .orElseThrow(() -> new RuntimeException("Progress not found with ID " + progressId));
+    }
+
+    public StudentProgress updateStudentProgress(StudentProgress progress) {
+        return progressRepo.save(progress);  
     }
 }
