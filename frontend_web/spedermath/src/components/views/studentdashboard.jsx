@@ -43,11 +43,13 @@ function StudentDashboard() {
             Authorization: `Bearer ${token}`,
           },
         });
-
+  
         if (response.ok) {
           const data = await response.json();
-          setLessons(data);
-          console.log("lessons:", data); // Debug the structure
+          // Sort lessons by lesson order (assuming the last column in your dataset is the lesson order)
+          const sortedLessons = data.sort((a, b) => a.lessonOrder - b.lessonOrder);
+          setLessons(sortedLessons);  // Set sorted lessons
+          console.log("Sorted Lessons:", sortedLessons); 
         } else {
           console.error("Failed to fetch lessons");
         }
