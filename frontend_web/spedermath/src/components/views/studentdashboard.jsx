@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import LogoutModal from "../../components/modals/LogoutModal";
+
 
 function StudentDashboard() {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
   const [student, setStudent] = useState(null);
   const [progress, setProgress] = useState([]);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const confirmLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/");
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -142,7 +150,7 @@ function StudentDashboard() {
         <img
           src="/logout-btn.png"
           alt="Logout"
-          onClick={handleLogout}
+          onClick={() => setShowLogoutModal(true)}
           className="w-25 h-25 cursor-pointer hover:opacity-75 transition"
         />
       </div>
@@ -192,9 +200,17 @@ function StudentDashboard() {
             <p className="text-gray-500">No lessons available.</p>
           )}
         </div>
+        </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <LogoutModal
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={confirmLogout}
+        />
+      )}
       </div>
-    </div>
-  );
-}
+      );
+      }
 
 export default StudentDashboard;
