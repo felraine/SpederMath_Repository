@@ -5,6 +5,7 @@ export default {
       fontFamily: {
         neucha: ['Neucha', 'cursive'],
         'patrick-hand': ['Patrick Hand', 'cursive'],
+        montserratAlt: ["'Montserrat Alternates'", "sans-serif"],
       },
       keyframes: {
         fadeInUp: {
