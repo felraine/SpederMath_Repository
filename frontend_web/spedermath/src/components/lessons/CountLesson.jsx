@@ -16,12 +16,29 @@ const CountLesson = () => {
   const [score, setScore] = useState(0);
   const [status, setStatus] = useState('IN_PROGRESS');
   const [unlocked, setUnlocked] = useState(false);
-  
-
   const lessonId = 1;
   const token = localStorage.getItem('token');
 
   const current = mainLessonPhase[currentStep];
+
+
+  //sound effects for correct and incorrect answers
+  const correctClickSound = () => {
+    new Audio('/correct-sound.mp3').play();
+  }
+
+  const incorrectClickSound = () => {
+    new Audio('/incorrect-sound.mp3').play();
+  }
+
+  //sound effects for submission scores
+  const passedSound = () => {
+    new Audio('/passed-sound.mp3').play();
+  }
+
+  const failedSound = () => {
+    new Audio('/failed-sound.mp3').play();
+  }
 
   const handleChoice = (choice) => {
     if (showAnswer) return;
@@ -30,6 +47,13 @@ const CountLesson = () => {
 
     const isCorrect = choice === current.correct;
     const nextScore = isCorrect ? score + 1 : score;
+
+    // Check if the answer is correct and play sound
+    if (isCorrect) {
+      correctClickSound();
+    }else {
+      incorrectClickSound();
+    }
 
     setTimeout(() => {
       setSelected(null);
@@ -88,6 +112,12 @@ const CountLesson = () => {
       </p>
   
       <div className="flex flex-col sm:flex-row justify-center gap-4">
+      {/* Trigger the pass and fail sounda*/}
+      {score >= 7 ? (
+        passedSound()
+      ) : (
+        failedSound()
+      )}
         <button
           onClick={submitProgress}
           className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full text-lg font-comic shadow-md transition"
@@ -139,7 +169,12 @@ const CountLesson = () => {
               return (
                 <button
                   key={i}
-                  onClick={() => handleChoice(choice)}
+                  onClick={() => {
+                    handleChoice(choice);  
+                    if (isCorrect) {
+                      correctClickSound();  // Trigger the correct sound if the choice is correct
+                    }
+                  }}
                   className={`rounded-md font-comicneue text-[80px] py-3 border-2 transition
                     ${isCorrect ? 'bg-green-300 border-green-700' : ''}
                     ${isWrong ? 'bg-red-300 border-red-700' : ''}
