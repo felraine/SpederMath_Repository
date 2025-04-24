@@ -16,8 +16,6 @@ const CountLesson = () => {
   const [score, setScore] = useState(0);
   const [status, setStatus] = useState('IN_PROGRESS');
   const [unlocked, setUnlocked] = useState(false);
-  
-
   const lessonId = 1;
   const token = localStorage.getItem('token');
 
@@ -41,7 +39,6 @@ const CountLesson = () => {
   const failedSound = () => {
     new Audio('/failed-sound.mp3').play();
   }
-
 
   const handleChoice = (choice) => {
     if (showAnswer) return;
