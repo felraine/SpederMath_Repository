@@ -1,26 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import LogoutModal from "../../components/modals/LogoutModal";
-
 
 function StudentDashboard() {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
   const [student, setStudent] = useState(null);
   const [progress, setProgress] = useState([]);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-
-  const confirmLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/");
-  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/");
   };
 
-  // Safe extraction of studentID from JWT
   const extractStudentIdFromToken = (token) => {
     if (!token) return null;
     try {
@@ -35,31 +26,20 @@ function StudentDashboard() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    console.log("Token:", token);
-
-
     if (!token) return;
 
     const studentID = extractStudentIdFromToken(token);
-    console.log("Student ID:", studentID);
     if (!studentID) return;
 
     const fetchLessons = async () => {
       try {
         const response = await fetch("http://localhost:8080/api/lessons", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
-  
         if (response.ok) {
           const data = await response.json();
-          // Sort lessons by lesson order (assuming the last column in your dataset is the lesson order)
-          const sortedLessons = data.sort((a, b) => a.lessonOrder - b.lessonOrder);
-          setLessons(sortedLessons);  // Set sorted lessons
-          console.log("Sorted Lessons:", sortedLessons); 
-        } else {
-          console.error("Failed to fetch lessons");
+          const sorted = data.sort((a, b) => a.lessonOrder - b.lessonOrder);
+          setLessons(sorted);
         }
       } catch (error) {
         console.error("Error fetching lessons:", error);
@@ -69,148 +49,203 @@ function StudentDashboard() {
     const fetchStudent = async (id) => {
       try {
         const response = await fetch(`http://localhost:8080/api/students/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
-
         if (response.ok) {
           const data = await response.json();
           setStudent(data);
-        } else {
-          console.error("Failed to fetch student info");
         }
       } catch (error) {
         console.error("Error fetching student info:", error);
       }
     };
 
-    const fetchProgress = async (studentID) => {
+    const fetchProgress = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/student-progress/my`, {
+        const response = await fetch("http://localhost:8080/api/student-progress/my", {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         });
-    
         if (response.ok) {
           const data = await response.json();
-          console.log("Progress Data:", data); // Debug the structure
           setProgress(data);
-        } else {
-          console.error("Failed to fetch student progress");
         }
       } catch (error) {
-        console.error("Error fetching student progress:", error);
+        console.error("Error fetching progress:", error);
       }
-    };    
+    };
 
     fetchLessons();
     fetchStudent(studentID);
-    fetchProgress(studentID);
+    fetchProgress();
   }, []);
 
-  // Determines whether a lesson is unlocked for the student
   const checkLessonUnlock = (lesson) => {
-    console.log("Checking lesson:", lesson);
-  
     if (!lesson || !lesson.lessonID) return false;
-  
-    // If it's the first lesson, it's always unlocked
     if (lesson.lessonID === 1) return true;
-  
-    // Get the index of the previous lesson (one less than the current lessonID)
-    const previousLessonIndex = lesson.lessonID - 2; // lessonID - 1 for previous, 0-based index
-  
-    // Ensure the index is valid
-    if (previousLessonIndex < 0 || previousLessonIndex >= lessons.length) return false;
-  
-    // Find the previous lesson and its associated progress
-    const previousLesson = lessons[previousLessonIndex];
-    const progressForPreviousLesson = progress[previousLessonIndex]; // Assuming progress array matches lessons order
-  
-    console.log("Previous Lesson:", previousLesson);
-    console.log("Progress for previous lesson:", progressForPreviousLesson);
-  
-    // Ensure progress exists for the previous lesson
-    if (!progressForPreviousLesson) return false;
-  
-    // Check if the previous lesson's score is above the unlock threshold and unlocked
+    const prevIndex = lesson.lessonID - 2;
+    if (prevIndex < 0 || prevIndex >= lessons.length) return false;
+    const prevProgress = progress[prevIndex];
     return (
-      progressForPreviousLesson.score >= previousLesson.unlockThreshold &&
-      progressForPreviousLesson.unlocked
+      prevProgress?.score >= lessons[prevIndex]?.unlockThreshold &&
+      prevProgress?.unlocked
     );
-  };  
+  };
+
+  const getCardIcon = (lessonID) => {
+    switch (lessonID) {
+      case 1:
+        return null; // No icon for Missing Number Quest card
+      case 2:
+        return null;
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="relative min-h-screen bg-white px-6 py-6">
-      {/* Logout Button */}
-      <div className="float-right top-6 right-6">
-        <img
-          src="/logout-btn.png"
-          alt="Logout"
-          onClick={() => setShowLogoutModal(true)}
-          className="w-25 h-25 cursor-pointer hover:opacity-75 transition"
-        />
+    <div className="bg-white min-h-screen p-8 font-[Comic Sans MS]">
+      {/* Exit Button */}
+      <div className="absolute top-6 right-6">
+        <button
+          onClick={handleLogout}
+          className="border border-black px-3 py-1 rounded hover:bg-gray-200"
+        >
+          ➤ EXIT
+        </button>
       </div>
 
-      {/* Greeting Section */}
-      <div className="flex items-center justify-center min-h-[30vh]">
-        <div className="text-center">
-          <h1 className="text-3xl md:text-5xl font-bold text-black">
-            HELLO {student ? `${student.fname} ${student.lname}` : "Loading..."}
-          </h1>
-          <p className="text-lg mt-2">WELCOME BACK!</p>
-        </div>
+      {/* Greeting */}
+      <div className="text-center my-12">
+        <h1 className="text-4xl font-bold">
+          HELLO {student ? `${student.fname.toUpperCase()} ${student.lname.toUpperCase()}` : "..."}
+        </h1>
+        <p className="text-lg mt-2">WELCOME BACK!</p>
       </div>
 
-      {/* Lessons Section */}
-      <div className="px-4 md:px-10 text-left">
-        <h2 className="text-2xl font-semibold text-black mb-6">YOUR LESSONS</h2>
+      {/* Lesson Grid */}
+      <div>
+        <h2 className="text-xl mb-4">YOUR LESSONS</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+          {lessons.map((lesson, idx) => {
+            const isUnlocked = checkLessonUnlock(lesson);
+            return (
+              <div
+                key={lesson.lessonID}
+                onClick={() => {
+                  if (isUnlocked) navigate(`/lessons/${lesson.lessonID}`);
+                }}
+                className={`w-full h-40 rounded-xl border-2 text-center flex flex-col justify-center items-center transition ${
+                  isUnlocked
+                    ? "bg-white border-black cursor-pointer hover:shadow-xl"
+                    : "bg-red-400 border-red-600 cursor-not-allowed"
+                } relative`} 
+              >
+                {/* For the Missing Number Quest lesson*/}
+                {lesson.lessonID === 1 && (
+                  <>
+                  
+                    <div className="absolute top-8 right-2 flex gap-10">
+                      <img src="/moon.png" alt="Moon Icon" className="w-8 h-8" />
+                    </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {lessons.length > 0 ? (
-            lessons.map((lesson) => {
-              const isUnlocked = checkLessonUnlock(lesson);
-              return (
-                <div
-                  key={lesson.lessonID}
-                  onClick={() => {
-                    if (isUnlocked) navigate(`/lessons/${lesson.lessonID}`);
-                  }}
-                  className={`${
-                    isUnlocked
-                      ? "bg-[#ffffff] p-6 rounded-2xl shadow hover:shadow-lg transition cursor-pointer border-2 border-[#000000]"
-                      : "bg-[#f5f5f5] p-6 rounded-2xl shadow cursor-not-allowed border-2 border-[#cccccc]"
-                  }`}
-                >
-                  <h3 className="text-xl font-bold text-[#6a4fa3] mb-2">
-                    {lesson.title}
-                  </h3>
-                  <p className="text-gray-600 text-sm">
-                    {isUnlocked
-                      ? "Start your journey on this lesson!"
-                      : `Unlock this lesson after reaching a score of ${lesson.unlockThreshold}`}
-                  </p>
-                </div>
-              );
-            })
-          ) : (
-            <p className="text-gray-500">No lessons available.</p>
-          )}
-        </div>
-        </div>
+                   
+                    <div className="absolute top-2 right-8">
+                      <img src="/moon.png" alt="Moon Icon" className="w-5 h-5" />
+                    </div>
 
-      {/* Logout Confirmation Modal */}
-      {showLogoutModal && (
-        <LogoutModal
-          onClose={() => setShowLogoutModal(false)}
-          onConfirm={confirmLogout}
-        />
-      )}
+                    
+                    <div className="absolute bottom-2 right-2">
+                      <img src="/map.png" alt="Map Icon" className="w-8 h-8" />
+                    </div>
+
+                    {/* Numbers 1, 2, 3 in the lower-left corner with scattered layout */}
+                    <div className="absolute bottom-2 left-2 flex flex-col text-xl font-bold text-black" style={{ fontFamily: 'Comic Sans MS, sans-serif' }}>
+                      <div className="mb-0 transform translate-x-2 translate-y-2 rotate-25">1</div>
+                      <div className="mb-1 transform translate-x-5 translate-y-3 rotate-20">2</div>
+                      <div className="mb-0 transform translate-x-1 translate-y-2px -rotate-12">3</div>
+                      <div className="mb-5 transform translate-x-6 translate-y-3 rotate-20">?</div>
+                    </div>
+                  </>
+
+                  
+                )}
+
+                  {/* For the Counting Animals lesson*/}
+                  {lesson.lessonID === 2 && (
+  <>
+    
+    <div className="absolute top-2 left-7 transform -translate-x-2-translate-y-1/2">
+      <img src="/turtle.png" alt="Large Turtle" className="w-12 h-12" />
+    </div>
+
+   
+    <div className="absolute top-10 left-6 transform -translate-x-1/2">
+      <img src="/turtle.png" alt="Small Turtle 1" className="w-6 h-6" />
+    </div>
+
+    
+    <div className="absolute top-14 left-10 transform -translate-x-1/2">
+      <img src="/turtle.png" alt="Small Turtle 2" className="w-6 h-6" />
+    </div>
+
+    
+    <div className="absolute bottom-2 left-2">
+      <img src="/bat.png" alt="Bat Icon" className="w-8 h-8" />
+    </div>
+
+   
+    <div className="absolute bottom-2 left-10">
+      <img src="/bat.png" alt="Bigger Bat Icon" className="w-15 h-15" />
+    </div>
+
+    
+    <div className="absolute top-2 right-2">
+      <img src="/flamingo.png" alt="Flamingo Icon" className="w-20 h-15" />
+    </div>
+
+   
+    <div className="absolute bottom-2 right-10">
+      <img src="/cow.png" alt="Cow Icon" className="w-25 h-19" />
+    </div>
+  </>
+)}
+
+                {isUnlocked ? (
+                  <>
+                    <div className="flex gap-2">{getCardIcon(lesson.lessonID)}</div>
+                    <h3 className="text-lg font-bold mt-2">{lesson.title}</h3>
+                  </>
+                ) : (
+                  <div className="text-4xl text-white">
+                  {idx <= progress.length ? (
+                  <img src="/padlock.png" alt="Locked" className="w-8 h-8" />
+                  ) : (
+                       "?"
+         )}
       </div>
-      );
-      }
+                )}
+              </div>
+            );
+          })}
+
+          {/* Placeholder cards for locked lessons */}
+          {Array(6 - lessons.length)
+            .fill(null)
+            .map((_, i) => (
+              <div
+                key={i}
+                className="w-full h-40 rounded-xl bg-red-400 border-2 border-red-600 flex items-center justify-center text-4xl text-white"
+              >
+                ?
+              </div>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default StudentDashboard;
