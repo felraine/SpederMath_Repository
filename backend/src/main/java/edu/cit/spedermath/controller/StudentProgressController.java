@@ -45,14 +45,17 @@ public ResponseEntity<List<StudentProgress>> getMyProgress(@AuthenticationPrinci
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Endpoint to submit lesson progress
+    // Endpoint to submit lesson progress (Add or Update)
     @PostMapping("/submit")
     public ResponseEntity<StudentProgress> submitLesson(@RequestBody StudentProgress progress,
                                                         Authentication authentication) {
         Long studentId = extractStudentIdFromAuthentication(authentication);
+        
+        // Call the service method to either add or update progress
         StudentProgress updatedProgress = service.submitLessonProgress(progress, studentId);
+
         return ResponseEntity.ok(updatedProgress);
-    }    
+    }
 
     // Endpoint to save partial progress
     @PostMapping("/save")

@@ -1,21 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import LessonLayout from '../reusable/LessonLayout';
 import { generateLessons } from '../lessons/RandomNumGen';
 
 const CountLesson = () => {
-  const [mainLessonPhase] = useState(generateLessons(10));
+  const [mainLessonPhase] = useState(generateLessons(10));  // Generate 10 lesson questions
   const [currentStep, setCurrentStep] = useState(0);
   const [selected, setSelected] = useState(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [score, setScore] = useState(0);
   const [status, setStatus] = useState('IN_PROGRESS');
-  const [unlocked, setUnlocked] = useState(false);
 
   const lessonId = 1;
   const token = localStorage.getItem('token');
-
   const current = mainLessonPhase[currentStep];
+
+  useEffect(() => {
+    if (!token) {
+      alert('Please log in to continue!');
+      // Optionally: redirect logic
+    }
+  }, [token]);
 
   const handleChoice = (choice) => {
     if (showAnswer) return;
@@ -23,20 +28,19 @@ const CountLesson = () => {
     setShowAnswer(true);
 
     const isCorrect = choice === current.correct;
-    const nextScore = isCorrect ? score + 1 : score;
+    const updatedScore = isCorrect ? score + 1 : score;
 
     setTimeout(() => {
       setSelected(null);
       setShowAnswer(false);
 
       if (currentStep + 1 >= mainLessonPhase.length) {
-        const finalStatus = nextScore >= 7 ? 'COMPLETED' : 'FAILED';
-        setScore(nextScore);
+        const finalStatus = updatedScore >= 7 ? 'COMPLETED' : 'FAILED';
+        setScore(updatedScore);
         setStatus(finalStatus);
-        setUnlocked(nextScore >= 7);
       } else {
-        setScore(nextScore);
-        setCurrentStep((prev) => prev + 1);
+        setScore(updatedScore);
+        setCurrentStep(prev => prev + 1);
       }
     }, 1200);
   };
@@ -45,23 +49,23 @@ const CountLesson = () => {
     const updatedProgress = {
       score,
       status,
-      unlocked,
       lesson: { lessonID: lessonId },
     };
+
     try {
       await axios.post('http://localhost:8080/api/student-progress/submit', updatedProgress, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert('Progress submitted successfully!');
     } catch (error) {
-      console.error('Error submitting progress', error);
+      console.error('Error submitting progress:', error);
       alert('Failed to submit progress');
     }
   };
 
   return (
     <LessonLayout
-      lesson={{ lessonid: 1, title: 'Missing Number Quest' }}
+      lesson={{ lessonid: lessonId, title: 'Missing Number Quest' }}
       progress={`${Math.min(currentStep + 1, mainLessonPhase.length)}/${mainLessonPhase.length}`}
     >
       {status === 'COMPLETED' || status === 'FAILED' ? (
@@ -70,25 +74,21 @@ const CountLesson = () => {
             <h2 className="text-[40px] font-neucha mb-4">
               {score >= 7 ? '🎉 Well done!' : '😅 Try again!'}
             </h2>
-
             <p className="text-xl font-neucha mb-6">
               You got {score} out of {mainLessonPhase.length} correct.
             </p>
-
             <button
               onClick={submitProgress}
               className="bg-green-600 text-white px-6 py-3 rounded-xl text-lg hover:bg-green-700 transition"
             >
               Submit Progress
             </button>
-
             {score < 7 && (
               <button
                 onClick={() => {
                   setScore(0);
                   setCurrentStep(0);
                   setStatus('IN_PROGRESS');
-                  setUnlocked(false);
                 }}
                 className="ml-4 bg-yellow-400 text-black px-6 py-3 rounded-xl text-lg hover:bg-yellow-500 transition"
               >
