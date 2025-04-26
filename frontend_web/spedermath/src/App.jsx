@@ -7,7 +7,7 @@ import Dashboard from "./components/views/TeacherDashboard";
 import ManageStudent from "./components/views/ManageStudents";
 import PrivateRoute from "./components/PrivateRoute";
 import StudentLogin from "./components/views/StudentLogin";
-import StudentDashboard from "./components/views/StudentDashboard";
+import StudentDashboard from "./components/views/studentdashboard";
 import Test from "./components/views/test";
 import LessonLoader from "./components/views/LessonLoader";  // <-- new
 

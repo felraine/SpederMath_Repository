@@ -1,26 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import LessonLayout from '../reusable/LessonLayout';
+import CountTutorial from "../lessons/tutorial/CountTutorial";
 import { generateLessons } from '../lessons/RandomNumGen';
+import { useNavigate } from 'react-router-dom';
+
 
 const CountLesson = () => {
-  const [mainLessonPhase] = useState(generateLessons(10));  // Generate 10 lesson questions
+  const [showTutorial, setShowTutorial] = useState(true);
+  const navigate = useNavigate();
+  const [mainLessonPhase] = useState(generateLessons(10));
   const [currentStep, setCurrentStep] = useState(0);
   const [selected, setSelected] = useState(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [score, setScore] = useState(0);
   const [status, setStatus] = useState('IN_PROGRESS');
-
+  const [unlocked, setUnlocked] = useState(false);
   const lessonId = 1;
   const token = localStorage.getItem('token');
   const current = mainLessonPhase[currentStep];
 
-  useEffect(() => {
-    if (!token) {
-      alert('Please log in to continue!');
-      // Optionally: redirect logic
-    }
-  }, [token]);
+
+  //sound effects for correct and incorrect answers
+  const correctClickSound = () => {
+    new Audio('/correct-sound.mp3').play();
+  }
+
+  const incorrectClickSound = () => {
+    new Audio('/incorrect-sound.mp3').play();
+  }
+
+  //sound effects for submission scores
+  const passedSound = () => {
+    new Audio('/passed-sound.mp3').play();
+  }
+
+  const failedSound = () => {
+    new Audio('/failed-sound.mp3').play();
+  }
 
   const handleChoice = (choice) => {
     if (showAnswer) return;
@@ -29,6 +46,13 @@ const CountLesson = () => {
 
     const isCorrect = choice === current.correct;
     const updatedScore = isCorrect ? score + 1 : score;
+
+    // Check if the answer is correct and play sound
+    if (isCorrect) {
+      correctClickSound();
+    }else {
+      incorrectClickSound();
+    }
 
     setTimeout(() => {
       setSelected(null);
@@ -51,12 +75,14 @@ const CountLesson = () => {
       status,
       lesson: { lessonID: lessonId },
     };
-
+  
     try {
       await axios.post('http://localhost:8080/api/student-progress/submit', updatedProgress, {
         headers: { Authorization: `Bearer ${token}` },
       });
+  
       alert('Progress submitted successfully!');
+      navigate('/student-dashboard'); 
     } catch (error) {
       console.error('Error submitting progress:', error);
       alert('Failed to submit progress');
@@ -68,35 +94,52 @@ const CountLesson = () => {
       lesson={{ lessonid: lessonId, title: 'Missing Number Quest' }}
       progress={`${Math.min(currentStep + 1, mainLessonPhase.length)}/${mainLessonPhase.length}`}
     >
-      {status === 'COMPLETED' || status === 'FAILED' ? (
-        <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-white/30 z-50">
-          <div className="bg-white rounded-xl p-8 max-w-md w-full text-center shadow-xl border border-gray-300">
-            <h2 className="text-[40px] font-neucha mb-4">
-              {score >= 7 ? '🎉 Well done!' : '😅 Try again!'}
-            </h2>
-            <p className="text-xl font-neucha mb-6">
-              You got {score} out of {mainLessonPhase.length} correct.
-            </p>
-            <button
-              onClick={submitProgress}
-              className="bg-green-600 text-white px-6 py-3 rounded-xl text-lg hover:bg-green-700 transition"
-            >
-              Submit Progress
-            </button>
-            {score < 7 && (
-              <button
-                onClick={() => {
-                  setScore(0);
-                  setCurrentStep(0);
-                  setStatus('IN_PROGRESS');
-                }}
-                className="ml-4 bg-yellow-400 text-black px-6 py-3 rounded-xl text-lg hover:bg-yellow-500 transition"
-              >
-                Retake Lesson
-              </button>
-            )}
-          </div>
-        </div>
+        {showTutorial ? (
+    <CountTutorial onNext={() => setShowTutorial(false)} />
+  ) : status === 'COMPLETED' || status === 'FAILED' ? (
+    <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50">
+    <div className="bg-[#fffaf0] rounded-3xl p-10 max-w-xl w-full text-center shadow-2xl border-4 border-[#f1f2f6]">
+      <h2 className="text-[42px] font-comic font-bold text-gray-800 mb-4">
+        {score >= 7 ? 'Great Job!' : 'Almost There!'}
+      </h2>
+  
+      <p className="text-[24px] font-neucha text-gray-700 mb-6">
+        You got <span className="font-bold text-green-700">{score}</span> out of{' '}
+        <span className="font-bold text-green-700">{mainLessonPhase.length}</span> correct.
+      </p>
+  
+      <div className="flex flex-col sm:flex-row justify-center gap-4">
+      {/* Trigger the pass and fail sounda*/}
+      {score >= 7 ? (
+        passedSound()
+      ) : (
+        failedSound()
+      )}
+        <button
+          onClick={submitProgress}
+          className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full text-lg font-comic shadow-md transition"
+        >
+          Submit Progress
+        </button>
+  
+        {score < 7 && (
+          <button
+            onClick={() => {
+              setScore(0);
+              setCurrentStep(0);
+              setStatus('IN_PROGRESS');
+              setUnlocked(false);
+            }}
+            className="bg-yellow-400 hover:bg-yellow-500 text-black px-8 py-3 rounded-full text-lg font-comic shadow-md transition"
+          >
+            Retake Lesson
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+  
+  
       ) : (
         <>
           <h2 className="text-[30px] -mt-5 mb-4 font-neucha text-left w-full">
@@ -123,7 +166,12 @@ const CountLesson = () => {
               return (
                 <button
                   key={i}
-                  onClick={() => handleChoice(choice)}
+                  onClick={() => {
+                    handleChoice(choice);  
+                    if (isCorrect) {
+                      correctClickSound();  // Trigger the correct sound if the choice is correct
+                    }
+                  }}
                   className={`rounded-md font-comicneue text-[80px] py-3 border-2 transition
                     ${isCorrect ? 'bg-green-300 border-green-700' : ''}
                     ${isWrong ? 'bg-red-300 border-red-700' : ''}
