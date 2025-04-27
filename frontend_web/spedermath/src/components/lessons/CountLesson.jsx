@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import LessonLayout from '../reusable/LessonLayout';
 import CountTutorial from "../lessons/tutorial/CountTutorial";
@@ -18,7 +18,6 @@ const CountLesson = () => {
   const [unlocked, setUnlocked] = useState(false);
   const lessonId = 1;
   const token = localStorage.getItem('token');
-
   const current = mainLessonPhase[currentStep];
 
 
@@ -46,7 +45,7 @@ const CountLesson = () => {
     setShowAnswer(true);
 
     const isCorrect = choice === current.correct;
-    const nextScore = isCorrect ? score + 1 : score;
+    const updatedScore = isCorrect ? score + 1 : score;
 
     // Check if the answer is correct and play sound
     if (isCorrect) {
@@ -60,13 +59,12 @@ const CountLesson = () => {
       setShowAnswer(false);
 
       if (currentStep + 1 >= mainLessonPhase.length) {
-        const finalStatus = nextScore >= 7 ? 'COMPLETED' : 'FAILED';
-        setScore(nextScore);
+        const finalStatus = updatedScore >= 7 ? 'COMPLETED' : 'FAILED';
+        setScore(updatedScore);
         setStatus(finalStatus);
-        setUnlocked(nextScore >= 7);
       } else {
-        setScore(nextScore);
-        setCurrentStep((prev) => prev + 1);
+        setScore(updatedScore);
+        setCurrentStep(prev => prev + 1);
       }
     }, 1200);
   };
@@ -75,7 +73,6 @@ const CountLesson = () => {
     const updatedProgress = {
       score,
       status,
-      unlocked,
       lesson: { lessonID: lessonId },
     };
   
@@ -87,14 +84,14 @@ const CountLesson = () => {
       alert('Progress submitted successfully!');
       navigate('/student-dashboard'); 
     } catch (error) {
-      console.error('Error submitting progress', error);
+      console.error('Error submitting progress:', error);
       alert('Failed to submit progress');
     }
   };
 
   return (
     <LessonLayout
-      lesson={{ lessonid: 1, title: 'Missing Number Quest' }}
+      lesson={{ lessonid: lessonId, title: 'Missing Number Quest' }}
       progress={`${Math.min(currentStep + 1, mainLessonPhase.length)}/${mainLessonPhase.length}`}
     >
         {showTutorial ? (

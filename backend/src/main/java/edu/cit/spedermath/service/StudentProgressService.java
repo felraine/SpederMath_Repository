@@ -38,56 +38,62 @@ public class StudentProgressService {
         return progressRepo.findByStudent_StudentIDAndLesson_LessonID(studentId, lessonId);
     }
 
-    // Submit completed lesson progress for a student
+    // Submit completed lesson progress for a student (Add or Update)
     public StudentProgress submitLessonProgress(StudentProgress incomingProgress, Long studentId) {
-        // Check if student exists
+        // Find the student
         Student student = studentRepo.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Student not found."));
-
-        // Check if lesson exists
+        
+        // Find the lesson
         Lesson lesson = lessonRepo.findById(incomingProgress.getLesson().getLessonID())
                 .orElseThrow(() -> new RuntimeException("Lesson not found."));
 
-        incomingProgress.setStudent(student);
-        incomingProgress.setLesson(lesson);
-        incomingProgress.setStatus(Status.COMPLETED);
-        incomingProgress.setLastUpdated(LocalDate.now());
+        // Check if progress already exists for this student and lesson
+        Optional<StudentProgress> existingProgressOpt = progressRepo.findByStudent_StudentIDAndLesson_LessonID(studentId, lesson.getLessonID());
 
-        // Unlock current lesson if score meets threshold
-        if (incomingProgress.getScore() >= lesson.getUnlockThreshold()) {
-            incomingProgress.setUnlocked(true);
-
-            // Unlock next lesson if it exists
-            Optional<Lesson> nextLessonOpt = lessonRepo.findFirstByLessonOrderGreaterThanOrderByLessonOrderAsc(lesson.getLessonOrder());
-
-            if (nextLessonOpt.isPresent()) {
-                Lesson nextLesson = nextLessonOpt.get();
-
-                // Check if progress already exists for next lesson
-                Optional<StudentProgress> nextProgressOpt = progressRepo.findByStudent_StudentIDAndLesson_LessonID(studentId, nextLesson.getLessonID());
-
-                StudentProgress nextProgress;
-                if (nextProgressOpt.isPresent()) {
-                    nextProgress = nextProgressOpt.get();
-                } else {
-                    nextProgress = new StudentProgress();
-                    nextProgress.setStudent(student);
-                    nextProgress.setLesson(nextLesson);
-                }
-
-                nextProgress.setUnlocked(true);
-                nextProgress.setStatus(Status.NOT_STARTED);
-                nextProgress.setLastUpdated(LocalDate.now());
-
-                progressRepo.save(nextProgress);
-            }
-
+        StudentProgress updatedProgress;
+        if (existingProgressOpt.isPresent()) {
+            // Update the existing progress
+            StudentProgress existingProgress = existingProgressOpt.get();
+            existingProgress.setScore(incomingProgress.getScore());
+            existingProgress.setStatus(incomingProgress.getStatus());
+            existingProgress.setUnlocked(true);
+            existingProgress.setLastUpdated(LocalDate.now());
+            updatedProgress = progressRepo.save(existingProgress);
         } else {
-            incomingProgress.setUnlocked(false);
+            // No existing progress, create a new one
+            incomingProgress.setStudent(student);
+            incomingProgress.setLesson(lesson);
+            incomingProgress.setLastUpdated(LocalDate.now());
+            incomingProgress.setUnlocked(true);
+            updatedProgress = progressRepo.save(incomingProgress);
         }
 
-        return progressRepo.save(incomingProgress);
-    }  
+        // Check if next lesson needs to be unlocked
+        Optional<Lesson> nextLessonOpt = lessonRepo.findFirstByLessonOrderGreaterThanOrderByLessonOrderAsc(lesson.getLessonOrder());
+        if (nextLessonOpt.isPresent() && incomingProgress.getScore() >= lesson.getUnlockThreshold()) {
+            Lesson nextLesson = nextLessonOpt.get();
+            Optional<StudentProgress> nextProgressOpt = progressRepo.findByStudent_StudentIDAndLesson_LessonID(studentId, nextLesson.getLessonID());
+            
+            StudentProgress nextProgress = nextProgressOpt.orElseGet(() -> {
+                StudentProgress np = new StudentProgress();
+                np.setStudent(student);
+                np.setLesson(nextLesson);
+                return np;
+            });
+            
+            if (incomingProgress.getScore() >= nextLesson.getUnlockThreshold()) {
+                nextProgress.setUnlocked(true);
+            } else {
+                nextProgress.setUnlocked(false);  
+            }
+            nextProgress.setStatus(Status.NOT_STARTED); 
+            nextProgress.setLastUpdated(LocalDate.now());
+            progressRepo.save(nextProgress);
+        }
+
+        return updatedProgress;
+    }       
 
     // Save partial progress (In-progress state)
     public StudentProgress savePartialProgress(StudentProgress incomingProgress, Long studentId) {

@@ -39,6 +39,17 @@ public class Lesson {
     @JsonManagedReference("lesson-progress") 
     private List<StudentProgress> progressRecords = new ArrayList<>();  
 
+    // Default constructor
+    public Lesson() {}
+    // Constructor with parameters
+    public Lesson(String title, String description, LessonType lessonType, int unlockThreshold, int max_score, int lessonOrder) {
+        this.title = title;
+        this.description = description;
+        this.lessonType = lessonType;
+        this.unlockThreshold = unlockThreshold;
+        this.max_score = max_score;
+        this.lessonOrder = lessonOrder;
+    }
     // Getters and Setters
     public Long getLessonID() {
         return lessonID;
