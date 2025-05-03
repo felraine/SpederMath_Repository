@@ -22,7 +22,7 @@ export default {
           '40%': { transform: 'rotate(-10deg)' },
           '60%': { transform: 'rotate(15deg)' },
           '80%': { transform: 'rotate(-5deg)' },
-          '100%': { transform: 'rotate(0deg)' }
+          '100%': { transform: 'rotate(0)' }
         },
         blink: {
           '0%, 100%': { opacity: '1' },
@@ -37,5 +37,7 @@ export default {
       },
     }
   },
-  plugins: [],
+  plugins: [
+    require('tailwind-scrollbar-hide'),
+  ],
 };
