@@ -7,7 +7,10 @@ function StudentList({ students = [] }) {
         Students <span className="text-gray-500"> {students.length}</span>
       </h3>
       {/* List of students */}
-      <div className="mt-4 space-y-4 overflow-y-auto max-h-110 px-6">
+      <div
+        className="mt-4 space-y-4 overflow-y-auto max-h-110 px-6 scrollbar-hide"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
         {students.length === 0 ? (
             <p className="text-gray-500">No students found.</p>
         ) : (
