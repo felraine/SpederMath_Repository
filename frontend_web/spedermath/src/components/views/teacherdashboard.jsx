@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import StudentList from "../reusable/StudentList";
+import TeacherHeader from "../reusable/TeacherHeader";
 
 
 function Dashboard() {
@@ -56,17 +57,7 @@ function Dashboard() {
       {/* Main Content */}
       <main className="flex-1 p-6 flex flex-col">
         {/* Header */}
-        <header className="flex justify-between items-center bg-white p-4 shadow-md rounded-md">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
-            <div>
-              {/*Placeholder teacher name, to be changed */}
-              <h3 className="font-semibold">Teacher Leilah Garcia</h3>
-              <p className="text-sm text-gray-500">Hello! Welcome back!</p>
-            </div>
-          </div>
-          <p className="text-sm text-gray-500">Premium Plan</p>
-        </header>
+        <TeacherHeader/>
         
         {/* Dashboard Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 flex-1">

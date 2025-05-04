@@ -1,6 +1,5 @@
 package edu.cit.spedermath.repository;
 
-import edu.cit.spedermath.model.Lesson;
 import edu.cit.spedermath.model.StudentProgress;
 import org.springframework.data.jpa.repository.JpaRepository;
 

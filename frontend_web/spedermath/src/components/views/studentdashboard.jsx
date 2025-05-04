@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import LogoutModal from "../modals/LogoutModal";
 
 function StudentDashboard() {
   const navigate = useNavigate();

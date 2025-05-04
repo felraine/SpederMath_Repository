@@ -20,6 +20,16 @@ import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import javax.servlet.http.HttpServletResponse;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.util.HashMap;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.WriterException;
+
 @CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/students")
@@ -145,5 +155,12 @@ public class StudentController {
         } else {
             return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
         }
+    }
+
+    // Add this method to handle the login URL generation
+    @GetMapping("/{studentID}/login")
+    public ResponseEntity<String> getLoginUrl(@PathVariable Long studentID) {
+        String loginUrl = "http://localhost:5173/login/" + studentID;
+        return new ResponseEntity<>(loginUrl, HttpStatus.OK);
     }
 }
