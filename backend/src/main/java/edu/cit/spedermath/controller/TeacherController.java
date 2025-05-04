@@ -77,4 +77,20 @@ public class TeacherController {
                 new ResponseEntity<>(response, HttpStatus.OK) :
                 new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
+
+    @GetMapping("/id/{id}")
+    public ResponseEntity<?> getTeacherById(@PathVariable Long id) {
+        Optional<Teacher> teacherOptional = teacherService.getTeacherById(id);
+        if (teacherOptional.isPresent()) {
+            Teacher teacher = teacherOptional.get();
+            Map<String, String> response = Map.of(
+                    "id", String.valueOf(teacher.getId()),
+                    "name", teacher.getName(),
+                    "email", teacher.getEmail()
+            );
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("Teacher not found!", HttpStatus.NOT_FOUND);
+        }
+    }
 }

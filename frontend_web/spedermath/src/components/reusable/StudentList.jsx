@@ -16,7 +16,7 @@ function StudentList({ students = [] }) {
         ) : (
             students.map((student) => (
                 <button
-                key={student.id || student.studentId || student._id}
+                key={student.studentID}
                 className="flex flex-col items-center justify-center p-2 mt-2 rounded-md w-full hover:scale-105 space-y-2 border-2 border-gray-500 transition duration-200 ease-in-out shadow-md"
               >
                 <img
