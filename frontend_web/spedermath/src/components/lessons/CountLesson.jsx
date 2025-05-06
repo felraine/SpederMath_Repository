@@ -153,7 +153,7 @@ const CountLesson = () => {
                 onClick={submitProgress}
                 className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full text-lg font-comic shadow-md transition"
               >
-                Submit Progress
+                Return to Dashboard
               </button>
 
               {score < 7 && (
