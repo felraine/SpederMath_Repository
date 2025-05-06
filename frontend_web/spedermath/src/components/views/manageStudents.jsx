@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../reusable/Sidebar";
-import Header from "../reusable/Header";
 import StudentTable from "../reusable/StudentTable";
 import CreateStudentForm from "../reusable/CreateStudentForm";
 import axios from "axios";
+import TeacherHeader from "../reusable/TeacherHeader";
 
 function ManageStudent() {
   const navigate = useNavigate();
@@ -120,7 +120,7 @@ function ManageStudent() {
     <div className="flex h-screen w-full bg-gray-200">
       <Sidebar onLogout={handleLogout} />
       <main className="flex-1 p-6 flex flex-col">
-        <Header teacherName="Teacher Leilah Garcia" />
+      <TeacherHeader/>
         <section className="bg-white p-4 shadow-md rounded-md mt-6 overflow-x-auto" style={{ height: "500px", maxHeight: '1000px' }}>
           <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
             <div className="flex items-center gap-3">

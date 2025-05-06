@@ -76,4 +76,8 @@ public class TeacherService {
         }
         return "Teacher not found!";
     }
+
+    public Optional<Teacher> getTeacherById(Long id) {
+        return teacherRepository.findById(id);
+    }
 }

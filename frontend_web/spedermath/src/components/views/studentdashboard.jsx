@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import LogoutModal from "../modals/LogoutModal";
 
 function StudentDashboard() {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
   const [student, setStudent] = useState(null);
   const [progress, setProgress] = useState([]);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const handleLogout = () => {
+  const confirmLogout = () => {
     localStorage.removeItem("token");
     navigate("/");
-  };
+  }
+
+
 
   const extractStudentIdFromToken = (token) => {
     if (!token) return null;
@@ -24,6 +28,8 @@ function StudentDashboard() {
     }
   };
 
+  
+  // Fetch lessons, student info, and progress when the component mounts
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -110,7 +116,7 @@ function StudentDashboard() {
       {/* Exit Button */}
       <div className="absolute top-6 right-6">
         <button
-          onClick={handleLogout}
+           onClick={() => setShowLogoutModal(true)}
           className="border border-black px-3 py-1 rounded hover:bg-gray-200"
         >
           ➤ EXIT
@@ -244,7 +250,15 @@ function StudentDashboard() {
             ))}
         </div>
       </div>
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <LogoutModal
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={confirmLogout}
+        />
+      )}
     </div>
+    
   );
 }
 

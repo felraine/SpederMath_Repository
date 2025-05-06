@@ -1,13 +1,43 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import StudentList from "../reusable/StudentList";
+import TeacherHeader from "../reusable/TeacherHeader";
+
 
 function Dashboard() {
   const navigate = useNavigate();
+  const [students, setStudents] = useState([]);
 
   const handleLogout = () => {
     localStorage.removeItem("token"); // Clear token
     navigate("/teacher-login");
   };
+
+  //fetch student data from the API
+    useEffect(() => {
+      const fetchStudents = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          console.log("Token:", token);
+  
+          if (!token) {
+            console.error("No token found, user is not authenticated.");
+            navigate("/teacher-login");
+            return;
+          }
+  
+          const response = await axios.get("http://localhost:8080/api/students/all", {
+            headers: { "Authorization": `Bearer ${token}` },
+          });
+          setStudents(response.data.map(student => ({ ...student, showPassword: false })));
+        } catch (error) {
+          console.error("Error fetching students:", error);
+        }
+      };
+  
+      fetchStudents();
+    }, []);
 
   return (
        <div className="flex h-screen w-full bg-gray-200">
@@ -27,17 +57,7 @@ function Dashboard() {
       {/* Main Content */}
       <main className="flex-1 p-6 flex flex-col">
         {/* Header */}
-        <header className="flex justify-between items-center bg-white p-4 shadow-md rounded-md">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
-            <div>
-              {/*Placeholder teacher name, to be changed */}
-              <h3 className="font-semibold">Teacher Leilah Garcia</h3>
-              <p className="text-sm text-gray-500">Hello! Welcome back!</p>
-            </div>
-          </div>
-          <p className="text-sm text-gray-500">Premium Plan</p>
-        </header>
+        <TeacherHeader/>
         
         {/* Dashboard Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 flex-1">
@@ -64,19 +84,7 @@ function Dashboard() {
         </section>
           
           {/* Students List Section */}
-          
-          <section className="bg-white p-4 shadow-md rounded-md">
-            <h3 className="font-semibold">Students <span className="text-gray-500">4</span></h3>
-            {/* Placeholder students*/}
-            <div className="mt-4 space-y-4">
-              {["Juan Tinapay", "Jarlene Santos", "Miguel San Jose", "Wayne Baguio"].map((student, index) => (
-                <div key={index} className="flex items-center space-x-3 p-3 bg-gray-200 rounded-md">
-                  <div className="w-10 h-10 bg-gray-400 rounded-full"></div>
-                  <span className="font-semibold">{student}</span>
-                </div>
-              ))}
-            </div>
-          </section>
+          <StudentList students={students} />
         </div>
       </main>
     </div>
