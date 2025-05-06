@@ -61,6 +61,9 @@ public class StudentProgressService {
             existingProgress.setUnlocked(true);
             existingProgress.setLastUpdated(LocalDate.now());
             existingProgress.setTimeSpentInSeconds(incomingProgress.getTimeSpentInSeconds());
+            if (existingProgress.getStatus() == Status.FAILED) {
+                existingProgress.setRetakesCount(existingProgress.getRetakesCount() + 1); // Increment retakes count on failure
+            }
             updatedProgress = progressRepo.save(existingProgress);
         } else {
             // No existing progress, create a new one
@@ -69,6 +72,7 @@ public class StudentProgressService {
             incomingProgress.setLastUpdated(LocalDate.now());
             incomingProgress.setUnlocked(true);
             incomingProgress.setTimeSpentInSeconds(incomingProgress.getTimeSpentInSeconds()); 
+            incomingProgress.setRetakesCount(0);
             updatedProgress = progressRepo.save(incomingProgress);
         }
 

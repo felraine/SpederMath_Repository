@@ -101,6 +101,26 @@ const CountLesson = () => {
     }
   };
 
+  const retakeProgress = async () => {
+    const updatedProgress = {
+      score,
+      status,
+      timeSpentInSeconds: timeSpent,
+      lessonId,
+    };
+
+    try {
+      await axios.post('http://localhost:8080/api/student-progress/submit', updatedProgress, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      alert('Progress submitted successfully!');
+    } catch (error) {
+      console.error('Error submitting progress:', error);
+      alert('Failed to submit progress');
+    }
+  };
+
   return (
     <LessonLayout
       lesson={{ lessonid: lessonId, title: 'Missing Number Quest' }}
@@ -144,6 +164,7 @@ const CountLesson = () => {
                     setStatus('IN_PROGRESS');
                     setUnlocked(false);
                     setTimeSpent(0);
+                    retakeProgress();
                   }}
                   className="bg-yellow-400 hover:bg-yellow-500 text-black px-8 py-3 rounded-full text-lg font-comic shadow-md transition"
                 >

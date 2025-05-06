@@ -32,6 +32,9 @@ public class StudentProgress {
     @Column(name = "time_spent_seconds")
     private Long timeSpentInSeconds; // duration
 
+    @Column(name = "retakes_count", nullable = false)
+    private int retakesCount; // Number of retakes
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "student_id", nullable = false)
     @JsonBackReference("student-progress") 
@@ -92,6 +95,14 @@ public class StudentProgress {
 
     public void setTimeSpentInSeconds(Long timeSpentInSeconds) {
         this.timeSpentInSeconds = timeSpentInSeconds;
+    }
+
+    public int getRetakesCount() {
+        return retakesCount;
+    }
+
+    public void setRetakesCount(int retakesCount) {
+        this.retakesCount = retakesCount;
     }
 
     public Student getStudent() {

@@ -1,11 +1,11 @@
-import React, { useState,useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import LessonLayout from '../reusable/LessonLayout';
 import { useNavigate } from 'react-router-dom';
 
 const animals = ['fish', 'dog', 'sheep', 'pig'];
 
-//generates a random lesson with a specified number of animals and choices
+// Generates a random lesson with a specified number of animals and choices
 const generateAnimalLesson = (total = 10) => {
   const lessons = [];
 
@@ -28,12 +28,11 @@ const generateAnimalLesson = (total = 10) => {
   return lessons;
 };
 
-  //sound effects
-  const correctClickSound = () => new Audio('/correct-sound.mp3').play();
-  const incorrectClickSound = () => new Audio('/incorrect-sound.mp3').play();
-  const passedSound = () => new Audio('/passed-sound.mp3').play();
-  const failedSound = () => new Audio('/failed-sound.mp3').play();
-
+// Sound effects
+const correctClickSound = () => new Audio('/correct-sound.mp3').play();
+const incorrectClickSound = () => new Audio('/incorrect-sound.mp3').play();
+const passedSound = () => new Audio('/passed-sound.mp3').play();
+const failedSound = () => new Audio('/failed-sound.mp3').play();
 
 const CountAnimals = () => {
   const [mainLessonPhase] = useState(generateAnimalLesson(10));
@@ -43,12 +42,28 @@ const CountAnimals = () => {
   const [score, setScore] = useState(0);
   const [status, setStatus] = useState('IN_PROGRESS');
   const [unlocked, setUnlocked] = useState(false);
+  const [timeSpent, setTimeSpent] = useState(0); // Time in seconds
   const lessonId = 2;
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
   const current = mainLessonPhase[currentStep];
 
-  //sound effects for correct and incorrect answers
+  // Timer effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeSpent((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval); // Clean up on unmount
+  }, []);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const secs = (seconds % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
+  };
+
+  // Sound effects for correct and incorrect answers
   useEffect(() => {
     if (status === 'COMPLETED') {
       passedSound();
@@ -88,7 +103,7 @@ const CountAnimals = () => {
     const updatedProgress = {
       score,
       status,
-      unlocked,
+      timeSpentInSeconds: timeSpent,
       lessonId,
     };
 
@@ -105,11 +120,36 @@ const CountAnimals = () => {
     }
   };
 
+  const retakeProgress = async () => {
+    const updatedProgress = {
+      score,
+      status,
+      timeSpentInSeconds: timeSpent,
+      lessonId,
+    };
+
+    try {
+      await axios.post('http://localhost:8080/api/student-progress/submit', updatedProgress, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      alert('Progress submitted successfully!');
+    } catch (error) {
+      console.error('Error submitting progress:', error);
+      alert('Failed to submit progress');
+    }
+  };
+
   return (
     <LessonLayout
       lesson={{ lessonid: 2, title: 'Counting Animals' }}
       progress={`${Math.min(currentStep + 1, mainLessonPhase.length)}/${mainLessonPhase.length}`}
     >
+      {/* Timer Display */}
+      <div className="absolute top-4 right-6 bg-white rounded-full px-4 py-1 text-gray-700 font-neucha text-lg shadow-md border">
+        Time: {formatTime(timeSpent)}
+      </div>
+
       {status === 'COMPLETED' || status === 'FAILED' ? (
         <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50">
           <div className="bg-[#fffaf0] rounded-3xl p-10 max-w-xl w-full text-center shadow-2xl border-4 border-[#f1f2f6]">
@@ -125,7 +165,7 @@ const CountAnimals = () => {
                 onClick={submitProgress}
                 className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full text-lg font-comic shadow-md transition"
               >
-                Submit Progress
+                Return to Dashboard
               </button>
               {score < 7 && (
                 <button
@@ -134,6 +174,8 @@ const CountAnimals = () => {
                     setCurrentStep(0);
                     setStatus('IN_PROGRESS');
                     setUnlocked(false);
+                    setTimeSpent(0);
+                    retakeProgress();
                   }}
                   className="bg-yellow-400 hover:bg-yellow-500 text-black px-8 py-3 rounded-full text-lg font-comic shadow-md transition"
                 >
