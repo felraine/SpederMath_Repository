@@ -45,7 +45,8 @@ public class SecurityConfig {
                             "/swagger-ui.html", 
                             "/v3/api-docs/**",
                             "/api/lessons/**",
-                            "/api/student-progress/**"
+                            "/api/student-progress/**",
+                            "/api/lesson-stats"
                         ).permitAll()
 
                         // Secure your student API
