@@ -68,7 +68,6 @@ function ManageStudent() {
     form.append("lname", formData.lname);
     form.append("username", formData.username);
     form.append("birthdate", formData.birthdate);
-    form.append("level", formData.level);
   
     if (formData.profilePicture) {
       form.append("profilePicture", formData.profilePicture);
@@ -101,6 +100,8 @@ function ManageStudent() {
       console.error("Error submitting student form:", error);
     }
   };
+
+  console.log("token", localStorage.getItem("token"));
   
   const handleEdit = (student) => {
     setFormData({
@@ -115,6 +116,21 @@ function ManageStudent() {
     setEditingStudentID(student.studentID);
     setShowForm(true);
   };  
+
+  const handleDelete = async (studentID) => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers = {
+        "Authorization": `Bearer ${token}`,
+      };
+
+      await axios.delete(`http://localhost:8080/api/students/${studentID}`, { headers });
+
+      setStudents(students.filter((student) => student.studentID !== studentID));
+    } catch (error) {
+      console.error("Error deleting student:", error);
+    }
+  };
 
   return (
     <div className="flex h-screen w-full bg-gray-200">
@@ -142,6 +158,7 @@ function ManageStudent() {
           students={students}
           togglePassword={togglePassword}
           onEdit={handleEdit}
+          onDelete={handleDelete}
           />
         </section>
       </main>

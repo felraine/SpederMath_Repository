@@ -1,15 +1,14 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Login from "./components/views/teacherlogin";
+import Login from "./components/views/TeacherLogin";
 import Register from "./components/views/Register";
 import Landing from "./components/views/Landing";
 import Dashboard from "./components/views/teacherdashboard";
-import ManageStudent from "./components/views/manageStudents";
+import ManageStudent from "./components/views/ManageStudents";
 import PrivateRoute from "./components/PrivateRoute";
 import StudentLogin from "./components/views/StudentLogin";
-import StudentDashboard from "./components/views/studentdashboard";
-import Test from "./components/views/test";
-import LessonLoader from "./components/views/LessonLoader";  // <-- new
+import StudentDashboard from "./components/views/StudentDashboard";
+import LessonLoader from "./components/views/LessonLoader";
 
 function App() {
   return (
@@ -19,7 +18,6 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/teacher-login" element={<Login />} />
         <Route path="/student-login" element={<StudentLogin />} />
-        <Route path="/test" element={<Test />} />
 
         {/* Protected Routes */}
         <Route

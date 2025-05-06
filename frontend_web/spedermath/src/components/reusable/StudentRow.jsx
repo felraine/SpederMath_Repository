@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import ReactQRCode from "react-qr-code";
 
-function StudentRow({ student, togglePassword, onEdit }) {
+function StudentRow({ student, togglePassword, onEdit, onDelete }) {
   const [showQRCode, setShowQRCode] = useState(false);
 
   // Generate a direct login URL with credentials
@@ -10,6 +10,13 @@ function StudentRow({ student, togglePassword, onEdit }) {
     const baseUrl = "http://localhost:5173/student-login";
     const query = `?username=${encodeURIComponent(student.username)}&password=${encodeURIComponent(student.password)}`;
     return baseUrl + query;
+  };
+
+  // Handle delete student action
+  const handleDelete = () => {
+    if (window.confirm(`Are you sure you want to delete ${student.fname} ${student.lname}?`)) {
+      onDelete(student.studentID);
+    }
   };
 
   return (
@@ -44,7 +51,10 @@ function StudentRow({ student, togglePassword, onEdit }) {
         <button onClick={() => onEdit(student)}>
           <Pencil className="text-blue-600 hover:text-blue-800" />
         </button>
-        <button className="ml-2 text-red-600 hover:text-red-800">
+        <button
+          className="ml-2 text-red-600 hover:text-red-800"
+          onClick={handleDelete}
+        >
           <Trash2 />
         </button>
         <button
