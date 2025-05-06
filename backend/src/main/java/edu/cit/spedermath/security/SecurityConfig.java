@@ -44,11 +44,12 @@ public class SecurityConfig {
                             "/swagger-ui/**", 
                             "/swagger-ui.html", 
                             "/v3/api-docs/**",
-                            "/api/lessons/**"
+                            "/api/lessons/**",
+                            "/api/student-progress/**"
                         ).permitAll()
 
                         // Secure your student API
-                        .requestMatchers("/api/students/**", "/api/student-progress/**").authenticated()
+                        .requestMatchers("/api/students/**").authenticated()
 
                         // Default rule: secure everything else
                         .anyRequest().authenticated()
@@ -60,7 +61,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("http://localhost:5173")); // Allow your frontend server
+        config.setAllowedOriginPatterns(List.of("http://localhost:5173", "http://localhost:8080")); // Allow your frontend server
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "*"));
         config.setAllowCredentials(true);
