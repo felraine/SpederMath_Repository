@@ -6,6 +6,7 @@ import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
 @Table(name = "student_progress")
@@ -28,12 +29,18 @@ public class StudentProgress {
     @Column(name = "unlocked", nullable = false)
     private boolean unlocked;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @Column(name = "time_spent_seconds")
+    private Long timeSpentInSeconds; // duration
+
+    @Column(name = "retakes_count", nullable = false)
+    private int retakesCount; // Number of retakes
+
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "student_id", nullable = false)
-    @JsonBackReference("student-progress")
+    @JsonBackReference("student-progress") 
     private Student student;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "lesson_id", nullable = false)
     @JsonBackReference("lesson-progress")
     private Lesson lesson;
@@ -82,6 +89,22 @@ public class StudentProgress {
         this.unlocked = unlocked;
     }
 
+    public Long getTimeSpentInSeconds() {
+        return timeSpentInSeconds;
+    }
+
+    public void setTimeSpentInSeconds(Long timeSpentInSeconds) {
+        this.timeSpentInSeconds = timeSpentInSeconds;
+    }
+
+    public int getRetakesCount() {
+        return retakesCount;
+    }
+
+    public void setRetakesCount(int retakesCount) {
+        this.retakesCount = retakesCount;
+    }
+
     public Student getStudent() {
         return student;
     }
@@ -90,6 +113,7 @@ public class StudentProgress {
         this.student = student;
     }
 
+    @JsonProperty("lesson_id")
     public Lesson getLesson() {
         return lesson;
     }

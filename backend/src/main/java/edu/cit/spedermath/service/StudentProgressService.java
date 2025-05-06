@@ -7,6 +7,7 @@ import edu.cit.spedermath.model.StudentProgress;
 import edu.cit.spedermath.repository.LessonRepository;
 import edu.cit.spedermath.repository.StudentProgressRepository;
 import edu.cit.spedermath.repository.StudentRepository;
+import edu.cit.spedermath.dto.StudentProgressDTO;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -59,6 +60,10 @@ public class StudentProgressService {
             existingProgress.setStatus(incomingProgress.getStatus());
             existingProgress.setUnlocked(true);
             existingProgress.setLastUpdated(LocalDate.now());
+            existingProgress.setTimeSpentInSeconds(incomingProgress.getTimeSpentInSeconds());
+            if (existingProgress.getStatus() == Status.FAILED) {
+                existingProgress.setRetakesCount(existingProgress.getRetakesCount() + 1); // Increment retakes count on failure
+            }
             updatedProgress = progressRepo.save(existingProgress);
         } else {
             // No existing progress, create a new one
@@ -66,6 +71,8 @@ public class StudentProgressService {
             incomingProgress.setLesson(lesson);
             incomingProgress.setLastUpdated(LocalDate.now());
             incomingProgress.setUnlocked(true);
+            incomingProgress.setTimeSpentInSeconds(incomingProgress.getTimeSpentInSeconds()); 
+            incomingProgress.setRetakesCount(0);
             updatedProgress = progressRepo.save(incomingProgress);
         }
 
@@ -157,5 +164,5 @@ public class StudentProgressService {
 
     public StudentProgress updateStudentProgress(StudentProgress progress) {
         return progressRepo.save(progress);  
-    }
+    } 
 }
