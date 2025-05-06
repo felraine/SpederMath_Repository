@@ -1,13 +1,21 @@
 package edu.cit.spedermath.controller;
 
+import edu.cit.spedermath.dto.StudentProgressDTO;
+import edu.cit.spedermath.model.Lesson;
+import edu.cit.spedermath.model.Student;
 import edu.cit.spedermath.model.StudentProgress;
 import edu.cit.spedermath.service.StudentProgressService;
+import edu.cit.spedermath.service.LessonService;
+import edu.cit.spedermath.service.StudentService;
+import edu.cit.spedermath.enums.Status;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.beans.factory.annotation.Autowired;
+import java.util.Optional;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -16,24 +24,45 @@ public class StudentProgressController {
 
     private final StudentProgressService service;
 
+    @Autowired
+    private LessonService lessonService;
+
+    @Autowired
+    private StudentService studentService;
+
     public StudentProgressController(StudentProgressService service) {
         this.service = service;
     }
 
     // Endpoint to fetch all progress for the authenticated student
     @GetMapping("/my")
-public ResponseEntity<List<StudentProgress>> getMyProgress(@AuthenticationPrincipal org.springframework.security.core.userdetails.User user) {
-    Long studentId = Long.parseLong(user.getUsername());  // studentId was stored as username in the filter
-
-    List<StudentProgress> progressList = service.getProgressByStudent(studentId);
-
-    if (progressList.isEmpty()) {
-        return ResponseEntity.noContent().build();
-    }
-
-    return ResponseEntity.ok(progressList);
-}
-
+    public ResponseEntity<List<StudentProgressDTO>> getMyProgress(@AuthenticationPrincipal org.springframework.security.core.userdetails.User user) {
+        Long studentId = Long.parseLong(user.getUsername());
+    
+        List<StudentProgress> progressList = service.getProgressByStudent(studentId);
+    
+        if (progressList.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+    
+        List<StudentProgressDTO> dtoList = progressList.stream().map(progress -> {
+            StudentProgressDTO dto = new StudentProgressDTO();
+            dto.setProgressID(progress.getProgressID());
+            dto.setScore(progress.getScore());
+            dto.setStatus(progress.getStatus());
+            dto.setLastUpdated(progress.getLastUpdated());
+            dto.setUnlocked(progress.isUnlocked());
+            dto.setTimeSpentInSeconds(progress.getTimeSpentInSeconds());
+    
+            if (progress.getLesson() != null) {
+                dto.setLessonId(progress.getLesson().getLessonID());
+            }
+    
+            return dto;
+        }).toList();
+        
+        return ResponseEntity.ok(dtoList);
+    }    
 
     // Endpoint to fetch progress for a specific lesson
     @GetMapping("/my/lesson/{lessonId}")
@@ -46,14 +75,40 @@ public ResponseEntity<List<StudentProgress>> getMyProgress(@AuthenticationPrinci
 
     // Endpoint to submit lesson progress (Add or Update)
     @PostMapping("/submit")
-    public ResponseEntity<StudentProgress> submitLesson(@RequestBody StudentProgress progress,
+    public ResponseEntity<StudentProgress> submitLesson(@RequestBody StudentProgressDTO progressDTO,
                                                         Authentication authentication) {
         Long studentId = extractStudentIdFromAuthentication(authentication);
         
-        // Call the service method to either add or update progress
-        StudentProgress updatedProgress = service.submitLessonProgress(progress, studentId);
+        // Create or update the StudentProgress object from the DTO
+        StudentProgress incomingProgress = new StudentProgress();
+        incomingProgress.setScore(progressDTO.getScore());
+        incomingProgress.setStatus(progressDTO.getStatus());
+        incomingProgress.setTimeSpentInSeconds(progressDTO.getTimeSpentInSeconds());
+        
+        // Assuming the lessonId is provided in the DTO and is used to fetch the corresponding lesson
+        Optional<Lesson> lessonOpt = lessonService.getLessonById(progressDTO.getLessonId());
+        if (lessonOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
+        Lesson lesson = lessonOpt.get();
+        incomingProgress.setLesson(lesson);
 
-        return ResponseEntity.ok(updatedProgress);
+        if (progressDTO.getLessonId() == null) {
+            throw new IllegalArgumentException("Lesson ID must not be null");
+        }
+        
+        // Fetch the student from the database
+        Student student = studentService.getStudentById(studentId)
+            .orElseThrow(() -> new RuntimeException("Student not found."));
+        
+        incomingProgress.setStudent(student);
+        incomingProgress.setLastUpdated(LocalDate.now());
+        incomingProgress.setUnlocked(true); // Set unlocked to true after submission
+        
+        // Save the progress in the repository
+        StudentProgress savedProgress = service.submitLessonProgress(incomingProgress, studentId);
+
+        return ResponseEntity.ok(savedProgress);
     }
 
     // Endpoint to save partial progress

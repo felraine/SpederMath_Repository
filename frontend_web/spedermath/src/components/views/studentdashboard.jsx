@@ -90,15 +90,19 @@ function StudentDashboard() {
 
   const checkLessonUnlock = (lesson) => {
     if (!lesson || !lesson.lessonID) return false;
-    if (lesson.lessonID === 1) return true;
-    const prevIndex = lesson.lessonID - 2;
-    if (prevIndex < 0 || prevIndex >= lessons.length) return false;
-    const prevProgress = progress[prevIndex];
-    return (
-      prevProgress?.score >= lessons[prevIndex]?.unlockThreshold &&
-      prevProgress?.unlocked
+    
+    // Always unlock lesson 1
+    if (lesson.lessonOrder === 1) return true;
+
+    const lessonProgress = progress.find(
+      (p) => String(p.lessonId) === String(lesson.lessonID)
     );
+    
+    console.log("Found progress:", lessonProgress);
+    return lessonProgress?.unlocked === true;
   };
+  
+  
 
   const getCardIcon = (lessonID) => {
     switch (lessonID) {

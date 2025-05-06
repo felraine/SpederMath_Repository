@@ -5,7 +5,6 @@ import CountTutorial from "../lessons/tutorial/CountTutorial";
 import { generateLessons } from '../lessons/RandomNumGen';
 import { useNavigate } from 'react-router-dom';
 
-
 const CountLesson = () => {
   const [showTutorial, setShowTutorial] = useState(true);
   const navigate = useNavigate();
@@ -16,12 +15,26 @@ const CountLesson = () => {
   const [score, setScore] = useState(0);
   const [status, setStatus] = useState('IN_PROGRESS');
   const [unlocked, setUnlocked] = useState(false);
+  const [timeSpent, setTimeSpent] = useState(0); // duration in seconds
   const lessonId = 1;
   const token = localStorage.getItem('token');
   const current = mainLessonPhase[currentStep];
 
+  // Timer effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeSpent(prev => prev + 1);
+    }, 1000);
 
-  //sound effects for correct and incorrect answers
+    return () => clearInterval(interval); // Clean up on unmount
+  }, []);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const secs = (seconds % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
+  };
+
   const correctClickSound = () => {
     new Audio('/correct-sound.mp3').play();
   }
@@ -30,7 +43,6 @@ const CountLesson = () => {
     new Audio('/incorrect-sound.mp3').play();
   }
 
-  //sound effects for submission scores
   const passedSound = () => {
     new Audio('/passed-sound.mp3').play();
   }
@@ -47,10 +59,9 @@ const CountLesson = () => {
     const isCorrect = choice === current.correct;
     const updatedScore = isCorrect ? score + 1 : score;
 
-    // Check if the answer is correct and play sound
     if (isCorrect) {
       correctClickSound();
-    }else {
+    } else {
       incorrectClickSound();
     }
 
@@ -73,16 +84,17 @@ const CountLesson = () => {
     const updatedProgress = {
       score,
       status,
-      lesson: { lessonID: lessonId },
+      timeSpentInSeconds: timeSpent,
+      lessonId,
     };
-  
+
     try {
       await axios.post('http://localhost:8080/api/student-progress/submit', updatedProgress, {
         headers: { Authorization: `Bearer ${token}` },
       });
-  
+
       alert('Progress submitted successfully!');
-      navigate('/student-dashboard'); 
+      navigate('/student-dashboard');
     } catch (error) {
       console.error('Error submitting progress:', error);
       alert('Failed to submit progress');
@@ -94,52 +106,53 @@ const CountLesson = () => {
       lesson={{ lessonid: lessonId, title: 'Missing Number Quest' }}
       progress={`${Math.min(currentStep + 1, mainLessonPhase.length)}/${mainLessonPhase.length}`}
     >
-        {showTutorial ? (
-    <CountTutorial onNext={() => setShowTutorial(false)} />
-  ) : status === 'COMPLETED' || status === 'FAILED' ? (
-    <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50">
-    <div className="bg-[#fffaf0] rounded-3xl p-10 max-w-xl w-full text-center shadow-2xl border-4 border-[#f1f2f6]">
-      <h2 className="text-[42px] font-comic font-bold text-gray-800 mb-4">
-        {score >= 7 ? 'Great Job!' : 'Almost There!'}
-      </h2>
-  
-      <p className="text-[24px] font-neucha text-gray-700 mb-6">
-        You got <span className="font-bold text-green-700">{score}</span> out of{' '}
-        <span className="font-bold text-green-700">{mainLessonPhase.length}</span> correct.
-      </p>
-  
-      <div className="flex flex-col sm:flex-row justify-center gap-4">
-      {/* Trigger the pass and fail sounda*/}
-      {score >= 7 ? (
-        passedSound()
-      ) : (
-        failedSound()
-      )}
-        <button
-          onClick={submitProgress}
-          className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full text-lg font-comic shadow-md transition"
-        >
-          Submit Progress
-        </button>
-  
-        {score < 7 && (
-          <button
-            onClick={() => {
-              setScore(0);
-              setCurrentStep(0);
-              setStatus('IN_PROGRESS');
-              setUnlocked(false);
-            }}
-            className="bg-yellow-400 hover:bg-yellow-500 text-black px-8 py-3 rounded-full text-lg font-comic shadow-md transition"
-          >
-            Retake Lesson
-          </button>
-        )}
+      {/* Time Display in Upper Right */}
+      <div className="absolute top-4 right-6 bg-white rounded-full px-4 py-1 text-gray-700 font-neucha text-lg shadow-md border">
+        Time: {formatTime(timeSpent)}
       </div>
-    </div>
-  </div>
-  
-  
+
+      {showTutorial ? (
+        <CountTutorial onNext={() => setShowTutorial(false)} />
+      ) : status === 'COMPLETED' || status === 'FAILED' ? (
+        <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50">
+          <div className="bg-[#fffaf0] rounded-3xl p-10 max-w-xl w-full text-center shadow-2xl border-4 border-[#f1f2f6]">
+            <h2 className="text-[42px] font-comic font-bold text-gray-800 mb-4">
+              {score >= 7 ? 'Great Job!' : 'Almost There!'}
+            </h2>
+
+            <p className="text-[24px] font-neucha text-gray-700 mb-6">
+              You got <span className="font-bold text-green-700">{score}</span> out of{' '}
+              <span className="font-bold text-green-700">{mainLessonPhase.length}</span> correct.
+            </p>
+
+            {/* Trigger sound based on performance */}
+            {score >= 7 ? passedSound() : failedSound()}
+
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <button
+                onClick={submitProgress}
+                className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full text-lg font-comic shadow-md transition"
+              >
+                Submit Progress
+              </button>
+
+              {score < 7 && (
+                <button
+                  onClick={() => {
+                    setScore(0);
+                    setCurrentStep(0);
+                    setStatus('IN_PROGRESS');
+                    setUnlocked(false);
+                    setTimeSpent(0);
+                  }}
+                  className="bg-yellow-400 hover:bg-yellow-500 text-black px-8 py-3 rounded-full text-lg font-comic shadow-md transition"
+                >
+                  Retake Lesson
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       ) : (
         <>
           <h2 className="text-[30px] -mt-5 mb-4 font-neucha text-left w-full">
@@ -166,12 +179,7 @@ const CountLesson = () => {
               return (
                 <button
                   key={i}
-                  onClick={() => {
-                    handleChoice(choice);  
-                    if (isCorrect) {
-                      correctClickSound();  // Trigger the correct sound if the choice is correct
-                    }
-                  }}
+                  onClick={() => handleChoice(choice)}
                   className={`rounded-md font-comicneue text-[80px] py-3 border-2 transition
                     ${isCorrect ? 'bg-green-300 border-green-700' : ''}
                     ${isWrong ? 'bg-red-300 border-red-700' : ''}

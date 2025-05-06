@@ -89,7 +89,7 @@ const CountAnimals = () => {
       score,
       status,
       unlocked,
-      lesson: { lessonID: lessonId },
+      lessonId,
     };
 
     try {

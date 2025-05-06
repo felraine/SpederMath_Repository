@@ -2,6 +2,8 @@ package edu.cit.spedermath.model;
 
 import java.util.ArrayList;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import edu.cit.spedermath.enums.LessonType;
@@ -35,9 +37,9 @@ public class Lesson {
     @Column(name = "lesson_order")
     private int lessonOrder;
 
-    @OneToMany(mappedBy = "lesson", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference("lesson-progress") 
-    private List<StudentProgress> progressRecords = new ArrayList<>();  
+    @OneToMany(mappedBy = "lesson", cascade = CascadeType.ALL)
+    @JsonManagedReference("lesson-progress")
+    private List<StudentProgress> progressRecords;
 
     // Default constructor
     public Lesson() {}
