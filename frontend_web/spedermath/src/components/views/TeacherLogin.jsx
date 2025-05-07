@@ -29,7 +29,7 @@ function Login() {
           setErrorMsg("Login failed: No token received.");
         }
       } else {
-        setErrorMsg(result.message || "Login failed: Unknown error.");
+        setErrorMsg(result.message || "Invalid email or password.");
       }
     } catch (error) {
       console.error("Login error:", error); // Log the error for debugging purposes
