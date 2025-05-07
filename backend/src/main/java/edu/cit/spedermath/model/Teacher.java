@@ -89,7 +89,8 @@ public class Teacher {
         this.students = students;
     }
 
-    public void addStudent(Student student) {
+    //functions
+  /*  public void addStudent(Student student) {
         students.add(student);
         student.setTeacher(this);
     }
@@ -97,5 +98,5 @@ public class Teacher {
     public void removeStudent(Student student) {
         students.remove(student);
         student.setTeacher(null);
-    }
+    }*/
 }

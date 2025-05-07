@@ -3,9 +3,7 @@ package edu.cit.spedermath.model;
 import edu.cit.spedermath.enums.Status;
 import jakarta.persistence.*;
 import java.time.LocalDate;
-
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity

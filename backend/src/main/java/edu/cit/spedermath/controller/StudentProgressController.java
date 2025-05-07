@@ -7,7 +7,6 @@ import edu.cit.spedermath.model.StudentProgress;
 import edu.cit.spedermath.service.StudentProgressService;
 import edu.cit.spedermath.service.LessonService;
 import edu.cit.spedermath.service.StudentService;
-import edu.cit.spedermath.enums.Status;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
