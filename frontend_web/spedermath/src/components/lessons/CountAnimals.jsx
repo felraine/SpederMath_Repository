@@ -47,6 +47,7 @@ const CountAnimals = () => {
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
   const current = mainLessonPhase[currentStep];
+  const [hasPlayedSound, setHasPlayedSound] = useState(false);
 
   // Timer effect
   useEffect(() => {
@@ -56,6 +57,19 @@ const CountAnimals = () => {
 
     return () => clearInterval(interval); // Clean up on unmount
   }, []);
+
+  //play sound once
+  useEffect(() => {
+    if (!hasPlayedSound) {
+      if (status === 'COMPLETED') {
+        passedSound();
+        setHasPlayedSound(true);
+      } else if (status === 'FAILED') {
+        failedSound();
+        setHasPlayedSound(true);
+      }
+    }
+  }, [status, hasPlayedSound]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -176,6 +190,7 @@ const CountAnimals = () => {
                     setUnlocked(false);
                     setTimeSpent(0);
                     retakeProgress();
+                    setHasPlayedSound(false);
                   }}
                   className="bg-yellow-400 hover:bg-yellow-500 text-black px-8 py-3 rounded-full text-lg font-comic shadow-md transition"
                 >
