@@ -19,6 +19,21 @@ const CountLesson = () => {
   const lessonId = 1;
   const token = localStorage.getItem('token');
   const current = mainLessonPhase[currentStep];
+  const [hasPlayedSound, setHasPlayedSound] = useState(false);
+
+  //play sound once
+  useEffect(() => {
+    // Check if the sound has already been played
+    if (!hasPlayedSound) {
+      if (status === 'COMPLETED') {
+        passedSound();
+        setHasPlayedSound(true);
+      } else if (status === 'FAILED') {
+        failedSound();
+        setHasPlayedSound(true);
+      }
+    }
+  }, [status, hasPlayedSound]);
 
   // Timer effect
   useEffect(() => {
@@ -145,8 +160,7 @@ const CountLesson = () => {
               <span className="font-bold text-green-700">{mainLessonPhase.length}</span> correct.
             </p>
 
-            {/* Trigger sound based on performance */}
-            {score >= 7 ? passedSound() : failedSound()}
+
 
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button
@@ -165,6 +179,7 @@ const CountLesson = () => {
                     setUnlocked(false);
                     setTimeSpent(0);
                     retakeProgress();
+                    setHasPlayedSound(false);
                   }}
                   className="bg-yellow-400 hover:bg-yellow-500 text-black px-8 py-3 rounded-full text-lg font-comic shadow-md transition"
                 >

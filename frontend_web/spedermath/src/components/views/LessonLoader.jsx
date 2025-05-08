@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import CountLesson from '../lessons/CountLesson';
 import LessonNotFound from '../lessons/LessonNotFound';
 import CountAnimals from '../lessons/CountAnimals';
+import AddFeedMonkey from '../lessons/AddFeedMonkey';
 //import AnotherLesson from './AnotherLesson'; // Example of another lesson component
 
 const LessonLoader = () => {
@@ -12,8 +13,8 @@ const LessonLoader = () => {
   const lessons = {
     1: <CountLesson />,
     2:<CountAnimals />,
-    // 2: <AnotherLesson />,
-    // 3: <YourNextLesson />,
+    3: <AddFeedMonkey />,
+    // 4: <YourNextLesson />,
   };
 
   return lessons[lessonId] || <LessonNotFound />;
