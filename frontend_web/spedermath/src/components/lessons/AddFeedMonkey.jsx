@@ -140,16 +140,35 @@ const AddFeedMonkey = () => {
       <div className="flex flex-col sm:flex-row justify-center items-center gap-10 px-4 sm:px-8 mb-10 mt-6">
         <img src="/monkey.gif" alt="monkey" className="h-52 sm:h-64 sm:mr-4" />
 
-        <div className="grid grid-cols-5 gap-2 max-w-full">
-          {[...Array(Math.min(current.available + addedFood, 10))].map((_, i) => (
-            <img
-              key={i}
-              src="/banana.png"
-              alt="banana"
-              className="h-14 w-14 sm:h-16 sm:w-16 object-contain"
-            />
-          ))}
+        <div className="grid grid-cols-5 gap-2 max-w-full items-center justify-center">
+      {/* Default bananas */}
+      {[...Array(current.available)].map((_, i) => (
+        <img
+          key={`default-${i}`}
+          src="/banana.png"
+          alt="banana"
+          className="h-14 w-14 sm:h-16 sm:w-16 object-contain"
+        />
+      ))}
+
+      {/* Plus symbol */}
+      {addedFood > 0 && (
+        <div className="text-3xl font-bold text-gray-700 flex items-center justify-center">
+          +
         </div>
+      )}
+
+      {/* Added bananas */}
+      {[...Array(addedFood)].map((_, i) => (
+        <img
+          key={`added-${i}`}
+          src="/banana.png"
+          alt="banana"
+          className="h-14 w-14 sm:h-16 sm:w-16 object-contain"
+        />
+      ))}
+    </div>
+
       </div>
 
       {/* Feed Buttons */}
@@ -162,7 +181,11 @@ const AddFeedMonkey = () => {
           }}
           className="w-full sm:w-56 aspect-square sm:aspect-auto sm:h-20 bg-yellow-400 hover:bg-yellow-500 text-black rounded-xl text-xl font-comic shadow-md transition flex items-center justify-center"
         >
-          Add More Food
+          Add More Bananas<img
+          src="/banana.png"
+          alt="banana"
+          className="h-6 w-6 sm:h-8 sm:w-8 object-contain"
+        />
         </button>
           {/*Feed Monkey Button */}
         <button
