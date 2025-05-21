@@ -4,6 +4,7 @@ import CountLesson from '../lessons/CountLesson';
 import LessonNotFound from '../lessons/LessonNotFound';
 import CountAnimals from '../lessons/CountAnimals';
 import AddFeedMonkey from '../lessons/AddFeedMonkey';
+import AddFeedMunchie from '../lessons/AddFeedMunchie';
 //import AnotherLesson from './AnotherLesson'; // Example of another lesson component
 
 const LessonLoader = () => {
@@ -14,7 +15,7 @@ const LessonLoader = () => {
     1: <CountLesson />,
     2:<CountAnimals />,
     3: <AddFeedMonkey />,
-    // 4: <YourNextLesson />,
+    4: <AddFeedMunchie />,
   };
 
   return lessons[lessonId] || <LessonNotFound />;
