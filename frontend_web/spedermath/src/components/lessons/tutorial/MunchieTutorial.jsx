@@ -3,21 +3,22 @@ import LessonLayout from "../../reusable/LessonLayout";
 
 const tutorialSteps = [
   {
-    text: "Hi! I'm Munchie!",
+    text: "Hi! I'm Munchie! Ready to have some fun?",
     img: "/munchie/neutral_Munchie.png",
   },
   {
-    text: "Watch the fruit fall down to my mouth.",
+    text: "Watch the fruit fall down to my mouth!",
     img: "/munchie/neutral_Munchie.png",
     animateFruit: true,
   },
   {
-    text: "Feed me the right number of fruits!",
+    text: "Feed me the right number of fruits, please!",
     img: "/munchie/yum_Munchie.png",
   },
   {
-    text: "If wrong, tray will turn red and I’m sad and hungry. Try again!",
+    text: "Uh-oh! The tray turned red. Let's try feeding me the right amount again!",
     img: "/munchie/frown_Munchie.png",
+    redTray: true,
   },
 ];
 
@@ -85,7 +86,7 @@ const MunchieTutorial = ({ onNext }) => {
             {step > 0 && step < tutorialSteps.length && (
               <button
                 onClick={handlePrevious}
-                className="bg-yellow-400 hover:bg-yellow-500 text-black font-neucha px-6 py-2 rounded-lg"
+                className="bg-yellow-400 hover:bg-yellow-500 text-black font-neucha px-6 py-2 rounded-lg shadow-md transform hover:scale-105 transition"
               >
                 Previous
               </button>
@@ -93,7 +94,7 @@ const MunchieTutorial = ({ onNext }) => {
             {step < tutorialSteps.length && (
               <button
                 onClick={handleNext}
-                className="bg-green-500 hover:bg-green-600 text-white font-neucha px-6 py-2 rounded-lg"
+                className="bg-green-500 hover:bg-green-600 text-white font-neucha px-6 py-2 rounded-lg shadow-md transform hover:scale-105 transition"
               >
                 Next
               </button>
@@ -101,6 +102,7 @@ const MunchieTutorial = ({ onNext }) => {
             <button
               onClick={onNext}
               className="bg-white border border-black px-4 py-1 rounded-md text-sm hover:bg-gray-200 transition"
+              title="Skip Tutorial"
             >
               Skip Tutorial
             </button>
@@ -111,7 +113,11 @@ const MunchieTutorial = ({ onNext }) => {
         {step === 1 && (
           <div className="relative h-32 w-32 -mb-4 flex flex-col items-center">
             {/* Static Fruit Tray */}
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 h-16 w-16 rounded-xl border-2 border-dashed bg-white shadow-sm flex items-center justify-center">
+            <div
+              className={`absolute top-0 left-1/2 transform -translate-x-1/2 h-16 w-16 rounded-xl border-2 border-dashed bg-white shadow-sm flex items-center justify-center
+                ${tutorialSteps[step].redTray ? "border-red-600 bg-red-100 shadow-[0_0_15px_5px_rgba(220,38,38,0.75)]" : ""}
+              `}
+            >
               <img src="/munchie/fruit_apple.png" alt="fruit tray" className="h-10 w-10" />
             </div>
 
@@ -172,40 +178,41 @@ const MunchieTutorial = ({ onNext }) => {
             ref={munchieRef}
             src={mouthOpen && step === 1 ? "/munchie/openmouth_Munchie.png" : tutorialSteps[step].img}
             alt="Munchie"
-            className="h-48 w-auto mb-6 select-none"
+            className="h-48 w-auto mb-6 select-none drop-shadow-lg"
             draggable={false}
           />
         )}
 
         {/* Instruction Text */}
         {step < tutorialSteps.length && (
-          <p className="font-neucha text-2xl max-w-xl mx-auto mb-4 px-2 select-none">{tutorialSteps[step].text}</p>
+          <p className="font-neucha text-3xl max-w-xl mx-auto mb-6 px-4 select-none leading-snug text-yellow-700 drop-shadow-md">
+            {tutorialSteps[step].text}
+          </p>
         )}
 
-{/* Ready Modal */}
-{showReadyModal && (
-  <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50 px-6">
-    <div className="bg-white p-10 rounded-xl shadow-md border border-black max-w-md w-full text-center">
-      <img
-        src="/munchie/yum_Munchie.png"
-        alt="Happy Munchie"
-        className="mx-auto mb-6 h-32 select-none"
-        draggable={false}
-      />
-      <h2 className="text-[32px] mb-4 font-neucha">Yay! I'm hungry! 🍎</h2>
-      <p className="text-[20px] mb-6 font-neucha">
-        Let’s feed me some fruits!
-      </p>
-      <button
-        onClick={onNext}
-        className="bg-green-600 text-white px-6 py-3 rounded-xl text-lg hover:bg-green-700 transition"
-      >
-        Start
-      </button>
-    </div>
-  </div>
-)}
-
+        {/* Ready Modal */}
+        {showReadyModal && (
+          <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50 px-6">
+            <div className="bg-white p-10 rounded-xl shadow-md border border-black max-w-md w-full text-center">
+              <img
+                src="/munchie/yum_Munchie.png"
+                alt="Happy Munchie"
+                className="mx-auto mb-6 h-32 select-none"
+                draggable={false}
+              />
+              <h2 className="text-[32px] mb-4 font-neucha">Yay! I'm hungry! 🍎</h2>
+              <p className="text-[20px] mb-6 font-neucha">
+                Let’s feed me some fruits!
+              </p>
+              <button
+                onClick={onNext}
+                className="bg-green-600 text-white px-6 py-3 rounded-xl text-lg hover:bg-green-700 transition"
+              >
+                Start
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </LessonLayout>
   );

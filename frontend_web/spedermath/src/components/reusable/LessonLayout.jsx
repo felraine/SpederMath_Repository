@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-const LessonLayout = ({ lesson, progress, children }) => {
+const LessonLayout = ({ lesson, progress, children, showWrong }) => {
   const navigate = useNavigate();
 
   const handleBack = () => {
@@ -35,9 +35,20 @@ const LessonLayout = ({ lesson, progress, children }) => {
       </div>
 
       {/* Gray Lesson Container */}
-      <div className="w-full max-w-[1150px] bg-[#F1F2F6] px-8 py-10 mt-3 rounded-xl shadow-md border border-black h-[500px]">
-        {children}
-      </div>
+     <div
+  className="w-full max-w-[1150px] bg-[#F1F2F6] px-8 py-10 mt-3 rounded-xl shadow-md border border-black h-[500px] box-border"
+  style={{
+      outline: showWrong ? "6px solid rgba(220, 38, 38, 0.85)" : "none",
+          outlineOffset: showWrong ? "0px" : "0px",
+          boxShadow: showWrong
+            ? "0 0 20px 6px rgba(220, 38, 38, 0.85)"
+            : "0 4px 10px rgba(0, 0, 0, 0.1)",
+        }}
+        aria-live="polite"
+        aria-atomic="true"
+      >
+    {children}
+  </div>
     </div>
   );
 };
