@@ -109,7 +109,6 @@ public class StudentService {
         student.setFName(fname);
         student.setLName(lname);
         student.setUsername(username);
-        student.setLevel(level);
         student.setTeacher(teacher);
 
         if (profilePicture != null) {

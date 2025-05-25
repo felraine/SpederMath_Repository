@@ -36,9 +36,6 @@ public class Student {
     @Column(name = "created_at", nullable = false)
     private LocalDate createdAt;
 
-    @Column(name = "level", nullable = false)
-    private int level;
-
     @Lob
     @Column(name = "profile_picture")
     private byte[] profilePicture;
@@ -64,7 +61,6 @@ public class Student {
         this.password = password;
         this.birthdate = birthdate;
         this.createdAt = createdAt;
-        this.level = level;
         this.profilePicture = profilePicture;
         this.teacher = teacher;
     }
@@ -116,14 +112,6 @@ public class Student {
 
     public void setCreatedAt(LocalDate createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public int getLevel() {
-        return level;
-    }
-
-    public void setLevel(int level) {
-        this.level = level;
     }
 
     public LocalDate getBirthdate() {

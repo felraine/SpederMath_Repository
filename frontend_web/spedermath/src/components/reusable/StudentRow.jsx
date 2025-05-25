@@ -45,7 +45,7 @@ function StudentRow({ student, togglePassword, onEdit, onDelete }) {
             day: "2-digit",
           })}
         </td>
-        <td className="p-3">{student.level}</td>
+        {/* Removed level cell */}
         <td className="p-3 text-center">
           <button onClick={() => onEdit(student)}>
             <Pencil className="text-blue-600 hover:text-blue-800" />
@@ -66,7 +66,10 @@ function StudentRow({ student, togglePassword, onEdit, onDelete }) {
       </tr>
 
       {showQRCode && (
-        <div className="fixed inset-0 bg-black flex justify-center items-center z-50" style={{ background: "rgba(0, 0, 0, 0.3)" }}>
+        <div
+          className="fixed inset-0 bg-black flex justify-center items-center z-50"
+          style={{ background: "rgba(0, 0, 0, 0.3)" }}
+        >
           <div className="relative bg-white p-6 rounded-lg shadow-lg text-center">
             {/* Close Button (X) */}
             <button

@@ -9,35 +9,40 @@ import TeacherHeader from "../reusable/TeacherHeader";
 function ManageStudent() {
   const navigate = useNavigate();
   const [students, setStudents] = useState([]);
-  const [formData, setFormData] = useState({ fname: "", lname: "", birthdate: "", username: "", profilePicture: null });
+  const [loading, setLoading] = useState(true);  
+  const [formData, setFormData] = useState({
+    fname: "",
+    lname: "",
+    birthdate: "",
+    username: "",
+    profilePicture: null,
+  });
   const [showForm, setShowForm] = useState(false);
   const [editingStudentID, setEditingStudentID] = useState(null);
-
 
   // Fetch students from the API
   useEffect(() => {
     const fetchStudents = async () => {
       try {
         const token = localStorage.getItem("token");
-        console.log("Token:", token);
-
         if (!token) {
-          console.error("No token found, user is not authenticated.");
           navigate("/teacher-login");
           return;
         }
 
         const response = await axios.get("http://localhost:8080/api/students/all", {
-          headers: { "Authorization": `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${token}` },
         });
-        setStudents(response.data.map(student => ({ ...student, showPassword: false })));
+        setStudents(response.data.map((student) => ({ ...student, showPassword: false })));
+        setLoading(false); 
       } catch (error) {
         console.error("Error fetching students:", error);
+        setLoading(false);
       }
     };
 
     fetchStudents();
-  }, []);
+  }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -62,13 +67,13 @@ function ManageStudent() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-  
+
     const form = new FormData();
     form.append("fname", formData.fname);
     form.append("lname", formData.lname);
     form.append("username", formData.username);
     form.append("birthdate", formData.birthdate);
-  
+
     if (formData.profilePicture) {
       form.append("profilePicture", formData.profilePicture);
     }
@@ -76,23 +81,25 @@ function ManageStudent() {
     if (formData.level != null) {
       form.append("level", formData.level);
     }
-  
+
     try {
       const token = localStorage.getItem("token");
       const headers = {
         "Content-Type": "multipart/form-data",
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       };
-  
+
       let response;
       if (editingStudentID) {
         response = await axios.put(`http://localhost:8080/api/students/${editingStudentID}`, form, { headers });
-        setStudents(prev => prev.map(s => s.studentID === editingStudentID ? { ...response.data, showPassword: false } : s));
+        setStudents((prev) =>
+          prev.map((s) => (s.studentID === editingStudentID ? { ...response.data, showPassword: false } : s))
+        );
       } else {
         response = await axios.post("http://localhost:8080/api/students/create", form, { headers });
-        setStudents(prev => [...prev, { ...response.data, showPassword: false }]);
+        setStudents((prev) => [...prev, { ...response.data, showPassword: false }]);
       }
-  
+
       setShowForm(false);
       setFormData({ fname: "", lname: "", birthdate: "", username: "", profilePicture: null });
       setEditingStudentID(null);
@@ -101,8 +108,6 @@ function ManageStudent() {
     }
   };
 
-  console.log("token", localStorage.getItem("token"));
-  
   const handleEdit = (student) => {
     setFormData({
       fname: student.fname,
@@ -110,18 +115,18 @@ function ManageStudent() {
       birthdate: student.birthdate,
       username: student.username,
       profilePicture: null,
-      studentID: student.studentID, 
+      studentID: student.studentID,
       level: student.level,
     });
     setEditingStudentID(student.studentID);
     setShowForm(true);
-  };  
+  };
 
   const handleDelete = async (studentID) => {
     try {
       const token = localStorage.getItem("token");
       const headers = {
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       };
 
       await axios.delete(`http://localhost:8080/api/students/${studentID}`, { headers });
@@ -133,11 +138,13 @@ function ManageStudent() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-gray-200">
-      <Sidebar onLogout={handleLogout} />
+    <div className="flex h-screen">
       <main className="flex-1 p-6 flex flex-col">
-      <TeacherHeader/>
-        <section className="bg-white p-4 shadow-md rounded-md mt-6 overflow-x-auto" style={{ height: "500px", maxHeight: '1000px' }}>
+        <TeacherHeader />
+        <section
+          className="bg-white p-4 shadow-md rounded-md mt-6 overflow-x-auto"
+          style={{ height: "500px", maxHeight: "1000px" }}
+        >
           <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <h3 className="text-lg font-semibold">Student List</h3>
@@ -152,13 +159,23 @@ function ManageStudent() {
             </button>
           </div>
 
-          {showForm && <CreateStudentForm formData={formData} handleInputChange={handleInputChange} handleFileChange={handleFileChange} handleFormSubmit={handleFormSubmit} setShowForm={setShowForm} editingStudentID={editingStudentID}/>}
+          {showForm && (
+            <CreateStudentForm
+              formData={formData}
+              handleInputChange={handleInputChange}
+              handleFileChange={handleFileChange}
+              handleFormSubmit={handleFormSubmit}
+              setShowForm={setShowForm}
+              editingStudentID={editingStudentID}
+            />
+          )}
 
           <StudentTable
-          students={students}
-          togglePassword={togglePassword}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+            students={students}
+            togglePassword={togglePassword}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            loading={loading}  
           />
         </section>
       </main>

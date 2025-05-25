@@ -9,8 +9,10 @@ import PrivateRoute from "./components/PrivateRoute";
 import StudentLogin from "./components/views/StudentLogin";
 import StudentDashboard from "./components/views/StudentDashboard";
 import LessonLoader from "./components/views/LessonLoader";
+import SpederLayout from "./components/views/SpederLayout";
 
 function App() {
+
   return (
     <Router>
       <Routes>
@@ -19,12 +21,14 @@ function App() {
         <Route path="/teacher-login" element={<Login />} />
         <Route path="/student-login" element={<StudentLogin />} />
 
-        {/* Protected Routes */}
+        {/* Teacher Routes wrapped in SpederLayout */}
         <Route
           path="/teacher-dashboard"
           element={
             <PrivateRoute>
-              <Dashboard />
+              <SpederLayout>
+                <Dashboard />
+              </SpederLayout>
             </PrivateRoute>
           }
         />
@@ -32,10 +36,58 @@ function App() {
           path="/manage-students"
           element={
             <PrivateRoute>
-              <ManageStudent />
+              <SpederLayout>
+                <ManageStudent />
+              </SpederLayout>
             </PrivateRoute>
           }
         />
+<Route
+  path="/settings"
+  element={
+    <PrivateRoute>
+      <SpederLayout>
+        <div style={{ textAlign: "center", marginBottom: "1rem" }}>Wow such empty</div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <pre
+            style={{
+              fontFamily: "monospace",
+              fontSize: "14px",
+              lineHeight: "1.1",
+              margin: 0,
+            }}
+          >
+            {`
+         ▄              ▄    
+        ▌▒█           ▄▀▒▌   
+        ▌▒▒█        ▄▀▒▒▒▐   
+       ▐▄█▒▒▀▀▀▀▄▄▄▀▒▒▒▒▒▐   
+     ▄▄▀▒▒▒▒▒▒▒▒▒▒▒█▒▒▄█▒▐   
+   ▄▀▒▒▒░░░▒▒▒░░░▒▒▒▀██▀▒▌   
+  ▐▒▒▒▄▄▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▀▄▒▌  
+  ▌░░▌█▀▒▒▒▒▒▄▀█▄▒▒▒▒▒▒▒█▒▐  
+ ▐░░░▒▒▒▒▒▒▒▒▌██▀▒▒░░░▒▒▒▀▄▌ 
+ ▌░▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░░░░▒▒▒▒▌ 
+▌▒▒▒▄██▄▒▒▒▒▒▒▒▒░░░░░░░░▒▒▒▐ 
+▐▒▒▐▄█▄█▌▒▒▒▒▒▒▒▒▒▒░▒░▒░▒▒▒▒▌
+▐▒▒▐▀▐▀▒▒▒▒▒▒▒▒▒▒▒▒▒░▒░▒░▒▒▐ 
+ ▌▒▒▀▄▄▄▄▄▄▒▒▒▒▒▒▒▒░▒░▒░▒▒▒▌ 
+ ▐▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░▒░▒▒▄▒▒▐  
+  ▀▄▒▒▒▒▒▒▒▒▒▒▒▒▒░▒░▒▄▒▒▒▒▌  
+    ▀▄▒▒▒▒▒▒▒▒▒▒▄▄▄▀▒▒▒▒▄▀   
+      ▀▄▄▄▄▄▄▀▀▀▒▒▒▒▒▄▄▀     
+         ▀▀▀▀▀▀▀▀▀▀▀▀         `}
+          </pre>
+        </div>
+      </SpederLayout>
+    </PrivateRoute>
+  }
+/>
         <Route
           path="/student-dashboard"
           element={
@@ -45,7 +97,6 @@ function App() {
           }
         />
 
-        {/* Dynamic Lesson Route */}
         <Route
           path="/lessons/:lessonId"
           element={

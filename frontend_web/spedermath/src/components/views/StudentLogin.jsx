@@ -80,7 +80,7 @@ function StudentLogin() {
           transition={{ delay: 1.5 }}
           className="text-base text-black mb-8"
         >
-          Hello Student, input your secret code and password
+          Hello Student, input your username and password
         </motion.p>
 
         <motion.div
@@ -93,7 +93,7 @@ function StudentLogin() {
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Student Code"
+            placeholder="Username"
             className="border border-gray-300 rounded-[12px] px-4 py-3 text-[16px] font-neucha focus:outline-none focus:ring-2 focus:ring-[#6a4fa3]"
           />
 
