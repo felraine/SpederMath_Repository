@@ -28,7 +28,6 @@ public class Teacher {
     @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Student> students = new ArrayList<>();
 
-    // Default constructor
     public Teacher() {
     }
 

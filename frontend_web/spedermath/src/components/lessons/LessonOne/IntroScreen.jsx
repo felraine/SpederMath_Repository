@@ -23,7 +23,7 @@ const IntroScreen = ({ onNext }) => {
     <div className="flex flex-col items-center justify-center h-full text-center p-6">
       {/* Friendly character / mascot */}
       <img
-        src="/munchie/eyelessneutral_Munchie.png" // <-- you can swap with your mascot image
+        src="/munchie/eyelessneutral_Munchie.png"
         alt="Friendly Mascot"
         className="w-40 h-40 mb-6 animate-bounce"
       />
