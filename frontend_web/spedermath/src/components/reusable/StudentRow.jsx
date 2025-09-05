@@ -6,7 +6,7 @@ function StudentRow({ student, togglePassword, onEdit, onDelete }) {
   const [showQRCode, setShowQRCode] = useState(false);
 
   const generateQRCodeData = (student) => {
-    const baseUrl = "http://localhost:5173/student-login";
+    const baseUrl = "https://spedermath.web.app/student-login";
     const query = `?username=${encodeURIComponent(student.username)}&password=${encodeURIComponent(student.password)}`;
     return baseUrl + query;
   };

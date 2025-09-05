@@ -35,7 +35,7 @@ const LessonLayout = ({ lesson, progress, children }) => {
       </div>
 
       {/* Gray Lesson Container */}
-      <div className="w-full max-w-[1150px] bg-[#F1F2F6] px-8 py-10 mt-3 rounded-xl shadow-md border border-black h-[500px]">
+      <div className="w-full max-w-[1150px] bg-[#F1F2F6] px-8 py-10 mt-3 rounded-xl shadow-md border border-black h-[500px] relative">
         {children}
       </div>
     </div>
