@@ -183,45 +183,41 @@ function StudentDashboard() {
                   
                 )}
 
-                  {/* For the Counting Animals lesson*/}
-                  {lesson.lessonID === 2 && (
-  <>
-    
-    <div className="absolute top-2 left-7 transform -translate-x-2-translate-y-1/2">
-      <img src="/turtle.png" alt="Large Turtle" className="w-12 h-12" />
-    </div>
+                {lesson.lessonID === 2 && isUnlocked && (
+                  <>
+                    <div className="absolute top-2 left-7 transform -translate-x-2 -translate-y-1/2">
+                      <img src="/turtle.png" alt="Large Turtle" className="w-12 h-12" />
+                    </div>
 
-   
-    <div className="absolute top-10 left-6 transform -translate-x-1/2">
-      <img src="/turtle.png" alt="Small Turtle 1" className="w-6 h-6" />
-    </div>
+                    <div className="absolute top-10 left-6 transform -translate-x-1/2">
+                      <img src="/turtle.png" alt="Small Turtle 1" className="w-6 h-6" />
+                    </div>
 
-    
-    <div className="absolute top-14 left-10 transform -translate-x-1/2">
-      <img src="/turtle.png" alt="Small Turtle 2" className="w-6 h-6" />
-    </div>
+                    <div className="absolute top-14 left-10 transform -translate-x-1/2">
+                      <img src="/turtle.png" alt="Small Turtle 2" className="w-6 h-6" />
+                    </div>
 
-    
-    <div className="absolute bottom-2 left-2">
-      <img src="/bat.png" alt="Bat Icon" className="w-8 h-8" />
-    </div>
+                    <div className="absolute bottom-2 left-2">
+                      <img src="/bat.png" alt="Bat Icon" className="w-8 h-8" />
+                    </div>
 
-   
-    <div className="absolute bottom-2 left-10">
-      <img src="/bat.png" alt="Bigger Bat Icon" className="w-15 h-15" />
-    </div>
+                    <div className="absolute bottom-2 left-10">
+                      <img src="/bat.png" alt="Bigger Bat Icon" className="w-15 h-15" />
+                    </div>
 
-    
-    <div className="absolute top-2 right-2">
-      <img src="/flamingo.png" alt="Flamingo Icon" className="w-20 h-15" />
-    </div>
+                    <div className="absolute top-2 right-2">
+                      <img src="/flamingo.png" alt="Flamingo Icon" className="w-20 h-15" />
+                    </div>
 
-   
-    <div className="absolute bottom-2 right-10">
-      <img src="/cow.png" alt="Cow Icon" className="w-25 h-19" />
-    </div>
-  </>
-)}
+                    <div className="absolute bottom-2 right-10">
+                      <img src="/cow.png" alt="Cow Icon" className="w-25 h-19" />
+                    </div>
+                  </>
+                )}
+                {lesson.lessonID === 3 && isUnlocked && (
+                  <>
+                  </>
+                )}
 
                 {isUnlocked ? (
                   <>

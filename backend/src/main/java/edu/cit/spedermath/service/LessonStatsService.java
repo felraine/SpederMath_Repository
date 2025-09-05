@@ -4,5 +4,5 @@ import edu.cit.spedermath.dto.LessonStatsDTO;
 import java.util.List;
 
 public interface LessonStatsService {
-    List<LessonStatsDTO> getAllLessonStats();
+    List<LessonStatsDTO> getLessonStatsForTeacher(Long teacherId);
 }

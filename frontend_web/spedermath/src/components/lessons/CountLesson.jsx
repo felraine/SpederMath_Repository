@@ -37,12 +37,16 @@ const CountLesson = () => {
 
   // Timer effect
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeSpent(prev => prev + 1);
-    }, 1000);
+    let interval;
 
-    return () => clearInterval(interval); // Clean up on unmount
-  }, []);
+    if (!showTutorial) {
+      interval = setInterval(() => {
+        setTimeSpent(prev => prev + 1);
+      }, 1000);
+    }
+
+    return () => clearInterval(interval);
+  }, [showTutorial]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60).toString().padStart(2, '0');

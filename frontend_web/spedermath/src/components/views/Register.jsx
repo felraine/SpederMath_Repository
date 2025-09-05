@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Register() {
@@ -172,82 +172,67 @@ function Register() {
               </button>
             </form>
 
-        <p className="text-sm text-center mt-6 text-gray-700">
-          Already have an account?{" "}
-          <span
-            className="font-semibold text-black hover:text-blue-600 cursor-pointer"
-            onClick={goToLogin}
-          >
-            Sign in
-          </span>
-        </p>
-      </div>
+            <p className="text-sm text-center mt-6 text-gray-700">
+              Already have an account?{" "}
+              <span
+                className="font-semibold text-black hover:text-blue-600 cursor-pointer"
+                onClick={goToLogin}
+              >
+                Sign in
+              </span>
+            </p>
+          </div>
 
-      {/* Success Popup */}
-      {showSuccess && (
-  <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
-    <div className="bg-[#EEF2FF] border border-indigo-300 rounded-3xl shadow-2xl px-10 py-8 w-[90%] max-w-sm text-center animate-fade-in-up">
-      <div className="text-5xl mb-2">🎉</div>
-      <h3 className="text-2xl font-neucha text-indigo-700 mb-2">
-        You're in!
-      </h3>
-      <p className="text-sm text-gray-800 mb-6">
-        You’ve successfully registered. Redirecting to login...
-      </p>
-      <div className="w-full h-2 bg-indigo-100 rounded-full overflow-hidden">
-        <div className="h-full bg-indigo-500 animate-slide-progress"></div>
-      </div>
-    </div>
-  </div>
-)}
-      {/* Tailwind Animations */}
-{/* Success Popup */}
-{showSuccess && (
-  <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
-    <div className="bg-[#EEF2FF] border border-indigo-300 rounded-3xl shadow-2xl px-10 py-8 w-[90%] max-w-sm text-center animate-fade-in-up">
-      <div className="text-5xl mb-2">🎉</div>
-      <h3 className="text-2xl font-neucha text-indigo-700 mb-2">
-        You're in!
-      </h3>
-      <p className="text-sm text-gray-800 mb-6">
-        You’ve successfully registered. Redirecting to login...
-      </p>
-      <div className="w-full h-2 bg-indigo-100 rounded-full overflow-hidden">
-        <div className="h-full bg-indigo-500 animate-slide-progress"></div>
-      </div>
-    </div>
-  </div>
-)}
+          {/* Success Popup */}
+          {/*
+          {showSuccess && (
+            <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
+              <div className="bg-[#EEF2FF] border border-indigo-300 rounded-3xl shadow-2xl px-10 py-8 w-[90%] max-w-sm text-center animate-fade-in-up">
+                <div className="text-5xl mb-2">🎉</div>
+                <h3 className="text-2xl font-neucha text-indigo-700 mb-2">
+                  You're in!
+                </h3>
+                <p className="text-sm text-gray-800 mb-6">
+                  You’ve successfully registered. Redirecting to login...
+                </p>
+                <div className="w-full h-2 bg-indigo-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-indigo-500 animate-slide-progress"></div>
+                </div>
+              </div>
+            </div>
+          )}
+          */}
 
-        {/* Tailwind Animations */}
-        <style>
-          {`
-            @keyframes slide-progress {
-              0% { width: 0%; }
-              100% { width: 100%; }
-            }
-            .animate-slide-progress {
-              animation: slide-progress 3.5s linear forwards;
-            }
-            @keyframes fade-in-up {
-              from {
-                opacity: 0;
-                transform: translateY(20px);
+          {/* Tailwind Animations */}
+          {/*
+          <style>
+            {`
+              @keyframes slide-progress {
+                0% { width: 0%; }
+                100% { width: 100%; }
               }
-              to {
-                opacity: 1;
-                transform: translateY(0);
+              .animate-slide-progress {
+                animation: slide-progress 3.5s linear forwards;
               }
-            }
-            .animate-fade-in-up {
-              animation: fade-in-up 0.4s ease-out;
-            }
-          `}
-        </style>
-
+              @keyframes fade-in-up {
+                from {
+                  opacity: 0;
+                  transform: translateY(20px);
+                }
+                to {
+                  opacity: 1;
+                  transform: translateY(0);
+                }
+              }
+              .animate-fade-in-up {
+                animation: fade-in-up 0.4s ease-out;
+              }
+            `}
+          </style>
+          */}
+        </div>
+      </div>
     </div>
-  </div>
-</div>
   );
 }
 

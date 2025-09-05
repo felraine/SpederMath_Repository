@@ -4,6 +4,7 @@ import edu.cit.spedermath.dto.LessonStatsDTO;
 import edu.cit.spedermath.model.StudentProgress;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,7 +29,8 @@ public interface StudentProgressRepository extends JpaRepository<StudentProgress
             SUM(CASE WHEN sp.status = 'FAILED' THEN 1 ELSE 0 END)
         )
         FROM StudentProgress sp
+        WHERE sp.student.teacher.teacherID = :teacherId
         GROUP BY sp.lesson.lessonID, sp.lesson.title
     """)
-    List<LessonStatsDTO> getLessonStatistics();
+    List<LessonStatsDTO> getLessonStatisticsByTeacherId(@Param("teacherId") Long teacherId);
 }
