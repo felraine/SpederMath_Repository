@@ -216,13 +216,6 @@ function StudentDashboard() {
                 )}
                 {lesson.lessonID === 3 && isUnlocked && (
                   <>
-                    <div className="absolute bottom-0 right-4">
-                      <img src="/monkeySelfie.png" alt="Monkey Selfie" className="w-28 h-28" />
-                    </div>
-
-                    <div className="absolute bottom-0 left-2">
-                      <img src="/mandrillSmile.png" alt="Mandrill Smile" className="w-24 h-20" />
-                    </div>
                   </>
                 )}
 
