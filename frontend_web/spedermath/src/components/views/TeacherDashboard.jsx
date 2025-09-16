@@ -51,9 +51,9 @@ function Dashboard() {
 
         const response = await axios.get("http://localhost:8080/api/lesson-stats", {
           headers: { Authorization: `Bearer ${token}` },
+          params: { type: "ASSESSMENT" },
         });
-
-        setLessonStats(response.data);
+        setLessonStats(response.data || []);
       } catch (error) {
         console.error("Error fetching lesson stats:", error);
       } finally {

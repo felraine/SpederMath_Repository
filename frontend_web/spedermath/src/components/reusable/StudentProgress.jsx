@@ -6,23 +6,20 @@ const StudentProgress = ({ lessonStats = [], isLoading }) => {
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const chartsPerPage = 4;
 
-  const generateUniqueColors = (count) => {
-    const colors = new Set();
-    while (colors.size < count) {
-      const color = `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`;
-      colors.add(color);
-    }
-    return Array.from(colors);
+  // Stable color per lesson via hashed hue
+  const hashHue = (str) => {
+    let h = 0;
+    for (let i = 0; i < (str || "").length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h % 360;
   };
+  const colorFor = (title, i) => `hsl(${hashHue(title || String(i))}, 70%, 60%)`;
 
-  const getColoredData = (stats, key) => {
-    const colors = generateUniqueColors(stats.length);
-    return stats.map((l, index) => ({
-      x: l.title,
-      y: l[key] || 0,
-      fillColor: colors[index],
+  const getColoredData = (stats, key) =>
+    stats.map((l, index) => ({
+      x: l.title || `Lesson ${index + 1}`,
+      y: Number.isFinite(l?.[key]) ? l[key] : 0,
+      fillColor: colorFor(l.title, index),
     }));
-  };
 
   const coloredData = useMemo(
     () => ({
@@ -33,6 +30,7 @@ const StudentProgress = ({ lessonStats = [], isLoading }) => {
     [lessonStats]
   );
 
+  const safeLesson = lessonStats[currentLessonIndex] || {};
   const chartGroups = [
     {
       title: "Average Score Per Lesson",
@@ -45,13 +43,13 @@ const StudentProgress = ({ lessonStats = [], isLoading }) => {
       pie: false,
     },
     {
-      title: `Lesson Status: ${lessonStats[currentLessonIndex]?.title || ""}`,
+      title: `Lesson Status: ${safeLesson.title || ""}`,
       pie: true,
       series: [
-        lessonStats[currentLessonIndex]?.completedCount || 0,
-        lessonStats[currentLessonIndex]?.inProgressCount || 0,
-        lessonStats[currentLessonIndex]?.notStartedCount || 0,
-        lessonStats[currentLessonIndex]?.failedCount || 0,
+        safeLesson.completedCount || 0,
+        safeLesson.inProgressCount || 0,
+        safeLesson.notStartedCount || 0,
+        safeLesson.failedCount || 0,
       ],
     },
     {
@@ -61,7 +59,7 @@ const StudentProgress = ({ lessonStats = [], isLoading }) => {
     },
   ];
 
-  const totalPages = Math.ceil(chartGroups.length / chartsPerPage);
+  const totalPages = Math.ceil(chartGroups.length / chartsPerPage) || 1;
 
   const sharedBarOptions = {
     chart: { type: "bar", height: 200, toolbar: { show: false } },
@@ -74,22 +72,16 @@ const StudentProgress = ({ lessonStats = [], isLoading }) => {
     },
     dataLabels: { enabled: false },
     xaxis: {
-      categories: lessonStats.map((lesson) =>
-        lesson.title.length > 4 ? lesson.title.slice(0, 4) + "…" : lesson.title
-      ),
-      labels: {
-        rotate: 0,
-        style: {
-          fontSize: "12px",
-          whiteSpace: "nowrap",
-        },
-      },
+      categories: lessonStats.map((lesson, i) => {
+        const t = lesson?.title || `L${i + 1}`;
+        return t.length > 6 ? t.slice(0, 6) + "…" : t;
+      }),
+      labels: { rotate: 0, style: { fontSize: "12px", whiteSpace: "nowrap" } },
+      tooltip: { enabled: false },
     },
     tooltip: {
       enabled: true,
-      y: {
-        formatter: (val) => val,
-      },
+      y: { formatter: (val) => val },
     },
   };
 
@@ -100,36 +92,38 @@ const StudentProgress = ({ lessonStats = [], isLoading }) => {
     legend: { position: "right" },
   };
 
-  const handleNextPage = () => {
-    setCurrentPage((prev) => (prev + 1) % totalPages);
-  };
+  const handleNextPage = () => setCurrentPage((p) => (p + 1) % totalPages);
+  const handlePrevPage = () => setCurrentPage((p) => (p - 1 + totalPages) % totalPages);
 
-  const handlePrevPage = () => {
-    setCurrentPage((prev) => (prev - 1 + totalPages) % totalPages);
-  };
-
-  const handleNextLesson = () => {
-    setCurrentLessonIndex((prev) => (prev + 1) % lessonStats.length);
-  };
-
-  const handlePrevLesson = () => {
-    setCurrentLessonIndex((prev) => (prev - 1 + lessonStats.length) % lessonStats.length);
-  };
+  const handleNextLesson = () =>
+    setCurrentLessonIndex((p) => (lessonStats.length ? (p + 1) % lessonStats.length : 0));
+  const handlePrevLesson = () =>
+    setCurrentLessonIndex((p) =>
+      lessonStats.length ? (p - 1 + lessonStats.length) % lessonStats.length : 0
+    );
 
   return (
     <section className="lg:col-span-2 bg-white p-4 shadow-md rounded-md h-full overflow-hidden flex flex-col">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-semibold text-left flex-1">Student Progress</h3>
+        <h3 className="text-lg font-semibold text-left flex-1">
+          Student Progress
+        </h3>
         <div className="space-x-2">
           <button
             onClick={handlePrevPage}
-            className="px-2 py-1 bg-gray-500 text-white text-sm rounded-md"
+            disabled={totalPages <= 1}
+            className={`px-2 py-1 text-white text-sm rounded-md ${
+              totalPages <= 1 ? "bg-gray-300 cursor-not-allowed" : "bg-gray-500"
+            }`}
           >
             ←
           </button>
           <button
             onClick={handleNextPage}
-            className="px-2 py-1 bg-gray-500 text-white text-sm rounded-md"
+            disabled={totalPages <= 1}
+            className={`px-2 py-1 text-white text-sm rounded-md ${
+              totalPages <= 1 ? "bg-gray-300 cursor-not-allowed" : "bg-gray-500"
+            }`}
           >
             →
           </button>
@@ -147,16 +141,16 @@ const StudentProgress = ({ lessonStats = [], isLoading }) => {
               className="bg-gray-100 rounded-md p-2 flex flex-col justify-between animate-pulse"
               style={{ height: index === 2 ? "auto" : "200px" }}
             >
-              <div className="h-5 bg-gray-300 rounded w-3/4 mb-4"></div>
-              <div className="flex-1 bg-gray-300 rounded"></div>
+              <div className="h-5 bg-gray-300 rounded w-3/4 mb-4" />
+              <div className="flex-1 bg-gray-300 rounded" />
               {index === 2 && (
-                <div className="mt-2 h-6 bg-gray-300 rounded w-full max-w-[250px] mx-auto"></div>
+                <div className="mt-2 h-6 bg-gray-300 rounded w-full max-w-[250px] mx-auto" />
               )}
             </div>
           ))
         ) : lessonStats.length === 0 ? (
           <div className="col-span-2 flex justify-center items-center">
-            <p className="text-gray-500 text-center">No student progress yet.</p>
+            <p className="text-gray-500 text-center">No assessment progress yet.</p>
           </div>
         ) : (
           chartGroups

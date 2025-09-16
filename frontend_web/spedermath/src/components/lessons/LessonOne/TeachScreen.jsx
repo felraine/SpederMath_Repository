@@ -1,268 +1,230 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import "../../css/overlays.css";
 
 const TeachScreen = ({ onNext }) => {
   const [step, setStep] = useState(1);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(null);
   const [reviewFinished, setReviewFinished] = useState(false);
-  const [currentCount, setCurrentCount] = useState(0); // always visible
+  const [currentCount, setCurrentCount] = useState(0);
 
-  // Step data (numbers and their assets)
   const stepData = {
     1: { title: "One", img: "/photos/number_pngs/number_1.png", alt: "Number 1", audio: "/audio/lesson1/one.mp3" },
     2: { title: "Two", img: "/photos/number_pngs/number_2.png", alt: "Number 2", audio: "/audio/lesson1/two.mp3" },
     3: { title: "Three", img: "/photos/number_pngs/number_3.png", alt: "Number 3", audio: "/audio/lesson1/three.mp3" },
   };
 
-  // Apple counting audio
   const appleAudio = {
     1: ["/audio/lesson1/one_apples.mp3"],
     2: ["/audio/lesson1/one.mp3", "/audio/lesson1/two_apples.mp3"],
     3: ["/audio/lesson1/one.mp3", "/audio/lesson1/two.mp3", "/audio/lesson1/three_apples.mp3"],
   };
 
-  // Balloon counting audio
   const balloonAudio = {
     1: ["/audio/lesson1/one_balloons.mp3"],
     2: ["/audio/lesson1/one.mp3", "/audio/lesson1/two_balloons.mp3"],
     3: ["/audio/lesson1/one.mp3", "/audio/lesson1/two.mp3", "/audio/lesson1/three_balloons.mp3"],
   };
 
-  // Number words
   const numberWords = ["Zero", "One", "Two", "Three"];
 
-  // Play audio whenever step changes (numbers only)
   useEffect(() => {
-    if ((step > 3 && step < 5) || (step >= 5 && step <= 10)) return; // skip review/apples/balloons
+    if ((step > 3 && step < 5) || (step >= 5 && step <= 10)) return;
     const current = stepData[step];
     if (!current) return;
-
     const audio = new Audio(current.audio);
     setIsAudioPlaying(true);
     audio.play();
     audio.onended = () => setIsAudioPlaying(false);
-
     return () => {
       audio.pause();
       audio.currentTime = 0;
     };
   }, [step]);
 
-  // Handle Next button
   const handleNext = () => {
-    if (step < 3) {
-      setStep((prev) => prev + 1);
-    } else if (step === 3) {
-      setStep(4); // go to review
-    } else if (step === 4) {
-      setStep(5); // go to apples
-    } else if (step >= 5 && step < 7) {
-      setStep((prev) => prev + 1); // more apples
-    } else if (step === 7) {
-      setStep(8); // go to balloons
-    } else if (step >= 8 && step < 10) {
-      setStep((prev) => prev + 1); // more balloons
-    } else {
-      onNext(); // finish
-    }
+    if (step < 3) setStep((p) => p + 1);
+    else if (step === 3) setStep(4);
+    else if (step === 4) setStep(5);
+    else if (step >= 5 && step < 7) setStep((p) => p + 1);
+    else if (step === 7) setStep(8);
+    else if (step >= 8 && step < 10) setStep((p) => p + 1);
+    else onNext();
   };
 
-  // ===== Review Step =====
+  // review sequence
   useEffect(() => {
     if (step !== 4) return;
-
     let i = 1;
     setReviewFinished(false);
-
     const playSequential = () => {
-      if (i > 3) {
-        setHighlightIndex(null);
-        setReviewFinished(true);
-        return;
-      }
-
+      if (i > 3) { setHighlightIndex(null); setReviewFinished(true); return; }
       setHighlightIndex(i);
       const audio = new Audio(stepData[i].audio);
       setIsAudioPlaying(true);
       audio.play();
-
       audio.onended = () => {
         setIsAudioPlaying(false);
         setHighlightIndex(null);
         i++;
-        setTimeout(playSequential, 500);
+        setTimeout(playSequential, 400);
       };
     };
-
     playSequential();
   }, [step]);
 
-  // ===== Apple Counting Step =====
+  // apples
   useEffect(() => {
     if (step < 5 || step > 7) return;
-
     const count = step - 4;
     const audios = appleAudio[count];
     if (!audios) return;
-
     setReviewFinished(false);
     setCurrentCount(1);
 
-    const startCounting = () => {
+    const start = () => {
       let i = 0;
-      const playSequential = () => {
-        if (i >= audios.length) {
-          setHighlightIndex(null);
-          setReviewFinished(true);
-          return;
-        }
-
+      const seq = () => {
+        if (i >= audios.length) { setHighlightIndex(null); setReviewFinished(true); return; }
         setHighlightIndex(i + 1);
         setCurrentCount(i + 1);
         const audio = new Audio(audios[i]);
         setIsAudioPlaying(true);
         audio.play();
-
         audio.onended = () => {
           setIsAudioPlaying(false);
           setHighlightIndex(null);
           i++;
-          setTimeout(playSequential, 500);
+          setTimeout(seq, 400);
         };
       };
-
-      playSequential();
+      seq();
     };
-
-    if (count === 1) startCounting();
-    else setTimeout(startCounting, 800);
+    if (count === 1) start(); else setTimeout(start, 600);
   }, [step]);
 
-  // ===== Balloon Counting Step =====
+  // balloons
   useEffect(() => {
     if (step < 8 || step > 10) return;
-
     const count = step - 7;
     const audios = balloonAudio[count];
     if (!audios) return;
-
     setReviewFinished(false);
     setCurrentCount(1);
 
-    const startCounting = () => {
+    const start = () => {
       let i = 0;
-      const playSequential = () => {
-        if (i >= audios.length) {
-          setHighlightIndex(null);
-          setReviewFinished(true);
-          return;
-        }
-
+      const seq = () => {
+        if (i >= audios.length) { setHighlightIndex(null); setReviewFinished(true); return; }
         setHighlightIndex(i + 1);
         setCurrentCount(i + 1);
         const audio = new Audio(audios[i]);
         setIsAudioPlaying(true);
         audio.play();
-
         audio.onended = () => {
           setIsAudioPlaying(false);
           setHighlightIndex(null);
           i++;
-          setTimeout(playSequential, 500);
+          setTimeout(seq, 400);
         };
       };
-
-      playSequential();
+      seq();
     };
-
-    if (count === 1) startCounting();
-    else setTimeout(startCounting, 800);
+    if (count === 1) start(); else setTimeout(start, 600);
   }, [step]);
 
   return (
-    <div className="flex flex-col items-center justify-between h-full">
-      {/* Title (hidden for apples/balloons) */}
-      <div className="h-16 flex items-center justify-center mt-6 mb-6">
-        <h1 className="text-4xl">
-          {step === 4
-            ? "Let's Review!"
-            : step <= 3
-            ? stepData[step]?.title
-            : ""}
-        </h1>
-      </div>
+    <section className="lesson-screen relative w-full h-full flex flex-col items-center justify-start">
+      {/* Header: keep only for review so 1–3 can pair word+number tightly */}
+      {step === 4 ? (
+        <div className="flex items-center justify-center mb-2">
+          <h1 className="text-4xl font-extrabold tracking-tight drop-shadow-md">Let’s Review!</h1>
+        </div>
+      ) : (
+        <div className="h-2" />
+      )}
 
-      {/* Content Area */}
+      {/* Content */}
       <div className="flex-grow flex flex-col items-center justify-center text-center w-full">
-        {/* Numbers */}
+        {/* 1–3: word + BIG number together, with a bold glow */}
         {step <= 3 && (
-          <motion.img
-            key={step}
-            src={stepData[step].img}
-            alt={stepData[step].alt}
-            className="max-w-[160px] w-full"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          />
+          <div className="flex flex-col items-center -mt-2 gap-6">
+            {/* Bigger word text */}
+            <h2 className="text-4xl sm:text-5xl font-bold">{stepData[step].title}</h2>
+
+            {/* Slightly smaller number image */}
+            <motion.img
+              key={step}
+              src={stepData[step].img}
+              alt={stepData[step].alt}
+              className="w-[150px] sm:w-[190px] md:w-[230px]"
+              style={{
+                filter:
+                  "drop-shadow(0 8px 18px rgba(0,0,0,0.35)) drop-shadow(0 0 6px rgba(255,255,255,0.6))",
+              }}
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
+            />
+          </div>
         )}
 
-        {/* Review */}
+        {/* Review row */}
         {step === 4 && (
-          <div className="flex flex-row gap-16 justify-center items-center">
+          <div className="flex flex-row gap-12 justify-center items-center">
             {Object.keys(stepData).map((num) => (
               <motion.img
                 key={num}
                 src={stepData[num].img}
                 alt={stepData[num].alt}
-                className="max-w-[120px] w-full"
-                animate={{ scale: highlightIndex === parseInt(num) ? 1.5 : 1 }}
-                transition={{ duration: 0.5 }}
+                className="max-w-[140px] w-full"
+                animate={{ scale: highlightIndex === parseInt(num) ? 1.35 : 1 }}
+                transition={{ duration: 0.4 }}
               />
             ))}
           </div>
         )}
 
-        {/* Apples + Number Display */}
+        {/* Apples: smaller number image + bigger word */}
         {step >= 5 && step <= 7 && (
-          <div className="flex flex-row items-center justify-between w-full px-24 -mt-12">
-            <div className="flex flex-row gap-16">
+          <div className="flex flex-row items-center justify-between w-full px-10 -mt-1">
+            <div className="flex flex-row gap-10">
               <AnimatePresence>
                 {Array.from({ length: step - 4 }).map((_, idx) => (
                   <motion.img
                     key={idx}
                     src="/photos/lesson1/apple.png"
                     alt="Apple"
-                    className="w-[130px]"
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{
-                      opacity: 1,
-                      scale: highlightIndex === idx + 1 ? 1.5 : 1,
-                    }}
-                    exit={{ opacity: 0, scale: 0.5 }}
-                    transition={{ duration: 0.5 }}
+                    className="w-[110px] sm:w-[120px] md:w-[140px]"
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: highlightIndex === idx + 1 ? 1.3 : 1 }}
+                    exit={{ opacity: 0, scale: 0.6 }}
+                    transition={{ duration: 0.4 }}
                   />
                 ))}
               </AnimatePresence>
             </div>
 
-            <div className="flex flex-col items-center mr-16">
+            <div className="flex flex-col items-center mr-8">
               {currentCount > 0 && (
                 <>
+                  {/* Reduced number image width */}
                   <motion.img
                     key={`num-${currentCount}-apple`}
                     src={stepData[currentCount]?.img}
                     alt={stepData[currentCount]?.alt}
-                    className="w-[160px]"
-                    initial={{ opacity: 0, scale: 0.8 }}
+                    className="w-[180px] sm:w-[200px] md:w-[220px]"
+                    style={{ filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.35)) drop-shadow(0 0 8px rgba(255,255,255,0.65))" }}
+                    initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
                   />
+                  {/* Bigger word label */}
                   <motion.span
-                    className="text-3xl capitalize mt-2"
-                    animate={{ opacity: [0, 1], y: [10, 0] }}
-                    transition={{ duration: 0.4 }}
+                    className="text-3xl sm:text-4xl font-bold capitalize mt-1"
+                    animate={{ opacity: [0, 1], y: [8, 0] }}
+                    transition={{ duration: 0.35 }}
                   >
                     {numberWords[currentCount]}
                   </motion.span>
@@ -272,45 +234,45 @@ const TeachScreen = ({ onNext }) => {
           </div>
         )}
 
-        {/* Balloons + Number Display */}
+        {/* Balloons: smaller number image + bigger word */}
         {step >= 8 && step <= 10 && (
-          <div className="flex flex-row items-center justify-between w-full px-24 -mt-12">
-            <div className="flex flex-row gap-16">
+          <div className="flex flex-row items-center justify-between w-full px-10 -mt-1">
+            <div className="flex flex-row gap-10">
               <AnimatePresence>
                 {Array.from({ length: step - 7 }).map((_, idx) => (
                   <motion.img
                     key={idx}
                     src="/photos/lesson1/red_balloon.png"
                     alt="Balloon"
-                    className="w-[130px]"
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{
-                      opacity: 1,
-                      scale: highlightIndex === idx + 1 ? 1.5 : 1,
-                    }}
-                    exit={{ opacity: 0, scale: 0.5 }}
-                    transition={{ duration: 0.5 }}
+                    className="w-[100px] sm:w-[110px] md:w-[130px]"
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: highlightIndex === idx + 1 ? 1.3 : 1 }}
+                    exit={{ opacity: 0, scale: 0.6 }}
+                    transition={{ duration: 0.4 }}
                   />
                 ))}
               </AnimatePresence>
             </div>
 
-            <div className="flex flex-col items-center mr-16">
+            <div className="flex flex-col items-center mr-8">
               {currentCount > 0 && (
                 <>
+                  {/* Reduced number image width */}
                   <motion.img
                     key={`num-${currentCount}-balloon`}
                     src={stepData[currentCount]?.img}
                     alt={stepData[currentCount]?.alt}
-                    className="w-[160px]"
-                    initial={{ opacity: 0, scale: 0.8 }}
+                    className="w-[180px] sm:w-[200px] md:w-[220px]"
+                    style={{ filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.35)) drop-shadow(0 0 8px rgba(255,255,255,0.65))" }}
+                    initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
                   />
+                  {/* Bigger word label */}
                   <motion.span
-                    className="text-3xl capitalize mt-2"
-                    animate={{ opacity: [0, 1], y: [10, 0] }}
-                    transition={{ duration: 0.4 }}
+                    className="text-3xl sm:text-4xl font-bold capitalize mt-1"
+                    animate={{ opacity: [0, 1], y: [8, 0] }}
+                    transition={{ duration: 0.35 }}
                   >
                     {numberWords[currentCount]}
                   </motion.span>
@@ -321,16 +283,14 @@ const TeachScreen = ({ onNext }) => {
         )}
       </div>
 
-      {/* Button */}
+      {/* Buttons */}
       <div className="absolute bottom-6 right-6">
         {step <= 3 && (
           <button
             onClick={handleNext}
             disabled={isAudioPlaying}
             className={`px-6 py-3 text-lg rounded-lg transition ${
-              isAudioPlaying
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-green-600 text-white hover:bg-green-700"
+              isAudioPlaying ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
             }`}
           >
             {step < 3 ? "Next" : "Review"}
@@ -342,9 +302,7 @@ const TeachScreen = ({ onNext }) => {
             onClick={handleNext}
             disabled={!reviewFinished}
             className={`px-6 py-3 text-lg rounded-lg transition ${
-              !reviewFinished
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-green-600 text-white hover:bg-green-700"
+              !reviewFinished ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
             }`}
           >
             Apples
@@ -356,9 +314,7 @@ const TeachScreen = ({ onNext }) => {
             onClick={handleNext}
             disabled={!reviewFinished}
             className={`px-6 py-3 text-lg rounded-lg transition ${
-              !reviewFinished
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-green-600 text-white hover:bg-green-700"
+              !reviewFinished ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
             }`}
           >
             {step < 7 ? "Next" : "Balloons"}
@@ -370,16 +326,14 @@ const TeachScreen = ({ onNext }) => {
             onClick={handleNext}
             disabled={!reviewFinished}
             className={`px-6 py-3 text-lg rounded-lg transition ${
-              !reviewFinished
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-green-600 text-white hover:bg-green-700"
+              !reviewFinished ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
             }`}
           >
             {step < 10 ? "Next" : "Continue"}
           </button>
         )}
       </div>
-    </div>
+    </section>
   );
 };
 

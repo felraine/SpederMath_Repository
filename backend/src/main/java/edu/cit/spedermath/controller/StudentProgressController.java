@@ -35,33 +35,25 @@ public class StudentProgressController {
 
     // Endpoint to fetch all progress for the authenticated student
     @GetMapping("/my")
-    public ResponseEntity<List<StudentProgressDTO>> getMyProgress(@AuthenticationPrincipal org.springframework.security.core.userdetails.User user) {
-        Long studentId = Long.parseLong(user.getUsername());
-    
+    public ResponseEntity<List<StudentProgressDTO>> getMyProgress(Authentication authentication) {
+        Long studentId = Long.parseLong(authentication.getName()); // unify extraction
+
         List<StudentProgress> progressList = service.getProgressByStudent(studentId);
-    
-        if (progressList.isEmpty()) {
-            return ResponseEntity.noContent().build();
-        }
-    
-        List<StudentProgressDTO> dtoList = progressList.stream().map(progress -> {
+
+        List<StudentProgressDTO> dtoList = progressList.stream().map(p -> {
             StudentProgressDTO dto = new StudentProgressDTO();
-            dto.setProgressID(progress.getProgressID());
-            dto.setScore(progress.getScore());
-            dto.setStatus(progress.getStatus());
-            dto.setLastUpdated(progress.getLastUpdated());
-            dto.setUnlocked(progress.isUnlocked());
-            dto.setTimeSpentInSeconds(progress.getTimeSpentInSeconds());
-    
-            if (progress.getLesson() != null) {
-                dto.setLessonId(progress.getLesson().getLessonID());
-            }
-    
+            dto.setProgressID(p.getProgressID());
+            dto.setScore(p.getScore());
+            dto.setStatus(p.getStatus());
+            dto.setLastUpdated(p.getLastUpdated());
+            dto.setUnlocked(p.isUnlocked());
+            dto.setTimeSpentInSeconds(p.getTimeSpentInSeconds());
+            if (p.getLesson() != null) dto.setLessonId(p.getLesson().getLessonID());
             return dto;
         }).toList();
-        
-        return ResponseEntity.ok(dtoList);
-    }    
+
+        return ResponseEntity.ok(dtoList.isEmpty() ? java.util.Collections.emptyList() : dtoList);
+    }  
 
     // Endpoint to fetch progress for a specific lesson
     @GetMapping("/my/lesson/{lessonId}")
