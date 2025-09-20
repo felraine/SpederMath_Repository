@@ -1,337 +1,412 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import "../../css/overlays.css";
 
 const TeachScreen = ({ onNext }) => {
   const [step, setStep] = useState(1);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(null);
   const [reviewFinished, setReviewFinished] = useState(false);
-  const [currentCount, setCurrentCount] = useState(0); // always visible
+  const [currentCount, setCurrentCount] = useState(0);
 
-  // Step data (numbers and their assets)
+  // Counting fish visuals for the left side in steps 5–7
+  const [fishSet, setFishSet] = useState([]);
+
+  // --- Challenge state (only after step 7) ---
+  const [challengeActive, setChallengeActive] = useState(false);
+  const [challengeFish, setChallengeFish] = useState([]); // exactly 3 fish
+  const [targetIndex, setTargetIndex] = useState(1);      // 1,2,3 (positional)
+
+  // NEW
+  const MAX_CHALLENGE_ROUNDS = 3;
+  const [challengeRounds, setChallengeRounds] = useState(0); // 0..3
+  const [roundComplete, setRoundComplete] = useState(false); // NEW
+
+
+  // Preface before step 5 counting
+  const [prefacePlayed, setPrefacePlayed] = useState(false);
+
+  const audioRef = useRef(null);
+  const playVersion = useRef(0); // cancels stale sequences
+
   const stepData = {
-    1: { title: "One", img: "/photos/number_pngs/number_1.png", alt: "Number 1", audio: "/audio/lesson1/one.mp3" },
-    2: { title: "Two", img: "/photos/number_pngs/number_2.png", alt: "Number 2", audio: "/audio/lesson1/two.mp3" },
+    1: { title: "One",   img: "/photos/number_pngs/number_1.png", alt: "Number 1", audio: "/audio/lesson1/one.mp3" },
+    2: { title: "Two",   img: "/photos/number_pngs/number_2.png", alt: "Number 2", audio: "/audio/lesson1/two.mp3" },
     3: { title: "Three", img: "/photos/number_pngs/number_3.png", alt: "Number 3", audio: "/audio/lesson1/three.mp3" },
   };
 
-  // Apple counting audio
-  const appleAudio = {
-    1: ["/audio/lesson1/one_apples.mp3"],
-    2: ["/audio/lesson1/one.mp3", "/audio/lesson1/two_apples.mp3"],
-    3: ["/audio/lesson1/one.mp3", "/audio/lesson1/two.mp3", "/audio/lesson1/three_apples.mp3"],
+  const FISH_IMAGES = [
+    "/photos/lesson1/fish1.png",
+    "/photos/lesson1/fish2.png",
+    "/photos/lesson1/fish3.png",
+    "/photos/lesson1/fish4.png",
+  ];
+
+  // Counting audio (fish)
+  const fishAudio = {
+    1: ["/audio/lesson1/one_fish.mp3"],
+    2: ["/audio/lesson1/one.mp3", "/audio/lesson1/two_fish.mp3"],
+    3: ["/audio/lesson1/one.mp3", "/audio/lesson1/two.mp3", "/audio/lesson1/three_fish.mp3"],
   };
 
-  // Balloon counting audio
-  const balloonAudio = {
-    1: ["/audio/lesson1/one_balloons.mp3"],
-    2: ["/audio/lesson1/one.mp3", "/audio/lesson1/two_balloons.mp3"],
-    3: ["/audio/lesson1/one.mp3", "/audio/lesson1/two.mp3", "/audio/lesson1/three_balloons.mp3"],
+  // Challenge audios
+  const challengePromptAudio = {
+    1: "/audio/lesson1/click_one_fish.mp3",
+    2: "/audio/lesson1/click_two_fish.mp3",
+    3: "/audio/lesson1/click_three_fish.mp3",
   };
+  const challengeCorrectAudio = {
+    1: "/audio/lesson1/correct_fish_one.mp3",
+    2: "/audio/lesson1/correct_fish_two.mp3",
+    3: "/audio/lesson1/correct_fish_three.mp3",
+  };
+  const challengeWrongAudio = "/audio/lesson1/try_again.mp3";
 
-  // Number words
+  // Preface audios
+  const COUNT_WITH_FISH_PREFACE = "/audio/lesson1/count_with_fish.mp3";
+  const LETS_REVIEW_AUDIO = "/audio/lesson1/lets_review.mp3";
+
   const numberWords = ["Zero", "One", "Two", "Three"];
 
-  // Play audio whenever step changes (numbers only)
+  /** Promise-based audio play that respects “latest playVersion” */
+  const playAudioAsync = (src) => {
+    const myVersion = ++playVersion.current;
+    return new Promise((resolve) => {
+      try {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+        const a = new Audio(src);
+        audioRef.current = a;
+        setIsAudioPlaying(true);
+
+        const cleanup = () => {
+          if (myVersion !== playVersion.current) return; // superseded
+          setIsAudioPlaying(false);
+          resolve();
+        };
+
+        a.onended = cleanup;
+        a.onerror = cleanup;
+        a.play().catch(() => cleanup()); // if autoplay blocked, resolve
+      } catch {
+        setIsAudioPlaying(false);
+        resolve();
+      }
+    });
+  };
+
+  // Intro numbers (steps 1–3): speak each number upon entering that step
   useEffect(() => {
-    if ((step > 3 && step < 5) || (step >= 5 && step <= 10)) return; // skip review/apples/balloons
+    if (step > 3) return;
     const current = stepData[step];
     if (!current) return;
-
-    const audio = new Audio(current.audio);
-    setIsAudioPlaying(true);
-    audio.play();
-    audio.onended = () => setIsAudioPlaying(false);
-
-    return () => {
-      audio.pause();
-      audio.currentTime = 0;
-    };
+    playAudioAsync(current.audio);
   }, [step]);
 
-  // Handle Next button
+  const startChallengeRound = async () => {
+    setRoundComplete(false); 
+    const challengeImgs = pickRandomFish(3);
+    setChallengeFish(challengeImgs);
+
+    const target = 1 + Math.floor(Math.random() * 3);
+      setTargetIndex(target);
+
+      setChallengeActive(true);
+      setReviewFinished(false); // lock the button while the round is active
+      await playAudioAsync(challengePromptAudio[target]); // "Click fish number X"
+    };
+
   const handleNext = () => {
-    if (step < 3) {
-      setStep((prev) => prev + 1);
-    } else if (step === 3) {
-      setStep(4); // go to review
-    } else if (step === 4) {
-      setStep(5); // go to apples
-    } else if (step >= 5 && step < 7) {
-      setStep((prev) => prev + 1); // more apples
-    } else if (step === 7) {
-      setStep(8); // go to balloons
-    } else if (step >= 8 && step < 10) {
-      setStep((prev) => prev + 1); // more balloons
-    } else {
-      onNext(); // finish
+    if (step < 3) setStep((p) => p + 1);
+    else if (step === 3) setStep(4);
+    else if (step === 4) setStep(5);
+    else if (step >= 5 && step < 7) setStep((p) => p + 1);
+    else if (step === 7) {
+      if (isAudioPlaying) return;
+
+      if (challengeRounds < MAX_CHALLENGE_ROUNDS) {
+        // If we haven't started any round OR the last round just finished,
+        // start/advance to the next one.
+        startChallengeRound();
+      } else {
+        // All rounds done -> leave challenge and proceed
+        setChallengeActive(false);
+        onNext();
+      }
     }
   };
 
-  // ===== Review Step =====
+  // Review (step 4): play “Let’s review!” THEN begin the 1→2→3 review sequence
   useEffect(() => {
     if (step !== 4) return;
-
-    let i = 1;
+    let cancelled = false;
     setReviewFinished(false);
 
-    const playSequential = () => {
-      if (i > 3) {
+    const run = async () => {
+      await playAudioAsync(LETS_REVIEW_AUDIO);
+      if (cancelled) return;
+
+      for (let i = 1; i <= 3; i++) {
+        if (cancelled) return;
+        setHighlightIndex(i);
+        await playAudioAsync(stepData[i].audio);
         setHighlightIndex(null);
-        setReviewFinished(true);
-        return;
+        if (i < 3) await new Promise((r) => setTimeout(r, 600));
       }
-
-      setHighlightIndex(i);
-      const audio = new Audio(stepData[i].audio);
-      setIsAudioPlaying(true);
-      audio.play();
-
-      audio.onended = () => {
-        setIsAudioPlaying(false);
-        setHighlightIndex(null);
-        i++;
-        setTimeout(playSequential, 500);
-      };
+      if (!cancelled) setReviewFinished(true);
     };
 
-    playSequential();
+    run();
+    return () => {
+      cancelled = true;
+      playVersion.current++;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setHighlightIndex(null);
+    };
   }, [step]);
 
-  // ===== Apple Counting Step =====
+  // Utility: pick N random fish images
+  const pickRandomFish = (n) =>
+    Array.from({ length: n }, () => FISH_IMAGES[Math.floor(Math.random() * FISH_IMAGES.length)]);
+
+  // Fish counting (steps 5–7), with preface on step 5; challenge ONLY after step 7
   useEffect(() => {
     if (step < 5 || step > 7) return;
-
-    const count = step - 4;
-    const audios = appleAudio[count];
-    if (!audios) return;
-
+    let cancelled = false;
     setReviewFinished(false);
-    setCurrentCount(1);
+    setCurrentCount(0);
+    setChallengeActive(false); // reset when entering any of 5–7
 
-    const startCounting = () => {
-      let i = 0;
-      const playSequential = () => {
-        if (i >= audios.length) {
-          setHighlightIndex(null);
-          setReviewFinished(true);
-          return;
-        }
+    const count = step - 4; // 1,2,3
+    const audios = fishAudio[count] || [];
 
+    const run = async () => {
+      setFishSet(pickRandomFish(count));
+
+      if (step === 5 && !prefacePlayed) {
+        setPrefacePlayed(true);
+        await playAudioAsync(COUNT_WITH_FISH_PREFACE);
+        if (cancelled) return;
+        await new Promise((r) => setTimeout(r, 500));
+      } else {
+        await new Promise((r) => setTimeout(r, 400));
+      }
+
+      // Counting sequence
+      for (let i = 0; i < audios.length; i++) {
+        if (cancelled) return;
         setHighlightIndex(i + 1);
         setCurrentCount(i + 1);
-        const audio = new Audio(audios[i]);
-        setIsAudioPlaying(true);
-        audio.play();
+        await playAudioAsync(audios[i]);
+        setHighlightIndex(null);
+        if (i < audios.length - 1) await new Promise((r) => setTimeout(r, 800));
+      }
+      if (cancelled) return;
 
-        audio.onended = () => {
-          setIsAudioPlaying(false);
-          setHighlightIndex(null);
-          i++;
-          setTimeout(playSequential, 500);
-        };
-      };
-
-      playSequential();
+      // After counting:
+      if (step === 7) {
+        // Do NOT start challenge automatically. Let the user press the button to start.
+        setReviewFinished(true); // enable the button
+      } else {
+        setReviewFinished(true);
+      }
     };
 
-    if (count === 1) startCounting();
-    else setTimeout(startCounting, 800);
-  }, [step]);
+    run();
 
-  // ===== Balloon Counting Step =====
+    return () => {
+      cancelled = true;
+      playVersion.current++;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setHighlightIndex(null);
+    };
+  }, [step, prefacePlayed]);
+
+  // Handle challenge clicks (exactly 3 fish; click correct positional index)
+const handleChallengeClick = async (clickedIndex) => {
+  if (!challengeActive || isAudioPlaying || roundComplete) return; // ignore extra clicks
+
+  if (clickedIndex === targetIndex) {
+    await playAudioAsync(challengeCorrectAudio[targetIndex]);
+    setRoundComplete(true);              // NEW: round is finished
+    setChallengeRounds((r) => r + 1);
+    setReviewFinished(true);             // allow the bottom button
+  } else {
+    await playAudioAsync(challengeWrongAudio);
+  }
+};
+
+
+  // Clean up audio on unmount
   useEffect(() => {
-    if (step < 8 || step > 10) return;
-
-    const count = step - 7;
-    const audios = balloonAudio[count];
-    if (!audios) return;
-
-    setReviewFinished(false);
-    setCurrentCount(1);
-
-    const startCounting = () => {
-      let i = 0;
-      const playSequential = () => {
-        if (i >= audios.length) {
-          setHighlightIndex(null);
-          setReviewFinished(true);
-          return;
-        }
-
-        setHighlightIndex(i + 1);
-        setCurrentCount(i + 1);
-        const audio = new Audio(audios[i]);
-        setIsAudioPlaying(true);
-        audio.play();
-
-        audio.onended = () => {
-          setIsAudioPlaying(false);
-          setHighlightIndex(null);
-          i++;
-          setTimeout(playSequential, 500);
-        };
-      };
-
-      playSequential();
+    return () => {
+      playVersion.current++;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
     };
-
-    if (count === 1) startCounting();
-    else setTimeout(startCounting, 800);
-  }, [step]);
+  }, []);
 
   return (
-    <div className="flex flex-col items-center justify-between h-full">
-      {/* Title (hidden for apples/balloons) */}
-      <div className="h-16 flex items-center justify-center mt-6 mb-6">
-        <h1 className="text-4xl">
-          {step === 4
-            ? "Let's Review!"
-            : step <= 3
-            ? stepData[step]?.title
-            : ""}
-        </h1>
-      </div>
+    <section className="lesson-screen relative w-full h-full flex flex-col items-center justify-start">
+      {/* Headers */}
+      {step === 4 && (
+        <div className="flex items-center justify-center mb-2">
+          <h1 className="text-4xl font-extrabold tracking-tight drop-shadow-md">Let’s Review!</h1>
+        </div>
+      )}
+      {step === 5 && (
+        <div className="flex items-center justify-center mb-2">
+          <h1 className="text-3xl font-bold drop-shadow-sm">Now let’s count with our fish friends!</h1>
+        </div>
+      )}
 
-      {/* Content Area */}
+      {/* Content */}
       <div className="flex-grow flex flex-col items-center justify-center text-center w-full">
-        {/* Numbers */}
+        {/* Intro numbers (1–3) */}
         {step <= 3 && (
-          <motion.img
-            key={step}
-            src={stepData[step].img}
-            alt={stepData[step].alt}
-            className="max-w-[160px] w-full"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          />
+          <div className="flex flex-col items-center -mt-2 gap-6">
+            <h2 className="text-4xl sm:text-5xl font-bold">{stepData[step].title}</h2>
+            <motion.img
+              key={step}
+              src={stepData[step].img}
+              alt={stepData[step].alt}
+              className="w-[150px] sm:w-[190px] md:w-[230px]"
+              style={{ filter: "drop-shadow(0 8px 18px rgba(0,0,0,0.35)) drop-shadow(0 0 6px rgba(255,255,255,0.6))" }}
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+            />
+          </div>
         )}
 
-        {/* Review */}
+        {/* Review row (step 4) */}
         {step === 4 && (
-          <div className="flex flex-row gap-16 justify-center items-center">
+          <div className="flex flex-row gap-12 justify-center items-center">
             {Object.keys(stepData).map((num) => (
               <motion.img
                 key={num}
                 src={stepData[num].img}
                 alt={stepData[num].alt}
-                className="max-w-[120px] w-full"
-                animate={{ scale: highlightIndex === parseInt(num) ? 1.5 : 1 }}
-                transition={{ duration: 0.5 }}
+                className="max-w-[140px] w-full"
+                animate={{ scale: highlightIndex === parseInt(num) ? 1.35 : 1 }}
+                transition={{ duration: 0.4 }}
               />
             ))}
           </div>
         )}
 
-        {/* Apples + Number Display */}
+        {/* Fish counting (5–7) OR challenge */}
         {step >= 5 && step <= 7 && (
-          <div className="flex flex-row items-center justify-between w-full px-24 -mt-12">
-            <div className="flex flex-row gap-16">
-              <AnimatePresence>
-                {Array.from({ length: step - 4 }).map((_, idx) => (
-                  <motion.img
-                    key={idx}
-                    src="/photos/lesson1/apple.png"
-                    alt="Apple"
-                    className="w-[130px]"
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{
-                      opacity: 1,
-                      scale: highlightIndex === idx + 1 ? 1.5 : 1,
-                    }}
-                    exit={{ opacity: 0, scale: 0.5 }}
-                    transition={{ duration: 0.5 }}
-                  />
-                ))}
-              </AnimatePresence>
-            </div>
+          <>
+            {!challengeActive && (
+              <div className="flex flex-row items-center justify-between w-full px-10 -mt-1">
+                <div className="flex flex-row gap-10">
+                  <AnimatePresence>
+                    {fishSet.slice(0, currentCount).map((src, idx) => (
+                      <motion.img
+                        key={`${src}-${idx}`}
+                        src={src}
+                        alt="Fish"
+                        className="w-[110px] sm:w-[120px] md:w-[140px]"
+                        initial={{ opacity: 0, scale: 0.6, y: 12 }}
+                        animate={{ opacity: 1, scale: highlightIndex === idx + 1 ? 1.3 : 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.6 }}
+                        transition={{ duration: 0.5 }}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
 
-            <div className="flex flex-col items-center mr-16">
-              {currentCount > 0 && (
-                <>
-                  <motion.img
-                    key={`num-${currentCount}-apple`}
-                    src={stepData[currentCount]?.img}
-                    alt={stepData[currentCount]?.alt}
-                    className="w-[160px]"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                  />
-                  <motion.span
-                    className="text-3xl capitalize mt-2"
-                    animate={{ opacity: [0, 1], y: [10, 0] }}
-                    transition={{ duration: 0.4 }}
-                  >
-                    {numberWords[currentCount]}
-                  </motion.span>
-                </>
-              )}
-            </div>
-          </div>
-        )}
+                <div className="flex flex-col items-center mr-8">
+                  {currentCount > 0 && (
+                    <>
+                      <motion.img
+                        key={`num-${currentCount}-fish`}
+                        src={stepData[currentCount]?.img}
+                        alt={stepData[currentCount]?.alt}
+                        className="w-[180px] sm:w-[200px] md:w-[220px]"
+                        style={{ filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.35)) drop-shadow(0 0 8px rgba(255,255,255,0.65))" }}
+                        initial={{ opacity: 0, scale: 0.85 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                      />
+                      <motion.span
+                        className="text-3xl sm:text-4xl font-bold capitalize mt-1"
+                        animate={{ opacity: [0, 1], y: [8, 0] }}
+                        transition={{ duration: 0.35 }}
+                      >
+                        {numberWords[currentCount]}
+                      </motion.span>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
 
-        {/* Balloons + Number Display */}
-        {step >= 8 && step <= 10 && (
-          <div className="flex flex-row items-center justify-between w-full px-24 -mt-12">
-            <div className="flex flex-row gap-16">
-              <AnimatePresence>
-                {Array.from({ length: step - 7 }).map((_, idx) => (
-                  <motion.img
-                    key={idx}
-                    src="/photos/lesson1/red_balloon.png"
-                    alt="Balloon"
-                    className="w-[130px]"
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{
-                      opacity: 1,
-                      scale: highlightIndex === idx + 1 ? 1.5 : 1,
-                    }}
-                    exit={{ opacity: 0, scale: 0.5 }}
-                    transition={{ duration: 0.5 }}
-                  />
-                ))}
-              </AnimatePresence>
-            </div>
+            {challengeActive && (
+              <div className="flex flex-col items-center gap-6">
+                <h3 className="text-2xl sm:text-3xl font-bold">
+                  Click on <span className="underline">fish number {targetIndex}</span>.
+                </h3>
 
-            <div className="flex flex-col items-center mr-16">
-              {currentCount > 0 && (
-                <>
-                  <motion.img
-                    key={`num-${currentCount}-balloon`}
-                    src={stepData[currentCount]?.img}
-                    alt={stepData[currentCount]?.alt}
-                    className="w-[160px]"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                  />
-                  <motion.span
-                    className="text-3xl capitalize mt-2"
-                    animate={{ opacity: [0, 1], y: [10, 0] }}
-                    transition={{ duration: 0.4 }}
-                  >
-                    {numberWords[currentCount]}
-                  </motion.span>
-                </>
-              )}
-            </div>
-          </div>
+                <div className="flex flex-row gap-10">
+                  {challengeFish.map((src, i) => (
+                    <motion.div
+                      key={`${src}-challenge-${i}`}
+                      className="relative w-[120px] sm:w-[140px] md:w-[160px] cursor-pointer"
+                      initial={{ opacity: 0, scale: 0.85, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleChallengeClick(i + 1)}
+                      aria-label={`Fish number ${i + 1}`}
+                    >
+                      <motion.img
+                        src={src}
+                        alt={`Fish number ${i + 1}`}
+                        className="w-full h-auto select-none pointer-events-none"
+                        draggable={false}
+                      />
+                      {/* Centered number overlay; pointer-events-none so clicks pass to wrapper */}
+                      <span
+                        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                      >
+                        <span
+                          className="text-white text-3xl sm:text-4xl font-extrabold drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]
+                                   rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center"
+                        >
+                          {i + 1}
+                        </span>
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Button */}
+      {/* Buttons */}
       <div className="absolute bottom-6 right-6">
         {step <= 3 && (
           <button
             onClick={handleNext}
             disabled={isAudioPlaying}
             className={`px-6 py-3 text-lg rounded-lg transition ${
-              isAudioPlaying
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-green-600 text-white hover:bg-green-700"
+              isAudioPlaying ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
             }`}
+            title={isAudioPlaying ? "Please listen first" : "Next"}
           >
             {step < 3 ? "Next" : "Review"}
           </button>
@@ -342,44 +417,49 @@ const TeachScreen = ({ onNext }) => {
             onClick={handleNext}
             disabled={!reviewFinished}
             className={`px-6 py-3 text-lg rounded-lg transition ${
-              !reviewFinished
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-green-600 text-white hover:bg-green-700"
+              !reviewFinished ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
             }`}
+            title={!reviewFinished ? "Please finish the review audio" : "Continue"}
           >
-            Apples
+            Continue
           </button>
         )}
 
         {step >= 5 && step <= 7 && (
           <button
             onClick={handleNext}
-            disabled={!reviewFinished}
+            disabled={
+              (step < 7 && (!reviewFinished || isAudioPlaying)) ||
+              (step === 7 && (
+                isAudioPlaying ||
+                (!roundComplete && challengeRounds > 0 && challengeRounds < MAX_CHALLENGE_ROUNDS) // during a round
+              ))
+            }
             className={`px-6 py-3 text-lg rounded-lg transition ${
-              !reviewFinished
+              (step < 7 && (!reviewFinished || isAudioPlaying)) ||
+              (step === 7 && (isAudioPlaying || (!roundComplete && challengeRounds > 0 && challengeRounds < MAX_CHALLENGE_ROUNDS)))
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-green-600 text-white hover:bg-green-700"
             }`}
+            title={
+              step < 7
+                ? (!reviewFinished ? "Please finish listening first" : "Next")
+                : (challengeRounds >= MAX_CHALLENGE_ROUNDS
+                    ? "Continue"
+                    : (roundComplete ? "Start next round" : "Finish this round first"))
+            }
           >
-            {step < 7 ? "Next" : "Balloons"}
-          </button>
-        )}
-
-        {step >= 8 && (
-          <button
-            onClick={handleNext}
-            disabled={!reviewFinished}
-            className={`px-6 py-3 text-lg rounded-lg transition ${
-              !reviewFinished
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-green-600 text-white hover:bg-green-700"
-            }`}
-          >
-            {step < 10 ? "Next" : "Continue"}
+            {step < 7
+              ? "Next"
+              : (challengeRounds >= MAX_CHALLENGE_ROUNDS
+                  ? "Continue"
+                  : (challengeRounds === 0
+                      ? "Start"
+                      : (roundComplete ? "Next Round" : "Next Round"))) }
           </button>
         )}
       </div>
-    </div>
+    </section>
   );
 };
 

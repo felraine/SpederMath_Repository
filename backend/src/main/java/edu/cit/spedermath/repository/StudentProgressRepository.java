@@ -26,11 +26,12 @@ public interface StudentProgressRepository extends JpaRepository<StudentProgress
             SUM(CASE WHEN sp.status = 'COMPLETED' THEN 1 ELSE 0 END),
             SUM(CASE WHEN sp.status = 'IN_PROGRESS' THEN 1 ELSE 0 END),
             SUM(CASE WHEN sp.status = 'NOT_STARTED' THEN 1 ELSE 0 END),
-            SUM(CASE WHEN sp.status = 'FAILED' THEN 1 ELSE 0 END)
+            SUM(CASE WHEN sp.status = 'FAILED' THEN 1 ELSE 0 END),
+            sp.lesson.lessonType
         )
         FROM StudentProgress sp
         WHERE sp.student.teacher.teacherID = :teacherId
-        GROUP BY sp.lesson.lessonID, sp.lesson.title
+        GROUP BY sp.lesson.lessonID, sp.lesson.title, sp.lesson.lessonType
     """)
     List<LessonStatsDTO> getLessonStatisticsByTeacherId(@Param("teacherId") Long teacherId);
 }

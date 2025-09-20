@@ -1,61 +1,82 @@
-import React, { useEffect, useState } from "react";
-import { Volume2, Play } from "lucide-react"; // icons for audio + start
+import React, { useEffect, useRef, useState } from "react";
+import "../../css/overlays.css";
 
-const IntroScreen = ({ onNext }) => {
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+export default function IntroScreen({ onNext }) {
+  const [ready, setReady] = useState(false);
+  const audioRef = useRef(null);
+  const initRef = useRef(false); // create Audio once
 
   useEffect(() => {
-    const audio = new Audio("/audio/lesson1/intro.mp3");
-    setIsAudioPlaying(true);
-    audio.play();
+    // 1) Create the audio object only once
+    if (!initRef.current) {
+      const a = new Audio("/audio/lesson1/intro.mp3");
+      audioRef.current = a;
+      initRef.current = true;
 
-    audio.onended = () => {
-      setIsAudioPlaying(false);
+      // Try autoplay once; if blocked, allow clicking immediately
+      a.play().catch(() => setReady(true));
+    }
+
+    const a = audioRef.current;
+
+    // 2) If it’s already done (e.g., prior mount played it), enable immediately
+    if (!ready && (a.ended || (a.currentTime > 0 && a.paused))) {
+      setReady(true);
+    }
+
+    // 3) Attach listeners on every mount
+    const handleEnded = () => setReady(true);
+    a.addEventListener("ended", handleEnded);
+
+    // 4) Also make sure we start once it’s loadable if needed (in case autoplay blocked then allowed)
+    const handleCanPlay = () => {
+      // Only attempt play if not started yet and still not ready
+      if (!a.ended && a.currentTime === 0) {
+        a.play().catch(() => setReady(true));
+      }
     };
+    a.addEventListener("canplaythrough", handleCanPlay, { once: true });
 
+    // 5) Cleanup: remove listeners only (don’t pause/reset the audio)
     return () => {
-      audio.pause();
-      audio.currentTime = 0;
+      a.removeEventListener("ended", handleEnded);
+      // no a.pause()/a.currentTime=0 here — keeps state across StrictMode remounts
     };
-  }, []);
+  }, [ready]);
 
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center p-6">
-      {/* Friendly character / mascot */}
-      <img
-        src="/munchie/eyelessneutral_Munchie.png"
-        alt="Friendly Mascot"
-        className="w-40 h-40 mb-6 animate-bounce"
-      />
+    <section className="intro-screen">
+      <div className="intro-wrap">
+        <div className="intro-card intro-centered">
+          <img
+            src="/munchie/eyelessneutral_Munchie.png"
+            alt="Munchie the mascot"
+            className="w-40 h-40 mx-auto mb-6 munchie-bounce"
+          />
 
-      {/* Title */}
-      <h1 className="text-5xl font-bold text-blue-700 mb-4">
-        👋 Welcome, Friend!
-      </h1>
+          <h1 className="intro-title">Welcome, Friend!</h1>
 
-      {/* Subtext */}
-      <p className="text-2xl text-gray-700 mb-10 flex items-center justify-center gap-2">
-        <Volume2 className="w-6 h-6 text-green-600" />
-        Let’s learn numbers <span className="font-bold text-red-500">1</span>,{" "}
-        <span className="font-bold text-blue-500">2</span>, and{" "}
-        <span className="font-bold text-green-500">3</span>!
-      </p>
+          <p className="intro-subtitle">
+            Let’s learn numbers <span className="font-bold">1</span>,{" "}
+            <span className="font-bold">2</span>, and{" "}
+            <span className="font-bold">3</span>!
+          </p>
 
-      {/* Big Start Button */}
-      <button
-        onClick={onNext}
-        disabled={isAudioPlaying}
-        className={`flex items-center gap-3 px-10 py-5 text-2xl font-bold rounded-2xl shadow-lg transition transform ${
-          isAudioPlaying
-            ? "bg-gray-400 text-white cursor-not-allowed"
-            : "bg-green-500 text-white hover:bg-green-600 hover:scale-105"
-        }`}
-      >
-        <Play className="w-7 h-7" />
-        Start Learning
-      </button>
-    </div>
+          <div className="intro-actions">
+            <button
+              className={`btn btn-primary ${
+                !ready ? "opacity-60 cursor-not-allowed" : ""
+              }`}
+              onClick={onNext}
+              disabled={!ready}
+              aria-disabled={!ready}
+              title={!ready ? "Please listen first" : "Start Lesson"}
+            >
+              Start Lesson
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
   );
-};
-
-export default IntroScreen;
+}

@@ -1,5 +1,7 @@
 package edu.cit.spedermath.dto;
 
+import edu.cit.spedermath.enums.LessonType;
+
 public class LessonStatsDTO {
     private Long lessonID;
     private String title;
@@ -12,11 +14,12 @@ public class LessonStatsDTO {
     private Long inProgressCount;
     private Long notStartedCount;
     private Long failedCount;
+    private LessonType lessonType;
 
     // Constructor
     public LessonStatsDTO(Long lessonID, String title, Double avgScore, Double avgTimeSpent, Long retakesCount,
             Long unlockedCount, Long notUnlockedCount, Long completedCount, Long inProgressCount,
-            Long notStartedCount, Long failedCount) {
+            Long notStartedCount, Long failedCount, LessonType lessonType) {
         this.lessonID = lessonID;
         this.title = title;
         this.avgScore = avgScore;
@@ -28,6 +31,7 @@ public class LessonStatsDTO {
         this.inProgressCount = inProgressCount;
         this.notStartedCount = notStartedCount;
         this.failedCount = failedCount;
+        this.lessonType = lessonType;
         }
 
 
@@ -97,5 +101,11 @@ public class LessonStatsDTO {
     }
     public void setFailedCount(Long failedCount) {
         this.failedCount = failedCount;
+    }
+    public LessonType getLessonType() {
+        return lessonType;
+    }
+    public void setLessonType(LessonType lessonType) {
+        this.lessonType = lessonType;
     }
 }

@@ -1,0 +1,174 @@
+/* =========================
+   Ocean theme tokens (fallbacks)
+   ========================= */
+:root,
+.theme-ocean,
+.ocean-theme {
+  --o-ink: #e9f5ff;                  /* primary text on ocean */
+  --o-ink-muted: #cfe8ff;            /* secondary text */
+  --o-card: rgba(0, 39, 71, 0.45);   /* frosted card background */
+  --o-outline: rgba(255,255,255,0.22);
+  --o-shadow: rgba(0,0,0,0.25);
+  --o-accent: #1fb6ff;               /* CTA gradient end */
+  --o-grad-a: #9ee8ff;               /* CTA gradient start */
+}
+
+.intro-screen .intro-wrap {
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  /* Push content down so it doesn't touch top edge */
+  padding-top: clamp(56px, 14vh, 160px);
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.intro-screen .intro-card {
+  width: min(720px, 92vw);
+  background: var(--o-card);
+  border: 1px solid var(--o-outline);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px var(--o-shadow);
+  padding: clamp(18px, 4vw, 32px) clamp(18px, 4.5vw, 36px);
+  text-align: center;
+}
+
+/* Title uses subtle ocean gradient without changing text content */
+.intro-screen .intro-title {
+  margin: 0 0 10px 0;
+  font-size: clamp(28px, 4.6vw, 40px);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  background: linear-gradient(180deg, #ffffff, var(--o-ink-muted));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent; /* shows the gradient through your existing text */
+  text-shadow: 0 1px 0 rgba(0,0,0,0.05);
+}
+
+/* Body copy styled to blend with ocean */
+.intro-screen .intro-subtitle {
+  margin: 0 auto clamp(18px, 4.5vw, 28px) auto;
+  max-width: 52ch;
+  color: var(--o-ink);
+  opacity: 0.95;
+  font-size: clamp(16px, 2.4vw, 18px);
+}
+
+/* Buttons area */
+.intro-screen .intro-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Base button styling (doesn't change your labels) */
+.intro-screen .btn {
+  appearance: none;
+  border: 0;
+  border-radius: 14px;
+  padding: 12px 18px;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 160ms ease, background 160ms ease, opacity 160ms ease;
+  box-shadow: 0 10px 20px var(--o-shadow);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Primary CTA: ocean gradient */
+.intro-screen .btn-primary {
+  color: #00243f; /* dark ink on light gradient */
+  background: linear-gradient(135deg, var(--o-grad-a), var(--o-accent));
+  border: 1px solid rgba(255,255,255,0.35);
+}
+.intro-screen .btn-primary:hover {
+  background: linear-gradient(135deg, #b8efff, var(--o-accent));
+  transform: translateY(-1px);
+}
+.intro-screen .btn-primary:active {
+  transform: translateY(0);
+  opacity: 0.9;
+}
+
+/* Secondary/ghost: ocean glass look */
+.intro-screen .btn-ghost {
+  color: var(--o-ink);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--o-outline);
+}
+.intro-screen .btn-ghost:hover {
+  background: rgba(255,255,255,0.12);
+  transform: translateY(-1px);
+}
+.intro-screen .btn-ghost:active {
+  transform: translateY(0);
+  opacity: 0.92;
+}
+
+/* Narrow screens: stack buttons nicely */
+@media (max-width: 380px) {
+  .intro-screen .btn {
+    width: 100%;
+  }
+}
+
+.theme-ocean .intro-screen .intro-card,
+.ocean-theme .intro-screen .intro-card {
+}
+
+/* Center the intro within the space below the top bar */
+.intro-screen .intro-wrap {
+  --h: var(--header-h, 72px);
+
+  min-height: calc(100dvh - var(--h));
+  margin-top: var(--h);          
+  display: flex;
+  align-items: center;           
+  justify-content: center;
+  padding: 20px 16px;            
+}
+
+/*centered panel*/
+.intro-screen .intro-card.intro-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 36px;
+  min-height: 65vh;
+}
+
+/* Custom bounce for Munchie */
+@keyframes munchie-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px); /*bounce*/
+  }
+}
+
+.munchie-bounce {
+  animation: munchie-bounce 1.6s infinite ease-in-out;
+}
+
+.lesson-screen {
+  --h: var(--header-h, 72px);        
+  position: relative;               
+  min-height: calc(100dvh - var(--h));
+  margin-top: var(--h);             
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 20px 16px;
+}
