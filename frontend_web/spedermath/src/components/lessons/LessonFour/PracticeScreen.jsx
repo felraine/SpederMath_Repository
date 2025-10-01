@@ -6,14 +6,14 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   const [correctAnswer, setCorrectAnswer] = useState(1);
   const [selected, setSelected] = useState(null);
   const [isCounting, setIsCounting] = useState(false);
-  const [shuffledAnswers, setShuffledAnswers] = useState([1, 2, 3]);
+  const [shuffledAnswers, setShuffledAnswers] = useState([1, 2, 3, 4, 5]); // ← 1–5
   const [showChoices, setShowChoices] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [fishSet, setFishSet] = useState([]); // ← randomized fish images per round
   const activeAudio = useRef(null);
 
   // ---- assets ----
-  const numberAudioMap = { 1: "one", 2: "two", 3: "three" };
+  const numberAudioMap = { 1: "one", 2: "two", 3: "three", 4: "four", 5: "five" }; // ← added 4 & 5
   const questionAudio = "/audio/lesson1/how_many_fish.mp3";
   const letsCountAudio = "/audio/lesson1/lets_count.mp3";
   const correctAudios = [
@@ -45,7 +45,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
     const randomFile = audioList[Math.floor(Math.random() * audioList.length)];
     const audio = new Audio(randomFile);
     activeAudio.current = audio;
-    audio.play();
+    audio.play().catch(() => {}); // ignore autoplay errors
     if (callback) audio.onended = callback;
   };
 
@@ -61,7 +61,8 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   }, [roundIndex]);
 
   const startNewRound = () => {
-    const randomCount = Math.floor(Math.random() * 3) + 1;
+    // pick 1–5 fishes
+    const randomCount = Math.floor(Math.random() * 5) + 1; // ← 1..5
 
     // prepare randomized fish images for this round (stable during the round)
     const roundFish = Array.from({ length: randomCount }, () => {
@@ -71,7 +72,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
 
     setCorrectAnswer(randomCount);
     setFishSet(roundFish);
-    setShuffledAnswers(shuffleArray([1, 2, 3]));
+    setShuffledAnswers(shuffleArray([1, 2, 3, 4, 5])); // ← choices 1..5
     setSelected(null);
     setIsCounting(false);
     setShowChoices(false);
@@ -79,13 +80,41 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
 
     const q1 = new Audio(questionAudio);
     activeAudio.current = q1;
-    q1.play();
+    q1.play().catch(() => {});
     q1.onended = () => {
       const q2 = new Audio(letsCountAudio);
       activeAudio.current = q2;
-      q2.play();
+      q2.play().catch(() => {});
       q2.onended = () => setShowChoices(true);
     };
+  };
+
+  // Try playing a file; if it errors (e.g., four_fish/five_fish not added yet), fallback to base number audio
+  const playWithFallback = (primarySrc, fallbackSrc, onEnded) => {
+    const audio = new Audio(primarySrc);
+    activeAudio.current = audio;
+    const cleanup = () => {
+      audio.onended = null;
+      audio.onerror = null;
+    };
+    audio.onended = () => {
+      cleanup();
+      onEnded?.();
+    };
+    audio.onerror = () => {
+      cleanup();
+      const fb = new Audio(fallbackSrc);
+      activeAudio.current = fb;
+      fb.onended = onEnded || null;
+      fb.play().catch(() => {});
+    };
+    audio.play().catch(() => {
+      // If play fails (autoplay), still try fallback
+      const fb = new Audio(fallbackSrc);
+      activeAudio.current = fb;
+      fb.onended = onEnded || null;
+      fb.play().catch(() => {});
+    });
   };
 
   const handleAnswer = (num) => {
@@ -96,22 +125,22 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
 
     const playNextNumber = () => {
       if (i <= num) {
-        const base = `/audio/numbers/${numberAudioMap[i]}.mp3`;
-
-        // If you have terminal clips like "one_fish.mp3", keep these lines:
+        const base = `/audio/lesson1/${numberAudioMap[i]}.mp3`;
+        // Terminal clip (e.g., "one_fish.mp3"); if missing, we fallback to base
         const terminal = `/audio/lesson1/${numberAudioMap[i]}_fish.mp3`;
-        const file = i === num ? terminal : base;
 
-        const audio = new Audio(file);
-        activeAudio.current = audio;
         setHighlightIndex(i - 1);
-        audio.play();
-        audio.onended = () => {
-          setTimeout(() => {
-            i++;
-            playNextNumber();
-          }, 600);
-        };
+
+        playWithFallback(
+          i === num ? terminal : base,
+          base,
+          () => {
+            setTimeout(() => {
+              i++;
+              playNextNumber();
+            }, 600);
+          }
+        );
       } else {
         setTimeout(() => {
           if (num === correctAnswer) {
@@ -157,6 +186,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
           justifyContent: "center",
           gap: "30px",
           margin: "30px 0",
+          flexWrap: "wrap",
         }}
       >
         {fishSet.map((src, i) => (
@@ -184,6 +214,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
             justifyContent: "center",
             gap: "40px",
             marginTop: "20px",
+            flexWrap: "wrap",
           }}
         >
           {shuffledAnswers.map((num) => (

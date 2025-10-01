@@ -1,31 +1,50 @@
+// src/lessons/lesson3/PracticeScreen.jsx
 import React, { useEffect, useState, useRef } from "react";
 import "../../css/overlays.css";
 
-const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
+const PracticeScreenUnified = ({ onNext, rounds = 3, meta }) => {
   const [roundIndex, setRoundIndex] = useState(0);
   const [correctAnswer, setCorrectAnswer] = useState(1);
   const [selected, setSelected] = useState(null);
   const [isCounting, setIsCounting] = useState(false);
-  const [shuffledAnswers, setShuffledAnswers] = useState([1, 2, 3]);
+  const [shuffledAnswers, setShuffledAnswers] = useState([1, 2, 3, 4, 5, 6, 7]); // 1–7
   const [showChoices, setShowChoices] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
-  const [fishSet, setFishSet] = useState([]); // ← randomized fish images per round
+  const [fishSet, setFishSet] = useState([]); // randomized fish images per round
   const activeAudio = useRef(null);
 
   // ---- assets ----
-  const numberAudioMap = { 1: "one", 2: "two", 3: "three" };
-  const questionAudio = "/audio/lesson1/how_many_fish.mp3";
-  const letsCountAudio = "/audio/lesson1/lets_count.mp3";
+  const numberAudioMap = { 1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven" };
+
+  // Try lesson3 audio, fallback to lesson1
+  const lesson3Audio = (f) => `/audio/lesson3/${f}`;
+  const lesson1Audio = (f) => `/audio/lesson1/${f}`;
+
+  const questionAudioPrimary = lesson3Audio("how_many_fish.mp3");
+  const questionAudioFallback = lesson1Audio("how_many_fish.mp3");
+
+  const letsCountPrimary = lesson3Audio("lets_count.mp3");
+  const letsCountFallback = lesson1Audio("lets_count.mp3");
+
   const correctAudios = [
-    "/audio/lesson1/correct/good_job.mp3",
-    "/audio/lesson1/correct/nice_work.mp3",
+    lesson3Audio("correct/good_job.mp3"),
+    lesson3Audio("correct/nice_work.mp3"),
   ];
-  const wrongAudios = [
-    "/audio/lesson1/wrong/good_attempt.mp3",
-    "/audio/lesson1/wrong/nice_try.mp3",
+  const correctFallbacks = [
+    lesson1Audio("correct/good_job.mp3"),
+    lesson1Audio("correct/nice_work.mp3"),
   ];
 
-  // your fish images
+  const wrongAudios = [
+    lesson3Audio("wrong/good_attempt.mp3"),
+    lesson3Audio("wrong/nice_try.mp3"),
+  ];
+  const wrongFallbacks = [
+    lesson1Audio("wrong/good_attempt.mp3"),
+    lesson1Audio("wrong/nice_try.mp3"),
+  ];
+
+  // images (reuse lesson1 fish sprites)
   const fishImages = [
     "/photos/lesson1/fish1.png",
     "/photos/lesson1/fish2.png",
@@ -41,12 +60,25 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
       .sort((a, b) => a.sort - b.sort)
       .map(({ value }) => value);
 
-  const playRandomAudio = (audioList, callback) => {
-    const randomFile = audioList[Math.floor(Math.random() * audioList.length)];
-    const audio = new Audio(randomFile);
-    activeAudio.current = audio;
-    audio.play();
-    if (callback) audio.onended = callback;
+  const playOneWithFallback = (primaryFile, fallbackFile, cb) => {
+    const a = new Audio(primaryFile);
+    activeAudio.current = a;
+    a.play().catch(() => {});
+    a.onended = cb || null;
+    a.onerror = () => {
+      const b = new Audio(fallbackFile);
+      activeAudio.current = b;
+      b.onended = cb || null;
+      b.onerror = cb || null;
+      b.play().catch(() => {});
+    };
+  };
+
+  const playRandomAudio = (audioList, fallbackList, callback) => {
+    const idx = Math.floor(Math.random() * audioList.length);
+    const primary = audioList[idx];
+    const fallback = fallbackList[idx] || fallbackList[0];
+    playOneWithFallback(primary, fallback, callback);
   };
 
   useEffect(() => {
@@ -61,9 +93,9 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   }, [roundIndex]);
 
   const startNewRound = () => {
-    const randomCount = Math.floor(Math.random() * 3) + 1;
+    // pick 1–7 fishes
+    const randomCount = Math.floor(Math.random() * 7) + 1;
 
-    // prepare randomized fish images for this round (stable during the round)
     const roundFish = Array.from({ length: randomCount }, () => {
       const idx = Math.floor(Math.random() * fishImages.length);
       return fishImages[idx];
@@ -71,21 +103,45 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
 
     setCorrectAnswer(randomCount);
     setFishSet(roundFish);
-    setShuffledAnswers(shuffleArray([1, 2, 3]));
+    setShuffledAnswers(shuffleArray([1, 2, 3, 4, 5, 6, 7]));
     setSelected(null);
     setIsCounting(false);
     setShowChoices(false);
     setHighlightIndex(-1);
 
-    const q1 = new Audio(questionAudio);
-    activeAudio.current = q1;
-    q1.play();
-    q1.onended = () => {
-      const q2 = new Audio(letsCountAudio);
-      activeAudio.current = q2;
-      q2.play();
-      q2.onended = () => setShowChoices(true);
+    // Q: "How many fish?"
+    playOneWithFallback(questionAudioPrimary, questionAudioFallback, () => {
+      playOneWithFallback(letsCountPrimary, letsCountFallback, () => setShowChoices(true));
+    });
+  };
+
+  // Try playing a file; if it errors, fallback to base number audio (lesson1)
+  const playWithFallback = (primarySrc, fallbackSrc, onEnded) => {
+    const audio = new Audio(primarySrc);
+    activeAudio.current = audio;
+    const cleanup = () => {
+      audio.onended = null;
+      audio.onerror = null;
     };
+    audio.onended = () => {
+      cleanup();
+      onEnded?.();
+    };
+    audio.onerror = () => {
+      cleanup();
+      const fb = new Audio(fallbackSrc);
+      activeAudio.current = fb;
+      fb.onended = onEnded || null;
+      fb.onerror = onEnded || null;
+      fb.play().catch(() => {});
+    };
+    audio.play().catch(() => {
+      const fb = new Audio(fallbackSrc);
+      activeAudio.current = fb;
+      fb.onended = onEnded || null;
+      fb.onerror = onEnded || null;
+      fb.play().catch(() => {});
+    });
   };
 
   const handleAnswer = (num) => {
@@ -96,30 +152,34 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
 
     const playNextNumber = () => {
       if (i <= num) {
-        const base = `/audio/numbers/${numberAudioMap[i]}.mp3`;
+        const word = numberAudioMap[i];
+        const base3 = `/audio/lesson3/${word}.mp3`;
+        const term3 = `/audio/lesson3/${word}_fish.mp3`;
 
-        // If you have terminal clips like "one_fish.mp3", keep these lines:
-        const terminal = `/audio/lesson1/${numberAudioMap[i]}_fish.mp3`;
-        const file = i === num ? terminal : base;
+        const base1 = `/audio/lesson1/${word}.mp3`;
+        const term1 = `/audio/lesson1/${word}_fish.mp3`;
 
-        const audio = new Audio(file);
-        activeAudio.current = audio;
         setHighlightIndex(i - 1);
-        audio.play();
-        audio.onended = () => {
-          setTimeout(() => {
-            i++;
-            playNextNumber();
-          }, 600);
-        };
+
+        // use terminal at last count, else base; fallback to lesson1
+        playWithFallback(
+          i === num ? term3 : base3,
+          i === num ? term1 : base1,
+          () => {
+            setTimeout(() => {
+              i++;
+              playNextNumber();
+            }, 600);
+          }
+        );
       } else {
         setTimeout(() => {
           if (num === correctAnswer) {
-            playRandomAudio(correctAudios, () =>
+            playRandomAudio(correctAudios, correctFallbacks, () =>
               setTimeout(() => advanceRound(), 700)
             );
           } else {
-            playRandomAudio(wrongAudios, () =>
+            playRandomAudio(wrongAudios, wrongFallbacks, () =>
               setTimeout(() => {
                 setIsCounting(false);
                 setHighlightIndex(-1);
@@ -157,6 +217,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
           justifyContent: "center",
           gap: "30px",
           margin: "30px 0",
+          flexWrap: "wrap",
         }}
       >
         {fishSet.map((src, i) => (
@@ -184,6 +245,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
             justifyContent: "center",
             gap: "40px",
             marginTop: "20px",
+            flexWrap: "wrap",
           }}
         >
           {shuffledAnswers.map((num) => (

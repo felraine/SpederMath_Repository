@@ -1,0 +1,60 @@
+.nd-area {
+  position: relative;
+  background: linear-gradient(#cfe9ff, #9ad0ff);
+  overflow: hidden;
+  touch-action: none; /* smooth touch drag */
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  user-select: none;
+}
+
+.nd-basket {
+  position: absolute;
+  bottom: 12px;
+  pointer-events: none;
+}
+
+.nd-number {
+  position: absolute;
+  image-rendering: auto;
+  pointer-events: none;
+}
+
+.nd-hud {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: grid;
+  gap: 6px;
+  background: rgba(255,255,255,0.75);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-weight: 700;
+}
+
+.nd-row { display: flex; align-items: center; gap: 8px; }
+.nd-label { opacity: 0.8; }
+
+.nd-seq { display: flex; gap: 6px; }
+.nd-seq-num {
+  width: 28px; height: 28px; display: grid; place-items: center;
+  border-radius: 8px; background: rgba(0,0,0,0.06);
+}
+.nd-seq-num.current { background: #ffeb8a; }
+.nd-seq-num.done { background: #b7f7b7; }
+
+.nd-score { font-size: 18px; }
+
+.nd-loading,
+.nd-finish {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: #174d7a;
+  text-shadow: 0 1px 0 #fff;
+  background: rgba(255,255,255,0.25);
+}

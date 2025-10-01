@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import LessonLayout from "../reusable/LessonLayout";
+import LessonLayout from "../../../reusable/LessonLayout";
 import axios from "axios";
 import Confetti from "react-confetti";
-import MunchieTutorial from "../lessons/tutorial/MunchieTutorial";
+import MunchieTutorial from "../../tutorial/MunchieTutorial";
 
 
 const generateAdditionLessons = (total = 10) => {
@@ -37,7 +37,7 @@ const passedSound = () => new Audio("/passed-sound.mp3").play();
 const failedSound = () => new Audio("/failed-sound.mp3").play();
 const eatSound = () => new Audio("/munchie/munchie-eat.mp3").play();
 
-const AddFeedMunchie = () => {
+const AddFeedMunchie = ({ lessonId, title }) => {
   const [lessons] = useState(generateAdditionLessons());
   const [currentStep, setCurrentStep] = useState(0);
   const [addedFruit, setAddedFruit] = useState(0);
@@ -132,6 +132,8 @@ const AddFeedMunchie = () => {
       y >= rect.top - margin &&
       y <= rect.bottom + margin;
 
+      setIsDraggingOver(isNearMouth);
+
     if (isNearMouth) {
       if (munchieFace !== "/munchie/openmouth_Munchie.png") {
         setMunchieFace("/munchie/openmouth_Munchie.png");
@@ -197,7 +199,7 @@ const AddFeedMunchie = () => {
       score,
       status,
       timeSpentInSeconds: timeSpent,
-      lessonId: 4,
+      lessonId,
     };
     try {
       await axios.post("http://localhost:8080/api/student-progress/submit", progress, {
@@ -231,7 +233,7 @@ const AddFeedMunchie = () => {
 
   if (showReadyModal) {
     return (
-      <LessonLayout lesson={{ lessonid: 4, title: "Feed Munchie Ready" }} progress="Tutorial">
+      <LessonLayout lesson={{ lessonid: lessonId, title: title || "Feed Munchie!" }} progress="Tutorial">
         <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50 px-6">
           <div className="bg-white p-10 rounded-xl shadow-md border border-black max-w-md w-full text-center">
             <img
@@ -256,7 +258,7 @@ const AddFeedMunchie = () => {
 
   return (
     <LessonLayout
-      lesson={{ lessonid: 4, title: "Feed Munchie!" }}
+      lesson={{ lessonid: lessonId, title: title || "Feed Munchie!" }}
       progress={`${currentStep + 1}/${lessons.length}`}
       showWrong={showWrong}
       showConfetti={showConfetti}
@@ -349,7 +351,7 @@ const AddFeedMunchie = () => {
                             setTimeout(() => {
                               setTrayFruits((prev) => {
                                 const updated = [...prev];
-                                updated[i] = true;
+                                updated[i] = false;
                                 return updated;
                               });
                             }, 0);
