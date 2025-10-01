@@ -238,7 +238,7 @@ function StudentDashboard() {
           })}
 
           {/* Placeholder cards for locked lessons */}
-          {Array(6 - lessons.length)
+          {Array(9 - lessons.length)
             .fill(null)
             .map((_, i) => (
               <div

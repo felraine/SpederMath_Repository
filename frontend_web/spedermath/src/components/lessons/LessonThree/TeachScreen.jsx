@@ -1,39 +1,64 @@
+// src/lessons/lesson3/TeachScreen.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import "../../css/overlays.css";
 
-const TeachScreen = ({ onNext }) => {
-  const [step, setStep] = useState(1);
+const TeachScreen = ({ onNext, meta }) => {
+  // ========== CONFIG ==========
+  const MAX_N = 7;
+
+  const INTRO_START = 1;
+  const INTRO_END = MAX_N;
+  const REVIEW_STEP = MAX_N + 1;
+  const COUNT_START = REVIEW_STEP + 1;
+  const COUNT_END = COUNT_START + MAX_N - 1;
+
+  const [step, setStep] = useState(INTRO_START);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(null);
   const [reviewFinished, setReviewFinished] = useState(false);
   const [currentCount, setCurrentCount] = useState(0);
 
-  // Counting fish visuals for the left side in steps 5–7
+  // Counting visuals for the left side during counting steps
   const [fishSet, setFishSet] = useState([]);
 
-  // --- Challenge state (only after step 7) ---
+  // --- Challenge state (only after COUNT_END) ---
   const [challengeActive, setChallengeActive] = useState(false);
-  const [challengeFish, setChallengeFish] = useState([]); // exactly 3 fish
-  const [targetIndex, setTargetIndex] = useState(1);      // 1,2,3 (positional)
+  const [challengeFish, setChallengeFish] = useState([]); // exactly MAX_N fish
+  const [targetIndex, setTargetIndex] = useState(1);      // 1..MAX_N positional
 
-  // NEW
   const MAX_CHALLENGE_ROUNDS = 3;
   const [challengeRounds, setChallengeRounds] = useState(0); // 0..3
-  const [roundComplete, setRoundComplete] = useState(false); // NEW
+  const [roundComplete, setRoundComplete] = useState(false);
 
-
-  // Preface before step 5 counting
+  // Preface before first counting step
   const [prefacePlayed, setPrefacePlayed] = useState(false);
 
   const audioRef = useRef(null);
   const playVersion = useRef(0); // cancels stale sequences
 
+  // ====== Assets ======
   const stepData = {
-    1: { title: "One",   img: "/photos/number_pngs/number_1.png", alt: "Number 1", audio: "/audio/numbers/one.mp3" },
-    2: { title: "Two",   img: "/photos/number_pngs/number_2.png", alt: "Number 2", audio: "/audio/numbers/two.mp3" },
-    3: { title: "Three", img: "/photos/number_pngs/number_3.png", alt: "Number 3", audio: "/audio/numbers/three.mp3" },
+    1: { title: "One",   img: "/photos/number_pngs/number_1.png", alt: "Number 1", audio3: "/audio/numbers/one.mp3",   audio1: "/audio/lesson1/one.mp3" },
+    2: { title: "Two",   img: "/photos/number_pngs/number_2.png", alt: "Number 2", audio3: "/audio/numbers/two.mp3",   audio1: "/audio/lesson1/two.mp3" },
+    3: { title: "Three", img: "/photos/number_pngs/number_3.png", alt: "Number 3", audio3: "/audio/numbers/three.mp3", audio1: "/audio/lesson1/three.mp3" },
+    4: { title: "Four",  img: "/photos/number_pngs/number_4.png", alt: "Number 4", audio3: "/audio/numbers/four.mp3",  audio1: "/audio/lesson1/four.mp3" },
+    5: { title: "Five",  img: "/photos/number_pngs/number_5.png", alt: "Number 5", audio3: "/audio/numbers/five.mp3",  audio1: "/audio/lesson1/five.mp3" },
+    6: { title: "Six",   img: "/photos/number_pngs/number_6.png", alt: "Number 6", audio3: "/audio/numbers/six.mp3",   audio1: "/audio/lesson1/six.mp3" },
+    7: { title: "Seven", img: "/photos/number_pngs/number_7.png", alt: "Number 7", audio3: "/audio/numbers/seven.mp3", audio1: "/audio/lesson1/seven.mp3" },
   };
+
+  const numberWord = { 1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven" };
+  const numberWordsTitle = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven"];
+
+  // Build counting audio arrays dynamically; try lesson3 terminal "_fish" then fallback to lesson1/plain number
+  const countingAudiosFor = (n) =>
+    Array.from({ length: n }, (_, i) => {
+      const k = i + 1;
+      const w = numberWord[k];
+      // terminal preferred in lesson3, fallback handled when played
+      return k === n ? `/audio/lesson3/${w}_fish.mp3` : `/audio/numbers/${w}.mp3`;
+    });
 
   const FISH_IMAGES = [
     "/photos/lesson1/fish1.png",
@@ -42,33 +67,49 @@ const TeachScreen = ({ onNext }) => {
     "/photos/lesson1/fish4.png",
   ];
 
-  // Counting audio (fish)
-  const fishAudio = {
-    1: ["/audio/lesson1/one_fish.mp3"],
-    2: ["/audio/numbers/one.mp3", "/audio/lesson1/two_fish.mp3"],
-    3: ["/audio/numbers/one.mp3", "/audio/numbers/two.mp3", "/audio/lesson1/three_fish.mp3"],
-  };
+  const challengePromptAudio = (n) => ({
+    primary: `/audio/lesson3/click_${numberWord[n]}_fish.mp3`,
+    fallback: stepData[n].audio1 || `/audio/numbers/${numberWord[n]}.mp3`,
+  });
+  const challengeCorrectAudio = (n) => ({
+    primary: `/audio/lesson3/correct_fish_${numberWord[n]}.mp3`,
+    fallback: stepData[n].audio1 || `/audio/numbers/${numberWord[n]}.mp3`,
+  });
+  const challengeWrongAudio = { primary: "/audio/lesson3/try_again.mp3", fallback: "/audio/lesson1/try_again.mp3" };
 
-  // Challenge audios
-  const challengePromptAudio = {
-    1: "/audio/lesson1/click_one_fish.mp3",
-    2: "/audio/lesson1/click_two_fish.mp3",
-    3: "/audio/lesson1/click_three_fish.mp3",
-  };
-  const challengeCorrectAudio = {
-    1: "/audio/lesson1/correct_fish_one.mp3",
-    2: "/audio/lesson1/correct_fish_two.mp3",
-    3: "/audio/lesson1/correct_fish_three.mp3",
-  };
-  const challengeWrongAudio = "/audio/lesson1/try_again.mp3";
+  const COUNT_WITH_FISH_PREFACE = { primary: "/audio/lesson3/count_with_fish.mp3", fallback: "/audio/lesson1/count_with_fish.mp3" };
+  const LETS_REVIEW_AUDIO       = { primary: "/audio/lesson3/lets_review.mp3",      fallback: "/audio/lesson1/lets_review.mp3" };
 
-  // Preface audios
-  const COUNT_WITH_FISH_PREFACE = "/audio/lesson1/count_with_fish.mp3";
-  const LETS_REVIEW_AUDIO = "/audio/lesson1/lets_review.mp3";
+  /** Promise-based audio play (single) with fallback */
+  const playWithFallback = (primary, fallback) =>
+    new Promise((resolve) => {
+      const a = new Audio(primary);
+      audioRef.current = a;
+      setIsAudioPlaying(true);
 
-  const numberWords = ["Zero", "One", "Two", "Three"];
+      const end = () => {
+        setIsAudioPlaying(false);
+        resolve();
+      };
 
-  /** Promise-based audio play that respects “latest playVersion” */
+      a.onended = end;
+      a.onerror = () => {
+        const b = new Audio(fallback);
+        audioRef.current = b;
+        b.onended = end;
+        b.onerror = end;
+        b.play().catch(end);
+      };
+      a.play().catch(() => {
+        const b = new Audio(fallback);
+        audioRef.current = b;
+        b.onended = end;
+        b.onerror = end;
+        b.play().catch(end);
+      });
+    });
+
+  /** Promise-based audio play that respects “latest playVersion” (no fallback) */
   const playAudioAsync = (src) => {
     const myVersion = ++playVersion.current;
     return new Promise((resolve) => {
@@ -89,7 +130,7 @@ const TeachScreen = ({ onNext }) => {
 
         a.onended = cleanup;
         a.onerror = cleanup;
-        a.play().catch(() => cleanup()); // if autoplay blocked, resolve
+        a.play().catch(() => cleanup());
       } catch {
         setIsAudioPlaying(false);
         resolve();
@@ -97,63 +138,64 @@ const TeachScreen = ({ onNext }) => {
     });
   };
 
-  // Intro numbers (steps 1–3): speak each number upon entering that step
+  // Intro numbers (steps 1..MAX_N): speak each number (try lesson3, fallback lesson1)
   useEffect(() => {
-    if (step > 3) return;
-    const current = stepData[step];
-    if (!current) return;
-    playAudioAsync(current.audio);
+    if (step < INTRO_START || step > INTRO_END) return;
+    const data = stepData[step];
+    if (!data) return;
+    playWithFallback(data.audio3, data.audio1 || data.audio3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  const pickRandomFish = (n) =>
+    Array.from({ length: n }, () => FISH_IMAGES[Math.floor(Math.random() * FISH_IMAGES.length)]);
+
   const startChallengeRound = async () => {
-    setRoundComplete(false); 
-    const challengeImgs = pickRandomFish(3);
-    setChallengeFish(challengeImgs);
+    setRoundComplete(false);
+    const imgs = pickRandomFish(MAX_N);
+    setChallengeFish(imgs);
+    const target = 1 + Math.floor(Math.random() * MAX_N);
+    setTargetIndex(target);
+    setChallengeActive(true);
+    setReviewFinished(false);
 
-    const target = 1 + Math.floor(Math.random() * 3);
-      setTargetIndex(target);
-
-      setChallengeActive(true);
-      setReviewFinished(false); // lock the button while the round is active
-      await playAudioAsync(challengePromptAudio[target]); // "Click fish number X"
-    };
+    const ap = challengePromptAudio(target);
+    await playWithFallback(ap.primary, ap.fallback);
+  };
 
   const handleNext = () => {
-    if (step < 3) setStep((p) => p + 1);
-    else if (step === 3) setStep(4);
-    else if (step === 4) setStep(5);
-    else if (step >= 5 && step < 7) setStep((p) => p + 1);
-    else if (step === 7) {
-      if (isAudioPlaying) return;
+    if (step < INTRO_END) return setStep((p) => p + 1);
+    if (step === INTRO_END) return setStep(REVIEW_STEP);
+    if (step === REVIEW_STEP) return setStep(COUNT_START);
+    if (step >= COUNT_START && step < COUNT_END) return setStep((p) => p + 1);
 
+    if (step === COUNT_END) {
+      if (isAudioPlaying) return;
       if (challengeRounds < MAX_CHALLENGE_ROUNDS) {
-        // If we haven't started any round OR the last round just finished,
-        // start/advance to the next one.
         startChallengeRound();
       } else {
-        // All rounds done -> leave challenge and proceed
         setChallengeActive(false);
-        onNext();
+        onNext?.();
       }
     }
   };
 
-  // Review (step 4): play “Let’s review!” THEN begin the 1→2→3 review sequence
+  // Review: play “Let’s review!” THEN 1→MAX_N sequence (with fallbacks)
   useEffect(() => {
-    if (step !== 4) return;
+    if (step !== REVIEW_STEP) return;
     let cancelled = false;
     setReviewFinished(false);
 
     const run = async () => {
-      await playAudioAsync(LETS_REVIEW_AUDIO);
+      await playWithFallback(LETS_REVIEW_AUDIO.primary, LETS_REVIEW_AUDIO.fallback);
       if (cancelled) return;
 
-      for (let i = 1; i <= 3; i++) {
+      for (let i = 1; i <= MAX_N; i++) {
         if (cancelled) return;
         setHighlightIndex(i);
-        await playAudioAsync(stepData[i].audio);
+        await playWithFallback(stepData[i].audio3, stepData[i].audio1 || stepData[i].audio3);
         setHighlightIndex(null);
-        if (i < 3) await new Promise((r) => setTimeout(r, 600));
+        if (i < MAX_N) await new Promise((r) => setTimeout(r, 600));
       }
       if (!cancelled) setReviewFinished(true);
     };
@@ -168,53 +210,54 @@ const TeachScreen = ({ onNext }) => {
       }
       setHighlightIndex(null);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  // Utility: pick N random fish images
-  const pickRandomFish = (n) =>
-    Array.from({ length: n }, () => FISH_IMAGES[Math.floor(Math.random() * FISH_IMAGES.length)]);
-
-  // Fish counting (steps 5–7), with preface on step 5; challenge ONLY after step 7
+  // Fish counting steps (with fallbacks for terminal _fish)
   useEffect(() => {
-    if (step < 5 || step > 7) return;
+    if (step < COUNT_START || step > COUNT_END) return;
     let cancelled = false;
     setReviewFinished(false);
     setCurrentCount(0);
-    setChallengeActive(false); // reset when entering any of 5–7
+    setChallengeActive(false);
 
-    const count = step - 4; // 1,2,3
-    const audios = fishAudio[count] || [];
+    const count = step - COUNT_START + 1;
+    const audios = countingAudiosFor(count);
 
     const run = async () => {
       setFishSet(pickRandomFish(count));
 
-      if (step === 5 && !prefacePlayed) {
+      if (step === COUNT_START && !prefacePlayed) {
         setPrefacePlayed(true);
-        await playAudioAsync(COUNT_WITH_FISH_PREFACE);
+        await playWithFallback(COUNT_WITH_FISH_PREFACE.primary, COUNT_WITH_FISH_PREFACE.fallback);
         if (cancelled) return;
         await new Promise((r) => setTimeout(r, 500));
       } else {
         await new Promise((r) => setTimeout(r, 400));
       }
 
-      // Counting sequence
       for (let i = 0; i < audios.length; i++) {
         if (cancelled) return;
-        setHighlightIndex(i + 1);
-        setCurrentCount(i + 1);
-        await playAudioAsync(audios[i]);
+        const k = i + 1;
+        setHighlightIndex(k);
+        setCurrentCount(k);
+
+        const primary = audios[i];
+        const baseWord = numberWord[k];
+        // chained fallback: lesson3 -> lesson1 terminal/plain -> lesson1 plain
+        const fallback1 = primary.endsWith("_fish.mp3")
+          ? `/audio/lesson1/${baseWord}_fish.mp3`
+          : `/audio/numbers/${baseWord}.mp3`;
+        const fallback2 = `/audio/numbers/${baseWord}.mp3`;
+
+        await playWithFallback(primary, fallback1);
+        // If the first fallback was a terminal that’s also missing, it already tried; we keep it simple.
+
         setHighlightIndex(null);
         if (i < audios.length - 1) await new Promise((r) => setTimeout(r, 800));
       }
-      if (cancelled) return;
 
-      // After counting:
-      if (step === 7) {
-        // Do NOT start challenge automatically. Let the user press the button to start.
-        setReviewFinished(true); // enable the button
-      } else {
-        setReviewFinished(true);
-      }
+      if (!cancelled) setReviewFinished(true);
     };
 
     run();
@@ -228,22 +271,22 @@ const TeachScreen = ({ onNext }) => {
       }
       setHighlightIndex(null);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, prefacePlayed]);
 
-  // Handle challenge clicks (exactly 3 fish; click correct positional index)
-const handleChallengeClick = async (clickedIndex) => {
-  if (!challengeActive || isAudioPlaying || roundComplete) return; // ignore extra clicks
+  const handleChallengeClick = async (clickedIndex) => {
+    if (!challengeActive || isAudioPlaying || roundComplete) return;
 
-  if (clickedIndex === targetIndex) {
-    await playAudioAsync(challengeCorrectAudio[targetIndex]);
-    setRoundComplete(true);              // NEW: round is finished
-    setChallengeRounds((r) => r + 1);
-    setReviewFinished(true);             // allow the bottom button
-  } else {
-    await playAudioAsync(challengeWrongAudio);
-  }
-};
-
+    if (clickedIndex === targetIndex) {
+      const ac = challengeCorrectAudio(targetIndex);
+      await playWithFallback(ac.primary, ac.fallback);
+      setRoundComplete(true);
+      setChallengeRounds((r) => r + 1);
+      setReviewFinished(true);
+    } else {
+      await playWithFallback(challengeWrongAudio.primary, challengeWrongAudio.fallback);
+    }
+  };
 
   // Clean up audio on unmount
   useEffect(() => {
@@ -256,15 +299,16 @@ const handleChallengeClick = async (clickedIndex) => {
     };
   }, []);
 
+  // ======= UI =======
   return (
     <section className="lesson-screen relative w-full h-full flex flex-col items-center justify-start">
       {/* Headers */}
-      {step === 4 && (
+      {step === REVIEW_STEP && (
         <div className="flex items-center justify-center mb-2">
           <h1 className="text-4xl font-extrabold tracking-tight drop-shadow-md">Let’s Review!</h1>
         </div>
       )}
-      {step === 5 && (
+      {step === COUNT_START && (
         <div className="flex items-center justify-center mb-2">
           <h1 className="text-3xl font-bold drop-shadow-sm">Now let’s count with our fish friends!</h1>
         </div>
@@ -272,8 +316,8 @@ const handleChallengeClick = async (clickedIndex) => {
 
       {/* Content */}
       <div className="flex-grow flex flex-col items-center justify-center text-center w-full">
-        {/* Intro numbers (1–3) */}
-        {step <= 3 && (
+        {/* Intro numbers (1–MAX_N) */}
+        {step >= INTRO_START && step <= INTRO_END && (
           <div className="flex flex-col items-center -mt-2 gap-6">
             <h2 className="text-4xl sm:text-5xl font-bold">{stepData[step].title}</h2>
             <motion.img
@@ -289,35 +333,35 @@ const handleChallengeClick = async (clickedIndex) => {
           </div>
         )}
 
-        {/* Review row (step 4) */}
-        {step === 4 && (
-          <div className="flex flex-row gap-12 justify-center items-center">
-            {Object.keys(stepData).map((num) => (
+        {/* Review row */}
+        {step === REVIEW_STEP && (
+          <div className="flex flex-row gap-6 sm:gap-10 justify-center items-center flex-wrap">
+            {Array.from({ length: MAX_N }, (_, i) => i + 1).map((num) => (
               <motion.img
                 key={num}
                 src={stepData[num].img}
                 alt={stepData[num].alt}
-                className="max-w-[140px] w-full"
-                animate={{ scale: highlightIndex === parseInt(num) ? 1.35 : 1 }}
+                className="max-w-[120px] sm:max-w-[140px] w-full"
+                animate={{ scale: highlightIndex === num ? 1.35 : 1 }}
                 transition={{ duration: 0.4 }}
               />
             ))}
           </div>
         )}
 
-        {/* Fish counting (5–7) OR challenge */}
-        {step >= 5 && step <= 7 && (
+        {/* Counting OR Challenge */}
+        {step >= COUNT_START && step <= COUNT_END && (
           <>
             {!challengeActive && (
-              <div className="flex flex-row items-center justify-between w-full px-10 -mt-1">
-                <div className="flex flex-row gap-10">
+              <div className="flex flex-row items-center justify-between w-full px-6 sm:px-10 -mt-1">
+                <div className="flex flex-row gap-6 sm:gap-8 flex-wrap">
                   <AnimatePresence>
                     {fishSet.slice(0, currentCount).map((src, idx) => (
                       <motion.img
                         key={`${src}-${idx}`}
                         src={src}
                         alt="Fish"
-                        className="w-[110px] sm:w-[120px] md:w-[140px]"
+                        className="w-[100px] sm:w-[120px] md:w-[140px]"
                         initial={{ opacity: 0, scale: 0.6, y: 12 }}
                         animate={{ opacity: 1, scale: highlightIndex === idx + 1 ? 1.3 : 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.6 }}
@@ -327,14 +371,14 @@ const handleChallengeClick = async (clickedIndex) => {
                   </AnimatePresence>
                 </div>
 
-                <div className="flex flex-col items-center mr-8">
+                <div className="flex flex-col items-center mr-2 sm:mr-8">
                   {currentCount > 0 && (
                     <>
                       <motion.img
                         key={`num-${currentCount}-fish`}
                         src={stepData[currentCount]?.img}
                         alt={stepData[currentCount]?.alt}
-                        className="w-[180px] sm:w-[200px] md:w-[220px]"
+                        className="w-[170px] sm:w-[200px] md:w-[220px]"
                         style={{ filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.35)) drop-shadow(0 0 8px rgba(255,255,255,0.65))" }}
                         initial={{ opacity: 0, scale: 0.85 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -345,7 +389,7 @@ const handleChallengeClick = async (clickedIndex) => {
                         animate={{ opacity: [0, 1], y: [8, 0] }}
                         transition={{ duration: 0.35 }}
                       >
-                        {numberWords[currentCount]}
+                        {numberWordsTitle[currentCount]}
                       </motion.span>
                     </>
                   )}
@@ -359,11 +403,11 @@ const handleChallengeClick = async (clickedIndex) => {
                   Click on <span className="underline">fish number {targetIndex}</span>.
                 </h3>
 
-                <div className="flex flex-row gap-10">
+                <div className="flex flex-row gap-6 sm:gap-8 flex-wrap justify-center">
                   {challengeFish.map((src, i) => (
                     <motion.div
                       key={`${src}-challenge-${i}`}
-                      className="relative w-[120px] sm:w-[140px] md:w-[160px] cursor-pointer"
+                      className="relative w-[110px] sm:w-[130px] md:w-[150px] cursor-pointer"
                       initial={{ opacity: 0, scale: 0.85, y: 10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       whileHover={{ scale: 1.05 }}
@@ -377,14 +421,8 @@ const handleChallengeClick = async (clickedIndex) => {
                         className="w-full h-auto select-none pointer-events-none"
                         draggable={false}
                       />
-                      {/* Centered number overlay; pointer-events-none so clicks pass to wrapper */}
-                      <span
-                        className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                      >
-                        <span
-                          className="text-white text-3xl sm:text-4xl font-extrabold drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]
-                                   rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center"
-                        >
+                      <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <span className="text-white text-3xl sm:text-4xl font-extrabold drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)] rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">
                           {i + 1}
                         </span>
                       </span>
@@ -399,7 +437,8 @@ const handleChallengeClick = async (clickedIndex) => {
 
       {/* Buttons */}
       <div className="absolute bottom-6 right-6">
-        {step <= 3 && (
+        {/* Intro buttons */}
+        {step >= INTRO_START && step <= INTRO_END && (
           <button
             onClick={handleNext}
             disabled={isAudioPlaying}
@@ -408,11 +447,12 @@ const handleChallengeClick = async (clickedIndex) => {
             }`}
             title={isAudioPlaying ? "Please listen first" : "Next"}
           >
-            {step < 3 ? "Next" : "Review"}
+            {step < INTRO_END ? "Next" : "Review"}
           </button>
         )}
 
-        {step === 4 && (
+        {/* Review button */}
+        {step === REVIEW_STEP && (
           <button
             onClick={handleNext}
             disabled={!reviewFinished}
@@ -425,37 +465,35 @@ const handleChallengeClick = async (clickedIndex) => {
           </button>
         )}
 
-        {step >= 5 && step <= 7 && (
+        {/* Counting & Challenge buttons */}
+        {step >= COUNT_START && step <= COUNT_END && (
           <button
             onClick={handleNext}
             disabled={
-              (step < 7 && (!reviewFinished || isAudioPlaying)) ||
-              (step === 7 && (
-                isAudioPlaying ||
-                (!roundComplete && challengeRounds > 0 && challengeRounds < MAX_CHALLENGE_ROUNDS) // during a round
-              ))
+              (!challengeActive && (!reviewFinished || isAudioPlaying)) ||
+              (challengeActive && (isAudioPlaying || (!roundComplete && challengeRounds > 0 && challengeRounds < MAX_CHALLENGE_ROUNDS)))
             }
             className={`px-6 py-3 text-lg rounded-lg transition ${
-              (step < 7 && (!reviewFinished || isAudioPlaying)) ||
-              (step === 7 && (isAudioPlaying || (!roundComplete && challengeRounds > 0 && challengeRounds < MAX_CHALLENGE_ROUNDS)))
+              (!challengeActive && (!reviewFinished || isAudioPlaying)) ||
+              (challengeActive && (isAudioPlaying || (!roundComplete && challengeRounds > 0 && challengeRounds < MAX_CHALLENGE_ROUNDS)))
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-green-600 text-white hover:bg-green-700"
             }`}
             title={
-              step < 7
+              !challengeActive
                 ? (!reviewFinished ? "Please finish listening first" : "Next")
                 : (challengeRounds >= MAX_CHALLENGE_ROUNDS
                     ? "Continue"
-                    : (roundComplete ? "Start next round" : "Finish this round first"))
+                    : (roundComplete ? "Next Round" : "Finish this round first"))
             }
           >
-            {step < 7
+            {!challengeActive
               ? "Next"
               : (challengeRounds >= MAX_CHALLENGE_ROUNDS
                   ? "Continue"
                   : (challengeRounds === 0
                       ? "Start"
-                      : (roundComplete ? "Next Round" : "Next Round"))) }
+                      : (roundComplete ? "Next Round" : "Next Round")))}
           </button>
         )}
       </div>
