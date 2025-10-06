@@ -44,36 +44,31 @@ export default function IntroScreen({ onNext }) {
     };
   }, [ready]);
 
+  //removed intro-subtitle, intro-title, & intro-card intro-centered. Dont delete this comment please. -K
   return (
     <section className="intro-screen">
       <div className="intro-wrap">
-        <div className="intro-card intro-centered">
+        <div>
           <img
-            src="/munchie/eyelessneutral_Munchie.png"
-            alt="Munchie the mascot"
+            src="/sprites/koi-fish.png"
+            alt="Koi Fish"
             className="w-40 h-40 mx-auto mb-6 munchie-bounce"
           />
-
-          <h1 className="intro-title">Welcome, Friend!</h1>
-
-          <p className="intro-subtitle">
-            Let’s learn numbers <span className="font-bold">1</span>,{" "}
-            <span className="font-bold">2</span>, and{" "}
-            <span className="font-bold">3</span>!
-          </p>
-
           <div className="intro-actions">
-            <button
-              className={`btn btn-primary ${
-                !ready ? "opacity-60 cursor-not-allowed" : ""
+           <button
+            onClick={onNext}
+            disabled={!ready}
+            aria-disabled={!ready}
+            title={!ready ? "Please listen first" : "Start Lesson"}
+            className={`font-bold text-white rounded-2xl transition-all duration-200 
+              w-100 h-30 text-6xl shadow-lg active:scale-90 mb-20
+              ${ready
+                ? "bg-[#2ADD45] border-[5px] border-[#2A9A3B] hover:bg-[#29c441]"
+                : "bg-[#2ADD45] border-[5px] border-[#2A9A3B] opacity-60 cursor-not-allowed"
               }`}
-              onClick={onNext}
-              disabled={!ready}
-              aria-disabled={!ready}
-              title={!ready ? "Please listen first" : "Start Lesson"}
-            >
-              Start Lesson
-            </button>
+          >
+            START
+          </button>
           </div>
         </div>
       </div>
