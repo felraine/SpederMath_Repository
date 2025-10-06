@@ -5,7 +5,23 @@ export default function IntroScreen({ onNext }) {
   const [ready, setReady] = useState(false);
   const audioRef = useRef(null);
   const initRef = useRef(false); // create Audio once
+  const [fading, setFading] = useState(false); //play button fadking effect
 
+  const handlePlaySound = () => {
+  if (!ready) return;
+
+  setFading(true);
+
+  const audio = new Audio("/audio/start_lesson.mp3");
+  
+  audio.onended = () => {
+    setTimeout(() => {
+      onNext();
+    }, 100); 
+  };
+
+  audio.play();
+};
   useEffect(() => {
     // 1) Create the audio object only once
     if (!initRef.current) {
@@ -28,9 +44,8 @@ export default function IntroScreen({ onNext }) {
     const handleEnded = () => setReady(true);
     a.addEventListener("ended", handleEnded);
 
-    // 4) Also make sure we start once it’s loadable if needed (in case autoplay blocked then allowed)
+    // 4) Also make sure we start once it’s loadable if needed
     const handleCanPlay = () => {
-      // Only attempt play if not started yet and still not ready
       if (!a.ended && a.currentTime === 0) {
         a.play().catch(() => setReady(true));
       }
@@ -40,7 +55,7 @@ export default function IntroScreen({ onNext }) {
     // 5) Cleanup: remove listeners only (don’t pause/reset the audio)
     return () => {
       a.removeEventListener("ended", handleEnded);
-      // no a.pause()/a.currentTime=0 here — keeps state across StrictMode remounts
+      a.removeEventListener("canplaythrough", handleCanPlay);
     };
   }, [ready]);
 
@@ -48,27 +63,21 @@ export default function IntroScreen({ onNext }) {
   return (
     <section className="intro-screen">
       <div className="intro-wrap">
-        <div>
-          <img
-            src="/sprites/koi-fish.png"
-            alt="Koi Fish"
-            className="w-40 h-40 mx-auto mb-6 munchie-bounce"
-          />
+        <div className="text-center">
+          <h1 className="intro-title">Play</h1>
           <div className="intro-actions">
            <button
-            onClick={onNext}
+            onClick={handlePlaySound}
             disabled={!ready}
-            aria-disabled={!ready}
-            title={!ready ? "Please listen first" : "Start Lesson"}
-            className={`font-bold text-white rounded-2xl transition-all duration-200 
-              w-100 h-30 text-6xl shadow-lg active:scale-90 mb-20
-              ${ready
-                ? "bg-[#2ADD45] border-[5px] border-[#2A9A3B] hover:bg-[#29c441]"
-                : "bg-[#2ADD45] border-[5px] border-[#2A9A3B] opacity-60 cursor-not-allowed"
-              }`}
-          >
-            START
-          </button>
+            className={`w-[220px] h-[220px] md:w-[300px] md:h-[300px] bg-center bg-no-repeat bg-contain mx-auto block
+              transition-opacity duration-300 ease-out
+              ${fading ? "opacity-0" : "opacity-100"}
+              cursor-pointer
+            `}
+            style={{
+              backgroundImage: "url('/backgrounds/play_button.png')",
+            }}
+          ></button>
           </div>
         </div>
       </div>
