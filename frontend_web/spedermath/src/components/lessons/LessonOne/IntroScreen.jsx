@@ -5,7 +5,7 @@ export default function IntroScreen({ onNext }) {
   const [ready, setReady] = useState(false);
   const audioRef = useRef(null);
   const initRef = useRef(false); // create Audio once
-  const [fading, setFading] = useState(false); //play button fadking effect
+  const [fading, setFading] = useState(false); //play button fading effect
 
   const handlePlaySound = () => {
   if (!ready) return;
