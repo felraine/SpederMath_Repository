@@ -1,70 +1,88 @@
 import React, { useEffect, useState, useRef } from "react";
 import "../../css/overlays.css";
 
+/** Uses /audio/numbers/{word}.mp3 for counting (no TTS). */
 const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   const [roundIndex, setRoundIndex] = useState(0);
   const [correctAnswer, setCorrectAnswer] = useState(1);
   const [selected, setSelected] = useState(null);
   const [isCounting, setIsCounting] = useState(false);
-  const [shuffledAnswers, setShuffledAnswers] = useState([1, 2, 3, 4, 5]); // ← 1–5
+  const [shuffledAnswers, setShuffledAnswers] = useState([1,2,3,4,5,6,7,8,9,10]);
   const [showChoices, setShowChoices] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
-  const [fishSet, setFishSet] = useState([]); // ← randomized fish images per round
+  const [fishSet, setFishSet] = useState([]);
+
   const activeAudio = useRef(null);
+  const runRef = useRef(0);           // cancel token for an in-flight run
+  const timeoutsRef = useRef([]);     // collect timeouts for cleanup
+  const finishedRef = useRef(false);  // ensure result SFX plays once
 
   // ---- assets ----
-  const numberAudioMap = { 1: "one", 2: "two", 3: "three", 4: "four", 5: "five" }; // ← added 4 & 5
+  const numberAudioMap = {1:"one",2:"two",3:"three",4:"four",5:"five",6:"six",7:"seven",8:"eight",9:"nine",10:"ten"};
+  const NUMBER_DIR = "/audio/numbers";           // <-- UPDATED
   const questionAudio = "/audio/lesson1/how_many_fish.mp3";
   const letsCountAudio = "/audio/lesson1/lets_count.mp3";
-  const correctAudios = [
-    "/audio/lesson1/correct/good_job.mp3",
-    "/audio/lesson1/correct/nice_work.mp3",
-  ];
-  const wrongAudios = [
-    "/audio/lesson1/wrong/good_attempt.mp3",
-    "/audio/lesson1/wrong/nice_try.mp3",
-  ];
+  const correctAudios = ["/audio/lesson1/correct/good_job.mp3","/audio/lesson1/correct/nice_work.mp3"];
+  const wrongAudios   = ["/audio/lesson1/wrong/good_attempt.mp3","/audio/lesson1/wrong/nice_try.mp3"];
 
-  // your fish images
   const fishImages = [
     "/photos/lesson1/fish1.png",
     "/photos/lesson1/fish2.png",
     "/photos/lesson1/fish3.png",
     "/photos/lesson1/fish4.png",
   ];
-
   const labelPlural = "fishes";
 
   const shuffleArray = (array) =>
-    array
-      .map((value) => ({ value, sort: Math.random() }))
-      .sort((a, b) => a.sort - b.sort)
-      .map(({ value }) => value);
+    array.map((v) => ({ v, r: Math.random() }))
+         .sort((a, b) => a.r - b.r)
+         .map(({ v }) => v);
+
+  const clearTimers = () => {
+    timeoutsRef.current.forEach(clearTimeout);
+    timeoutsRef.current = [];
+  };
+  const setT = (fn, ms) => {
+    const id = setTimeout(fn, ms);
+    timeoutsRef.current.push(id);
+    return id;
+  };
+
+  const stopAllAudio = () => {
+    if (activeAudio.current) {
+      try { activeAudio.current.pause(); } catch {}
+      activeAudio.current = null;
+    }
+  };
 
   const playRandomAudio = (audioList, callback) => {
-    const randomFile = audioList[Math.floor(Math.random() * audioList.length)];
-    const audio = new Audio(randomFile);
-    activeAudio.current = audio;
-    audio.play().catch(() => {}); // ignore autoplay errors
-    if (callback) audio.onended = callback;
+    const src = audioList[Math.floor(Math.random() * audioList.length)];
+    const a = new Audio(src);
+    activeAudio.current = a;
+    a.onended = callback || null;
+    a.onerror = callback || null;
+    a.play().catch(() => callback && callback());
   };
 
   useEffect(() => {
     startNewRound();
     return () => {
-      if (activeAudio.current) {
-        activeAudio.current.pause();
-        activeAudio.current.currentTime = 0;
-      }
+      runRef.current++;    // cancel pending
+      clearTimers();
+      stopAllAudio();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roundIndex]);
 
   const startNewRound = () => {
-    // pick 1–5 fishes
-    const randomCount = Math.floor(Math.random() * 5) + 1; // ← 1..5
+    // reset guards
+    runRef.current++;
+    finishedRef.current = false;
+    clearTimers();
+    stopAllAudio();
 
-    // prepare randomized fish images for this round (stable during the round)
+    // 1..10 fishes
+    const randomCount = Math.floor(Math.random() * 10) + 1;
     const roundFish = Array.from({ length: randomCount }, () => {
       const idx = Math.floor(Math.random() * fishImages.length);
       return fishImages[idx];
@@ -72,7 +90,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
 
     setCorrectAnswer(randomCount);
     setFishSet(roundFish);
-    setShuffledAnswers(shuffleArray([1, 2, 3, 4, 5])); // ← choices 1..5
+    setShuffledAnswers(shuffleArray(Array.from({ length: 10 }, (_, i) => i + 1)));
     setSelected(null);
     setIsCounting(false);
     setShowChoices(false);
@@ -89,71 +107,92 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
     };
   };
 
-  // Try playing a file; if it errors (e.g., four_fish/five_fish not added yet), fallback to base number audio
-  const playWithFallback = (primarySrc, fallbackSrc, onEnded) => {
-    const audio = new Audio(primarySrc);
-    activeAudio.current = audio;
-    const cleanup = () => {
-      audio.onended = null;
-      audio.onerror = null;
+  /** Try each URL in sequence. If all fail, just advance silently (no TTS). */
+  const playChain = (urls, onDone) => {
+    const myRun = runRef.current;
+    const list = [...new Set(urls.filter(Boolean))];
+    let i = 0;
+    let done = false;
+
+    const finish = () => {
+      if (done || myRun !== runRef.current) return;
+      done = true;
+      onDone?.();
     };
-    audio.onended = () => {
-      cleanup();
-      onEnded?.();
+
+    const tryNext = () => {
+      if (myRun !== runRef.current) return;
+      if (i >= list.length) return finish(); // nothing playable
+      const src = list[i++];
+      const a = new Audio(src);
+      activeAudio.current = a;
+      a.onended = finish;
+      a.onerror = () => tryNext();
+      a.play().catch(() => tryNext());
     };
-    audio.onerror = () => {
-      cleanup();
-      const fb = new Audio(fallbackSrc);
-      activeAudio.current = fb;
-      fb.onended = onEnded || null;
-      fb.play().catch(() => {});
-    };
-    audio.play().catch(() => {
-      // If play fails (autoplay), still try fallback
-      const fb = new Audio(fallbackSrc);
-      activeAudio.current = fb;
-      fb.onended = onEnded || null;
-      fb.play().catch(() => {});
-    });
+
+    tryNext();
   };
 
   const handleAnswer = (num) => {
     if (isCounting) return;
+
+    // fresh guarded run for this click
+    runRef.current++;
+    const myRun = runRef.current;
+    finishedRef.current = false;
+    clearTimers();
+    stopAllAudio();
+
     setSelected(num);
     setIsCounting(true);
+
     let i = 1;
 
+    const stepAfterAudio = () => {
+      if (myRun !== runRef.current) return;
+      setT(() => {
+        if (myRun !== runRef.current) return;
+        i++;
+        playNextNumber();
+      }, 600); // fixed gap between counts
+    };
+
     const playNextNumber = () => {
+      if (myRun !== runRef.current) return;
+
       if (i <= num) {
-        const base = `/audio/lesson1/${numberAudioMap[i]}.mp3`;
-        // Terminal clip (e.g., "one_fish.mp3"); if missing, we fallback to base
-        const terminal = `/audio/lesson1/${numberAudioMap[i]}_fish.mp3`;
+        const name = numberAudioMap[i];
+
+        // UPDATED: use /audio/numbers/{word}.mp3 as primary
+        const baseNumbers = `${NUMBER_DIR}/${name}.mp3`;        // primary
+        const baseL1      = `/audio/lesson1/${name}.mp3`;       // optional fallback if you have it
+        const terminal    = `/audio/lesson1/${name}_fish.mp3`;  // only when i === num (optional)
 
         setHighlightIndex(i - 1);
 
-        playWithFallback(
-          i === num ? terminal : base,
-          base,
-          () => {
-            setTimeout(() => {
-              i++;
-              playNextNumber();
-            }, 600);
-          }
-        );
+        const sources = i === num
+          ? [terminal, baseNumbers, baseL1]
+          : [baseNumbers, baseL1];
+
+        playChain(sources, stepAfterAudio);
       } else {
-        setTimeout(() => {
+        // finished counting
+        setT(() => {
+          if (myRun !== runRef.current || finishedRef.current) return;
+          finishedRef.current = true;
+
           if (num === correctAnswer) {
-            playRandomAudio(correctAudios, () =>
-              setTimeout(() => advanceRound(), 700)
-            );
+            playRandomAudio(correctAudios, () => {
+              if (myRun !== runRef.current) return;
+              setT(() => advanceRound(), 700);
+            });
           } else {
-            playRandomAudio(wrongAudios, () =>
-              setTimeout(() => {
-                setIsCounting(false);
-                setHighlightIndex(-1);
-              }, 600)
-            );
+            playRandomAudio(wrongAudios, () => {
+              if (myRun !== runRef.current) return;
+              setIsCounting(false);
+              setHighlightIndex(-1);
+            });
           }
         }, 400);
       }
@@ -180,23 +219,14 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
         How many {labelPlural} do you see?
       </h2>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: "30px",
-          margin: "30px 0",
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="fish-wrap">
         {fishSet.map((src, i) => (
           <img
             key={`${src}-${i}`}
             src={src}
             alt={labelPlural}
+            className="fish-img"
             style={{
-              width: "100px",
-              transition: "transform 0.4s ease, filter 0.4s ease",
               transform: highlightIndex === i ? "scale(1.4)" : "scale(1)",
               filter:
                 highlightIndex === i
@@ -208,52 +238,30 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
       </div>
 
       {showChoices && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "40px",
-            marginTop: "20px",
-            flexWrap: "wrap",
-          }}
-        >
-          {shuffledAnswers.map((num) => (
-            <button
-              key={num}
-              onClick={() => handleAnswer(num)}
-              style={{
-                width: "80px",
-                height: "80px",
-                fontSize: "28px",
-                fontWeight: "bold",
-                borderRadius: "16px",
-                border: "1px solid rgba(255,255,255,0.35)",
-                backgroundColor:
-                  selected === num
-                    ? num === correctAnswer
-                      ? "#4CAF50"
-                      : "#F44336"
-                    : "rgba(0,0,0,0.25)",
-                color: "#fff",
-                cursor: isCounting ? "not-allowed" : "pointer",
-                boxShadow: "0 6px 12px rgba(0,0,0,0.28)",
-                transition: "transform 0.2s ease, background-color 0.3s ease",
-                transform: selected === num ? "scale(1.08)" : "scale(1)",
-                opacity: isCounting && selected !== num ? 0.7 : 1,
-              }}
-              disabled={isCounting}
-              onMouseEnter={(e) => {
-                if (!isCounting) e.currentTarget.style.transform = "scale(1.1)";
-              }}
-              onMouseLeave={(e) => {
-                if (!isCounting)
-                  e.currentTarget.style.transform =
-                    selected === num ? "scale(1.08)" : "scale(1)";
-              }}
-            >
-              {num}
-            </button>
-          ))}
+        <div className="choices-wrap">
+          <div className="choices-grid">
+            {shuffledAnswers.map((n) => (
+              <button
+                key={n}
+                onClick={() => handleAnswer(n)}
+                className="choice-btn"
+                style={{
+                  backgroundColor:
+                    selected === n
+                      ? n === correctAnswer
+                        ? "#4CAF50"
+                        : "#F44336"
+                      : "rgba(0,0,0,0.25)",
+                  transform: selected === n ? "scale(1.06)" : "scale(1)",
+                  opacity: isCounting && selected !== n ? 0.7 : 1,
+                  cursor: isCounting ? "not-allowed" : "pointer",
+                }}
+                disabled={isCounting}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </section>

@@ -3,7 +3,8 @@ import React, { useEffect, useState, useRef } from "react";
 
 const numberAudioMap = {
   1: "one", 2: "two", 3: "three", 4: "four",
-  5: "five", 6: "six", 7: "seven", 8: "eight"
+  5: "five", 6: "six", 7: "seven", 8: "eight",
+  9: "nine", 10: "ten"
 };
 
 const correctAudios = [
@@ -25,7 +26,7 @@ const oceanTheme = {
   panel: "rgba(0, 40, 85, 0.22)",
 };
 
-const MAX_N = 8;
+const MAX_N = 10;
 const TOTAL_QUESTIONS = 10;
 
 const AssessmentMain = ({ onFinish }) => {

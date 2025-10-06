@@ -172,3 +172,94 @@
   justify-content: flex-start;
   padding: 20px 16px;
 }
+
+/* --- PracticeScreenUnified responsive layout --- */
+
+/* Fish row wraps nicely and scales images */
+/* --- Fish stage: keep all fish inside a neat, centered box --- */
+/* --- Fish stage: never stretched, always centered --- */
+.fish-wrap {
+  width: 100%;
+  max-width: min(980px, 94vw);
+  margin: 30px auto;
+  padding-inline: 8px;
+
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;            /* prevent cross-axis stretch */
+  gap: var(--fish-gap, 20px);
+
+  /* sensible height & size tokens */
+  --fish-size: clamp(56px, 9.5vw, 96px);
+}
+
+/* Key fix: control by HEIGHT, keep width auto */
+.fish-img {
+  height: var(--fish-size);       /* ← scale by height */
+  width: auto;                    /* ← preserve aspect ratio */
+  max-width: none;                /* ← ignore global img { max-width:100% } */
+  object-fit: contain;            /* safety against any container constraints */
+  flex: 0 0 auto;                 /* don't let flex stretch it */
+  display: block;
+  transition: transform 0.4s ease, filter 0.4s ease;
+}
+
+/* auto tighten when many fish */
+.fish-wrap:has(img:nth-child(8))  { --fish-size: clamp(50px, 8.2vw, 88px); }
+.fish-wrap:has(img:nth-child(10)) { --fish-size: clamp(44px, 7.2vw, 78px); }
+
+@media (max-width: 480px) {
+  .fish-wrap { --fish-size: clamp(42px, 15vw, 64px); }
+  .fish-wrap:has(img:nth-child(10)) { --fish-size: clamp(38px, 14vw, 58px); }
+}
+
+
+
+/* Choices grid: defaults to 5 columns (5×2 for 1–10) */
+.choices-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(72px, 95px));
+  gap: 16px 24px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* Responsive breakpoints:
+   - <= 1024px: 4 columns (4×3)
+   - <= 768px:  3 columns (3×4)
+   - <= 480px:  2 columns (2×5) */
+@media (max-width: 1024px) {
+  .choices-grid {
+    grid-template-columns: repeat(4, minmax(68px, 90px));
+    gap: 16px 20px;
+  }
+}
+@media (max-width: 768px) {
+  .choices-grid {
+    grid-template-columns: repeat(3, minmax(64px, 86px));
+    gap: 14px 18px;
+  }
+}
+@media (max-width: 480px) {
+  .choices-grid {
+    grid-template-columns: repeat(2, minmax(60px, 82px));
+    gap: 12px 16px;
+  }
+}
+
+/* Square buttons that scale with screen size */
+.choice-btn {
+  width: 100%;
+  aspect-ratio: 1 / 1;            /* keeps it perfectly square */
+  font-size: clamp(20px, 5vw, 28px);
+  font-weight: bold;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #fff;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.28);
+  transition: transform 0.2s ease, background-color 0.3s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+

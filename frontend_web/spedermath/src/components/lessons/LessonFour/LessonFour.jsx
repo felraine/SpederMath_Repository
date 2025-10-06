@@ -11,10 +11,10 @@ const LessonTwo = () => {
   // Centralized lesson metadata (display + backend)
   const lessonMeta = useMemo(
     () => ({
-      lessonNumber: 2,          // display number
-      title: "Numbers 1–5",     // updated title
-      lessonId: 3,              // backend DB id for Lesson 1 (1–5)
-      range: [1, 5],            // handy for child screens if needed
+      lessonNumber: 4,
+      title: "Numbers 1–10",
+      lessonId: 7, // replace with actual DB id
+      range: [1, 10],
     }),
     []
   );

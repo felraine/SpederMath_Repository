@@ -4,7 +4,7 @@ import "../../css/overlays.css";
 
 const TeachScreen = ({ onNext }) => {
   // ========== CONFIG ==========
-  const MAX_N = 5;
+  const MAX_N = 10;
 
   const INTRO_START = 1;
   const INTRO_END = MAX_N;
@@ -38,15 +38,20 @@ const TeachScreen = ({ onNext }) => {
 
   // ====== Assets ======
   const stepData = {
-    1: { title: "One",   img: "/photos/number_pngs/number_1.png", alt: "Number 1", audio: "/audio/lesson1/one.mp3" },
-    2: { title: "Two",   img: "/photos/number_pngs/number_2.png", alt: "Number 2", audio: "/audio/lesson1/two.mp3" },
-    3: { title: "Three", img: "/photos/number_pngs/number_3.png", alt: "Number 3", audio: "/audio/lesson1/three.mp3" },
-    4: { title: "Four",  img: "/photos/number_pngs/number_4.png", alt: "Number 4", audio: "/audio/lesson1/four.mp3" },
-    5: { title: "Five",  img: "/photos/number_pngs/number_5.png", alt: "Number 5", audio: "/audio/lesson1/five.mp3" },
+    1: { title: "One",   img: "/photos/number_pngs/number_1.png", alt: "Number 1", audio: "/audio/numbers/one.mp3" },
+    2: { title: "Two",   img: "/photos/number_pngs/number_2.png", alt: "Number 2", audio: "/audio/numbers/two.mp3" },
+    3: { title: "Three", img: "/photos/number_pngs/number_3.png", alt: "Number 3", audio: "/audio/numbers/three.mp3" },
+    4: { title: "Four",  img: "/photos/number_pngs/number_4.png", alt: "Number 4", audio: "/audio/numbers/four.mp3" },
+    5: { title: "Five",  img: "/photos/number_pngs/number_5.png", alt: "Number 5", audio: "/audio/numbers/five.mp3" },
+    6: { title: "Six",   img: "/photos/number_pngs/number_6.png", alt: "Number 6", audio: "/audio/numbers/six.mp3"},
+    7: { title: "Seven", img: "/photos/number_pngs/number_7.png", alt: "Number 7", audio: "/audio/numbers/seven.mp3"},
+    8: { title: "Eight", img: "/photos/number_pngs/number_8.png", alt: "Number 8", audio: "/audio/numbers/eight.mp3"},
+    9: { title: "Nine",  img: "/photos/number_pngs/number_9.png", alt: "Number 9", audio: "/audio/numbers/nine.mp3"},
+    10:{ title: "Ten",   img: "/photos/number_pngs/number_10.png",alt: "Number 10",audio: "/audio/numbers/ten.mp3"},
   };
 
-  const numberWord = { 1: "one", 2: "two", 3: "three", 4: "four", 5: "five" };
-  const numberWordsTitle = ["Zero", "One", "Two", "Three", "Four", "Five"];
+  const numberWord = { 1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten" };
+  const numberWordsTitle = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
 
   // Build counting audio arrays dynamically (e.g., 1 fish ⇒ ["one_fish.mp3"], 4 fish ⇒ ["one.mp3","two.mp3","three.mp3","four_fish.mp3"])
   const countingAudiosFor = (n) =>
@@ -54,7 +59,7 @@ const TeachScreen = ({ onNext }) => {
       const k = i + 1;
       return k === n
         ? `/audio/lesson1/${numberWord[k]}_fish.mp3`
-        : `/audio/lesson1/${numberWord[k]}.mp3`;
+        : `/audio/numbers/${numberWord[k]}.mp3`;
     });
 
   const FISH_IMAGES = [
@@ -246,7 +251,7 @@ const TeachScreen = ({ onNext }) => {
         const primary = audios[i];
         const fallback =
           primary.endsWith("_fish.mp3")
-            ? `/audio/lesson1/${numberWord[k]}.mp3`
+            ? `/audio/numbers/${numberWord[k]}.mp3`
             : primary;
 
         await playWithFallback(primary, fallback);
@@ -319,16 +324,42 @@ const TeachScreen = ({ onNext }) => {
         {step >= INTRO_START && step <= INTRO_END && (
           <div className="flex flex-col items-center -mt-2 gap-6">
             <h2 className="text-4xl sm:text-5xl font-bold">{stepData[step].title}</h2>
-            <motion.img
-              key={step}
-              src={stepData[step].img}
-              alt={stepData[step].alt}
-              className="w-[150px] sm:w-[190px] md:w-[230px]"
-              style={{ filter: "drop-shadow(0 8px 18px rgba(0,0,0,0.35)) drop-shadow(0 0 6px rgba(255,255,255,0.6))" }}
-              initial={{ opacity: 0, scale: 0.6 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-            />
+
+            {/* ==== 10 as 1 + 0 ==== */}
+            {step === 10 ? (
+              <motion.div
+                key="intro-10"
+                className="inline-flex items-center justify-center gap-2 sm:gap-3"
+                style={{ filter: "drop-shadow(0 8px 18px rgba(0,0,0,0.35)) drop-shadow(0 0 6px rgba(255,255,255,0.6))" }}
+                initial={{ opacity: 0, scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+                <img
+                  src="/photos/number_pngs/number_1.png"
+                  alt="Number 1"
+                  className="h-[150px] sm:h-[190px] md:h-[230px] object-contain"
+                  draggable={false}
+                />
+                <img
+                  src="/photos/number_pngs/number_0.png"
+                  alt="Number 0"
+                  className="h-[150px] sm:h-[190px] md:h-[230px] object-contain"
+                  draggable={false}
+                />
+              </motion.div>
+            ) : (
+              <motion.img
+                key={step}
+                src={stepData[step].img}
+                alt={stepData[step].alt}
+                className="w-[150px] sm:w-[190px] md:w-[230px]"
+                style={{ filter: "drop-shadow(0 8px 18px rgba(0,0,0,0.35)) drop-shadow(0 0 6px rgba(255,255,255,0.6))" }}
+                initial={{ opacity: 0, scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              />
+            )}
           </div>
         )}
 
@@ -336,14 +367,36 @@ const TeachScreen = ({ onNext }) => {
         {step === REVIEW_STEP && (
           <div className="flex flex-row gap-6 sm:gap-10 justify-center items-center flex-wrap">
             {Array.from({ length: MAX_N }, (_, i) => i + 1).map((num) => (
-              <motion.img
-                key={num}
-                src={stepData[num].img}
-                alt={stepData[num].alt}
-                className="max-w-[120px] sm:max-w-[140px] w-full"
-                animate={{ scale: highlightIndex === num ? 1.35 : 1 }}
-                transition={{ duration: 0.4 }}
-              />
+              num === 10 ? (
+                <motion.div
+                  key="review-10"
+                  className="inline-flex items-center gap-2 sm:gap-3"
+                  animate={{ scale: highlightIndex === 10 ? 1.35 : 1 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  <img
+                    src="/photos/number_pngs/number_1.png"
+                    alt="Number 1"
+                    className="h-[120px] sm:h-[140px] object-contain"
+                    draggable={false}
+                  />
+                  <img
+                    src="/photos/number_pngs/number_0.png"
+                    alt="Number 0"
+                    className="h-[120px] sm:h-[140px] object-contain"
+                    draggable={false}
+                  />
+                </motion.div>
+              ) : (
+                <motion.img
+                  key={num}
+                  src={stepData[num].img}
+                  alt={stepData[num].alt}
+                  className="max-w-[120px] sm:max-w-[140px] w-full"
+                  animate={{ scale: highlightIndex === num ? 1.35 : 1 }}
+                  transition={{ duration: 0.4 }}
+                />
+              )
             ))}
           </div>
         )}
@@ -352,8 +405,10 @@ const TeachScreen = ({ onNext }) => {
         {step >= COUNT_START && step <= COUNT_END && (
           <>
             {!challengeActive && (
-              <div className="flex flex-row items-center justify-between w-full px-6 sm:px-10 -mt-1">
-                <div className="flex flex-row gap-6 sm:gap-8 flex-wrap">
+              /* ====== CHANGED LAYOUT: prevent overlap by reserving a fixed number panel on the right ====== */
+              <div className="flex w-full px-6 sm:px-10 -mt-1 items-center">
+                {/* LEFT: fish area uses remaining width and wraps */}
+                <div className="flex-1 min-w-0 flex flex-row gap-6 sm:gap-8 flex-wrap">
                   <AnimatePresence>
                     {fishSet.slice(0, currentCount).map((src, idx) => (
                       <motion.img
@@ -370,19 +425,45 @@ const TeachScreen = ({ onNext }) => {
                   </AnimatePresence>
                 </div>
 
-                <div className="flex flex-col items-center mr-2 sm:mr-8">
+                {/* RIGHT: fixed-width number panel — cannot overlap */}
+                <div className="w-[220px] sm:w-[260px] md:w-[300px] flex-shrink-0 flex flex-col items-center ml-4">
                   {currentCount > 0 && (
                     <>
-                      <motion.img
-                        key={`num-${currentCount}-fish`}
-                        src={stepData[currentCount]?.img}
-                        alt={stepData[currentCount]?.alt}
-                        className="w-[170px] sm:w-[200px] md:w-[220px]"
-                        style={{ filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.35)) drop-shadow(0 0 8px rgba(255,255,255,0.65))" }}
-                        initial={{ opacity: 0, scale: 0.85 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
-                      />
+                      {currentCount === 10 ? (
+                        <motion.div
+                          key="count-10"
+                          className="inline-flex items-center justify-center gap-2 sm:gap-3"
+                          style={{ filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.35)) drop-shadow(0 0 8px rgba(255,255,255,0.65))" }}
+                          initial={{ opacity: 0, scale: 0.85 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.5, ease: "easeOut" }}
+                        >
+                          <img
+                            src="/photos/number_pngs/number_1.png"
+                            alt="Number 1"
+                            className="h-[170px] sm:h-[200px] md:h-[220px] object-contain"
+                            draggable={false}
+                          />
+                          <img
+                            src="/photos/number_pngs/number_0.png"
+                            alt="Number 0"
+                            className="h-[170px] sm:h-[200px] md:h-[220px] object-contain"
+                            draggable={false}
+                          />
+                        </motion.div>
+                      ) : (
+                        <motion.img
+                          key={`num-${currentCount}-fish`}
+                          src={stepData[currentCount]?.img}
+                          alt={stepData[currentCount]?.alt}
+                          className="w-[170px] sm:w-[200px] md:w-[220px]"
+                          style={{ filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.35)) drop-shadow(0 0 8px rgba(255,255,255,0.65))" }}
+                          initial={{ opacity: 0, scale: 0.85 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.5, ease: "easeOut" }}
+                        />
+                      )}
+
                       <motion.span
                         className="text-3xl sm:text-4xl font-bold capitalize mt-1"
                         animate={{ opacity: [0, 1], y: [8, 0] }}

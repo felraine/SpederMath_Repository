@@ -9,7 +9,7 @@ export default function IntroScreen({ onNext }) {
   useEffect(() => {
     // 1) Create the audio object only once
     if (!initRef.current) {
-      const a = new Audio("/audio/lesson1/intro.mp3");
+      const a = new Audio("/audio/lesson4/intro.mp3");
       audioRef.current = a;
       initRef.current = true;
 
@@ -59,9 +59,14 @@ export default function IntroScreen({ onNext }) {
           <p className="intro-subtitle">
             Let’s learn numbers <span className="font-bold">1</span>,{" "}
             <span className="font-bold">2</span>, 
-            <span className="font-bold">3</span>,
-            <span className="font-bold">4</span>,and{" "}
-            <span className="font-bold">5</span>!
+            <span className="font-bold"> 3</span>,
+            <span className="font-bold"> 4</span>,
+            <span className="font-bold"> 5</span>,
+            <span className="font-bold"> 6</span>,
+            <span className="font-bold"> 7</span>,
+            <span className="font-bold"> 8</span>,
+            <span className="font-bold"> 9</span>, and{" "}
+            <span className="font-bold">10</span>!
           </p>
 
           <div className="intro-actions">
