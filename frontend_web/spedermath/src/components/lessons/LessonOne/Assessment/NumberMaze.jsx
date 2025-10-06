@@ -45,7 +45,7 @@ const VOICES_MODE_CHANGE = {
 
 /* --- palette --- */
 const SEAWEED       = "rgba(46, 204, 113, 0.78)";
-const SEAWEED_FAINT = "rgba(46, 204, 113, 0.35)";
+const SEAWEED_FAINT = "rgba(0, 255, 106, 0.61)";
 
 /** ====== AUDIO: WIRED TO YOUR /public/audio PATHS ====== */
 /* Success lines (randomized) */
@@ -216,8 +216,8 @@ function graphDistance(grid, a, b) {
 }
 
 /** --- Seaweed walls (SVG, wavy) --- */
-const SEAWEED_MAIN  = "#2e8b57";
-const SEAWEED_EDGE  = "#1f6a43";
+const SEAWEED_MAIN  = "#368458ff";
+const SEAWEED_EDGE  = "#307e56ff"; //darker
 
 function edgeHash(r, c, edge) {
   let h = 2166136261 ^ (r * 16777619 + c);
@@ -1223,7 +1223,7 @@ const submitProgressToBackend = useCallback(async () => {
                     top, left,
                     width: cellPx, height: cellPx,
                     background: "linear-gradient(180deg, rgba(0,60,80,0.16), rgba(0,40,60,0.16))",
-                    outline: "2px solid rgba(46,139,87,0.35)",
+                    outline: "2px solid rgba(255, 255, 255, 0.35)",
                     borderRadius: 16,
                     boxSizing: "border-box",
                   }}
@@ -1248,7 +1248,7 @@ const submitProgressToBackend = useCallback(async () => {
                         orientation="v"
                         length={cellPx}
                         thickness={8}
-                        amp={2 + (edgeHash(r, c, "W") % 3)}
+                        amp={2 + (edgeHash(r, c, "W") % 3)}  
                         wiggles={2 + (edgeHash(r, c, "Ww") % 2)}
                       />
                     </div>

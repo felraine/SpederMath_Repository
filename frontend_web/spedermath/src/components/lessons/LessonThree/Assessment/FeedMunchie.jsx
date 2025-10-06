@@ -5,17 +5,14 @@ import axios from "axios";
 import Confetti from "react-confetti";
 import MunchieTutorial from "../../tutorial/MunchieTutorial";
 
-
-const generateAdditionLessons = (total = 10) => {
-  const lessons = [];
+/** NEW: counting rounds instead of addition */
+const generateCountingRounds = (total = 10, maxCount = 10) => {
+  const rounds = [];
   for (let i = 0; i < total; i++) {
-    const a = Math.floor(Math.random() * 6);
-    const maxB = 10 - a;
-    const b = Math.floor(Math.random() * (maxB - 1)) + 1;
-    const sum = a + b;
-    lessons.push({ a, b, sum });
+    const n = Math.floor(Math.random() * maxCount) + 1; // 1..maxCount
+    rounds.push({ target: n });
   }
-  return lessons;
+  return rounds;
 };
 
 const allFruits = [
@@ -37,45 +34,68 @@ const passedSound = () => new Audio("/passed-sound.mp3").play();
 const failedSound = () => new Audio("/failed-sound.mp3").play();
 const eatSound = () => new Audio("/munchie/munchie-eat.mp3").play();
 
-const AddFeedMunchie = ({ lessonId, title }) => {
-  const [lessons] = useState(generateAdditionLessons());
+/**
+ * Feed Munchie (Counting Version)
+ * Props:
+ * - lessonId: number (backend submit)
+ * - title:   string
+ * - totalRounds?: number (default 10)
+ * - maxCountPerRound?: number (default 10; capped by 10 because tray has 10 slots)
+ * - passRate?: number (0..1, default 0.7)
+ */
+const FeedMunchieCounting = ({
+  lessonId = 6,
+  title,
+  totalRounds = 10,
+  maxCountPerRound = 7,
+  passRate = 0.7,
+  retakes_count = 0,
+}) => {
+  const SAFE_MAX = Math.max(1, Math.min(10, maxCountPerRound)); // tray has 10 slots
+  const [rounds] = useState(() => generateCountingRounds(totalRounds, SAFE_MAX));
+
   const [currentStep, setCurrentStep] = useState(0);
   const [addedFruit, setAddedFruit] = useState(0);
   const [trayFruits, setTrayFruits] = useState(Array.from({ length: 10 }, () => true));
   const [score, setScore] = useState(0);
   const [status, setStatus] = useState("IN_PROGRESS");
 
-  // New states for tutorial and ready modal
+  // Tutorial + “Ready?” modal
   const [showTutorial, setShowTutorial] = useState(true);
   const [showReadyModal, setShowReadyModal] = useState(false);
 
+  // Timer
   const [timeSpent, setTimeSpent] = useState(0);
-  const [timerActive, setTimerActive] = useState(false); // controls timer start
+  const [timerActive, setTimerActive] = useState(false);
+
+  // Munchie state
   const [munchieFace, setMunchieFace] = useState("/munchie/neutral_Munchie.png");
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+  // FX
   const [showConfetti, setShowConfetti] = useState(false);
   const [showWrong, setShowWrong] = useState(false);
+
   const wasDroppedRef = useRef(false);
   const munchieRef = useRef(null);
 
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
-  const current = lessons[currentStep];
+  const current = rounds[currentStep];
+  const passThreshold = Math.ceil(passRate * rounds.length);
 
+  // lock a set of fruit images per round (still 10 tray slots)
   const fruitPerStep = useMemo(() => {
-    return lessons.map(() => 
-      allFruits.slice(0, 10)  
-    );
-  }, [lessons, allFruits]);
-
+    return rounds.map(() => allFruits.slice(0, 10));
+  }, [rounds]);
 
   const fruitImages = fruitPerStep[currentStep];
 
-  // Timer effect, runs only if timerActive is true
+  // Timer
   useEffect(() => {
-    if (!timerActive) return undefined;
-    const interval = setInterval(() => setTimeSpent((prev) => prev + 1), 1000);
-    return () => clearInterval(interval);
+    if (!timerActive) return;
+    const id = setInterval(() => setTimeSpent((s) => s + 1), 1000);
+    return () => clearInterval(id);
   }, [timerActive]);
 
   useEffect(() => {
@@ -84,9 +104,7 @@ const AddFeedMunchie = ({ lessonId, title }) => {
   }, [status]);
 
   const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60)
-      .toString()
-      .padStart(2, "0");
+    const mins = Math.floor(seconds / 60).toString().padStart(2, "0");
     const secs = (seconds % 60).toString().padStart(2, "0");
     return `${mins}:${secs}`;
   };
@@ -103,12 +121,13 @@ const AddFeedMunchie = ({ lessonId, title }) => {
     setTimerActive(true);
   };
 
-  // Rest of your event handlers (handleDropFruit, handleDragOverMouth, etc.)
+  // Drag handlers
   const handleDropFruit = (e) => {
     e.preventDefault();
     setIsDraggingOver(false);
     wasDroppedRef.current = true;
 
+    // Don’t exceed tray capacity of 10
     if (addedFruit < 10) {
       setAddedFruit((prev) => prev + 1);
       setMunchieFace("/munchie/muching_Munchie.png");
@@ -132,7 +151,7 @@ const AddFeedMunchie = ({ lessonId, title }) => {
       y >= rect.top - margin &&
       y <= rect.bottom + margin;
 
-      setIsDraggingOver(isNearMouth);
+    setIsDraggingOver(isNearMouth);
 
     if (isNearMouth) {
       if (munchieFace !== "/munchie/openmouth_Munchie.png") {
@@ -145,8 +164,24 @@ const AddFeedMunchie = ({ lessonId, title }) => {
     }
   };
 
+  const nextStepOrFinish = (nextScore) => {
+    const isLast = currentStep + 1 >= rounds.length;
+    if (isLast) {
+      setStatus(nextScore >= passThreshold ? "COMPLETED" : "FAILED");
+      setScore(nextScore);
+      setTimerActive(false);
+    } else {
+      setAddedFruit(0);
+      setTrayFruits(Array.from({ length: 10 }, () => true));
+      setCurrentStep((p) => p + 1);
+      setScore(nextScore);
+    }
+  };
+
+  // “Munchie is full!” button
   const handleFeedMunchie = () => {
-    const isCorrect = addedFruit === current.sum;
+    const target = current.target;
+    const isCorrect = addedFruit === target;
     const nextScore = isCorrect ? score + 1 : score;
 
     if (isCorrect) {
@@ -158,18 +193,8 @@ const AddFeedMunchie = ({ lessonId, title }) => {
       setTimeout(() => {
         setShowConfetti(false);
         setMunchieFace("/munchie/neutral_Munchie.png");
-
-        if (currentStep + 1 >= lessons.length) {
-          setStatus(nextScore >= 4 ? "COMPLETED" : "FAILED");
-          setScore(nextScore);
-          setTimerActive(false); // stop timer on finish
-        } else {
-          setAddedFruit(0);
-          setTrayFruits(Array.from({ length: 10 }, () => true));
-          setCurrentStep((prev) => prev + 1);
-          setScore(nextScore);
-        }
-      }, 2000);
+        nextStepOrFinish(nextScore);
+      }, 1500);
     } else {
       incorrectClickSound();
       setShowWrong(true);
@@ -179,39 +204,56 @@ const AddFeedMunchie = ({ lessonId, title }) => {
       setTimeout(() => {
         setShowWrong(false);
         setMunchieFace("/munchie/neutral_Munchie.png");
-
-        if (currentStep + 1 >= lessons.length) {
-          setStatus(nextScore >= 4 ? "COMPLETED" : "FAILED");
-          setScore(nextScore);
-          setTimerActive(false); // stop timer on finish
-        } else {
-          setAddedFruit(0);
-          setTrayFruits(Array.from({ length: 10 }, () => true));
-          setCurrentStep((prev) => prev + 1);
-          setScore(nextScore);
-        }
-      }, 1500);
+        nextStepOrFinish(nextScore);
+      }, 1000);
     }
   };
 
   const submitProgress = async () => {
-    const progress = {
-      score,
-      status,
-      timeSpentInSeconds: timeSpent,
-      lessonId,
-    };
-    try {
-      await axios.post("http://localhost:8080/api/student-progress/submit", progress, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      alert("Progress submitted!");
-      navigate("/student-dashboard");
-    } catch (error) {
-      alert("Failed to submit progress");
-      console.error(error);
-    }
+  if (!lessonId) {
+    alert("Missing lessonId. Pass lessonId prop to FeedMunchieCounting.");
+    return;
+  }
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Missing auth token. Please log in again.");
+    return;
+  }
+
+  const progress = {
+    lessonId,
+    score,
+    status,
+    timeSpentInSeconds: timeSpent,
+    retakes_count: 0,
   };
+  console.log("Submitting progress payload:", progress);
+
+  try {
+    const res = await axios.post(
+      "http://localhost:8080/api/student-progress/submit",
+      progress,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    console.log("Submit OK:", res.status, res.data);
+    alert("Progress submitted!");
+    navigate("/student-dashboard");
+  } catch (err) {
+    const status = err?.response?.status;
+    const data = err?.response?.data;
+    const message =
+      typeof data === "string"
+        ? data
+        : data?.message || JSON.stringify(data || {});
+    console.error("Submit FAILED:", status, data, err);
+    alert(`Submit failed (${status ?? "no status"}): ${message}`);
+  }
+};
 
   const handleDragEnd = (e) => {
     const index = parseInt(e.dataTransfer.getData("text/plain"), 10);
@@ -243,7 +285,7 @@ const AddFeedMunchie = ({ lessonId, title }) => {
               draggable={false}
             />
             <h2 className="text-[32px] mb-4 font-neucha">Yay! I’m hungry! 🍎</h2>
-            <p className="text-[20px] mb-6 font-neucha">Let’s feed me some fruits!</p>
+            <p className="text-[20px] mb-6 font-neucha">Feed me the right number of fruits!</p>
             <button
               onClick={startLesson}
               className="bg-green-600 text-white px-6 py-3 rounded-xl text-lg hover:bg-green-700 transition"
@@ -259,7 +301,7 @@ const AddFeedMunchie = ({ lessonId, title }) => {
   return (
     <LessonLayout
       lesson={{ lessonid: lessonId, title: title || "Feed Munchie!" }}
-      progress={`${currentStep + 1}/${lessons.length}`}
+      progress={`${currentStep + 1}/${rounds.length}`}
       showWrong={showWrong}
       showConfetti={showConfetti}
     >
@@ -268,7 +310,7 @@ const AddFeedMunchie = ({ lessonId, title }) => {
         Time: {formatTime(timeSpent)}
       </div>
 
-      {/* Confetti Overlay */}
+      {/* Confetti */}
       {showConfetti && (
         <Confetti
           width={1150}
@@ -288,13 +330,11 @@ const AddFeedMunchie = ({ lessonId, title }) => {
         <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50">
           <div className="bg-[#fffaf0] rounded-3xl p-10 max-w-xl w-full text-center shadow-2xl border-4 border-[#f1f2f6]">
             <h2 className="text-[42px] font-comic font-bold text-gray-800 mb-4">
-              {score >= 4 ? "Yum yum! Munchie is happy!" : "Oh no! Try again!"}
+              {score >= passThreshold ? "Yum yum! Munchie is happy!" : "Oh no! Try again!"}
             </h2>
             <p className="text-[24px] font-neucha text-gray-700 mb-6">
-              You got{" "}
-              <span className="font-bold text-green-700">{score}</span> out of{" "}
-              <span className="font-bold text-green-700">{lessons.length}</span>{" "}
-              correct.
+              You got <span className="font-bold text-green-700">{score}</span> out of{" "}
+              <span className="font-bold text-green-700">{rounds.length}</span> correct.
             </p>
             <button
               onClick={submitProgress}
@@ -306,14 +346,18 @@ const AddFeedMunchie = ({ lessonId, title }) => {
         </div>
       ) : (
         <>
-          {/* Lesson Content */}
+          {/* Prompt */}
           <div className="flex justify-between items-start px-4 sm:px-6 mt-0 mb-4">
             <h2 className="text-[20px] sm:text-[22px] font-neucha">
-              Help Munchie solve: {current.a} + {current.b} = ?
+              Feed Munchie <b>{current.target}</b> {current.target === 1 ? "fruit" : "fruits"}!
             </h2>
             <div className="bg-white rounded-full px-4 py-1 text-gray-700 font-neucha text-lg shadow-md border">
               Fruits added:{" "}
-              <span className={`font-bold ${addedFruit > 10 ? "text-red-600" : "text-green-700"}`}>
+              <span
+                className={`font-bold ${
+                  addedFruit > current.target ? "text-red-600" : "text-green-700"
+                }`}
+              >
                 {addedFruit}
               </span>
             </div>
@@ -351,7 +395,7 @@ const AddFeedMunchie = ({ lessonId, title }) => {
                             setTimeout(() => {
                               setTrayFruits((prev) => {
                                 const updated = [...prev];
-                                updated[i] = false;
+                                updated[i] = true;
                                 return updated;
                               });
                             }, 0);
@@ -360,19 +404,7 @@ const AddFeedMunchie = ({ lessonId, title }) => {
                               document.body.removeChild(dragImg);
                             }, 1000);
                           }}
-                          onDragEnd={(e) => {
-                            const index = parseInt(e.dataTransfer.getData("text/plain"), 10);
-                            if (!wasDroppedRef.current) {
-                              requestAnimationFrame(() => {
-                                setTrayFruits((prev) => {
-                                  const updated = [...prev];
-                                  updated[index] = true;
-                                  return updated;
-                                });
-                              });
-                            }
-                            setMunchieFace("/munchie/neutral_Munchie.png");
-                          }}
+                          onDragEnd={handleDragEnd}
                           className="h-14 w-14 object-contain cursor-grab z-10"
                           alt="fruit"
                         />
@@ -383,7 +415,7 @@ const AddFeedMunchie = ({ lessonId, title }) => {
             </div>
           </div>
 
-          {/* Munchie and Feed Button */}
+          {/* Munchie + Action */}
           <div className="flex flex-col items-center mt-2">
             <div
               ref={munchieRef}
@@ -412,4 +444,4 @@ const AddFeedMunchie = ({ lessonId, title }) => {
   );
 };
 
-export default AddFeedMunchie;
+export default FeedMunchieCounting;
