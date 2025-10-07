@@ -1,25 +1,24 @@
-// src/lessons/NumberDrop.jsx
+// src/lessons/lesson2/NumberDrop.jsx
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import "../../../css/numberdrop.css";
+import { currentStudentId } from "../../../../utils/auth";
+import { postOnce } from "../../../../utils/requestDedupe";
 
 /**
- * NumberDrop (mobile-friendly, with Munchie, Start screen, distractors, lives)
+ * NumberDrop (Tailwind version, no external CSS)
  * - 10 rounds total
- * - Lives hitting 0 advances to next round
- * - Score only increments when the full sequence (1..maxNumber) is completed
- * - HUD: fixed-width lives, no 'Wrongs' shown
- * - Pace: slow at first; speeds up per round; capped at SPEED_MAX
- * - On finish: pass/fail results overlay + backend submit
+ * - Lives hit 0 → next round
+ * - Score increments only when sequence (1..maxNumber) is completed
+ * - Uses guards + idempotency to avoid double submits
  */
 export default function NumberDrop({
   maxNumber = 5,
-  onGameOver,                 // optional: parent callback
-  lessonId = 4,                   // <-- REQUIRED for backend submit
+  onGameOver,                 // optional
+  lessonId = 4,               // honored
   dashboardPath = "/dashboard",
-  passThreshold = null,       // optional override; default = ceil(0.7 * TOTAL_ROUNDS)
+  passThreshold = null,       // default ceil(0.7 * TOTAL_ROUNDS)
 }) {
   // ---- CONFIG ----
-  const BASE_W = 560; // virtual space (physics)
+  const BASE_W = 560;
   const BASE_H = 640;
 
   const BASKET_W = 90;
@@ -29,39 +28,33 @@ export default function NumberDrop({
   const INITIAL_LIVES = 3;
   const TOTAL_ROUNDS = 10;
 
-  // Probability the next drop is the CURRENT TARGET
   const TARGET_PROB = 0.65;
 
-  // Pace controls
-  const SPEED_MIN = 2;      // gentle start
-  const SPEED_STEP = 0.20;    // per-round increase
-  const SPEED_MAX = 3;     // hard cap so it never gets too fast
-  const ROUND_START_DELAY_MS = 700; // a brief breather before each round starts
+  const SPEED_MIN = 2;
+  const SPEED_STEP = 0.2;
+  const SPEED_MAX = 3;
+  const ROUND_START_DELAY_MS = 700;
 
-  // Initial drop velocity (before multiplier)
   const BASE_DROP_VY = 110;
 
-  // Passing threshold (default 70% of rounds)
   const PASS_THRESHOLD = passThreshold ?? Math.ceil(TOTAL_ROUNDS * 0.7);
 
-  // ---- UI State (not updated per-frame) ----
+  // ---- UI State ----
   const [started, setStarted] = useState(false);
-  const [round, setRound] = useState(1); // 1..TOTAL_ROUNDS
+  const [round, setRound] = useState(1);
   const [currentTarget, setCurrentTarget] = useState(1);
   const [dropValue, setDropValue] = useState(1);
-  const [score, setScore] = useState(0); // rounds cleared
-  const [wrongs, setWrongs] = useState(0); // tracked internally, hidden in HUD
+  const [score, setScore] = useState(0);
+  const [wrongs, setWrongs] = useState(0);
   const [lives, setLives] = useState(INITIAL_LIVES);
   const [ready, setReady] = useState(false);
   const [running, setRunning] = useState(false);
   const [scale, setScale] = useState(1);
   const [lastLostFlash, setLastLostFlash] = useState(0);
 
-  // Finish overlay payload
   const [finished, setFinished] = useState(null);
-  // { score, total: TOTAL_ROUNDS, passed: boolean, status: 'PASSED'|'FAILED', durationSec: number }
 
-  // ---- Refs (mutable per-frame state) ----
+  // ---- Refs ----
   const rafRef       = useRef(null);
   const lastTsRef    = useRef(null);
   const wrapRef      = useRef(null);
@@ -73,16 +66,14 @@ export default function NumberDrop({
   const basketXRef   = useRef(BASE_W / 2 - BASKET_W / 2);
   const draggingRef  = useRef(false);
 
-  // Current falling thing: { x, y, vy, value, isTarget }
   const dropRef      = useRef(null);
-  const imgsRef      = useRef({}); // number -> HTMLImageElement
+  const imgsRef      = useRef({});
 
-  // DOM elements we move imperatively
   const basketElRef  = useRef(null);
   const numberElRef  = useRef(null);
 
-  // track overall session time for backend
   const gameStartRef = useRef(null);
+  const submittedRef = useRef(false);
 
   // ---------- Responsive scaling ----------
   useEffect(() => {
@@ -94,14 +85,12 @@ export default function NumberDrop({
     };
     compute();
 
-    const ro = new ResizeObserver(compute);
-    ro.observe(document.body);
-    window.addEventListener("resize", compute);
-    window.addEventListener("orientationchange", compute);
+    const onResize = () => compute();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
     return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", compute);
-      window.removeEventListener("orientationchange", compute);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
     };
   }, []);
 
@@ -143,21 +132,18 @@ export default function NumberDrop({
 
   // ---------- Helpers ----------
   const pickNextValue = useCallback((target) => {
-    // With TARGET_PROB, drop the real target; otherwise pick any other (distractor)
     if (Math.random() < TARGET_PROB) return { value: target, isTarget: true };
     const choices = Array.from({ length: maxNumber }, (_, i) => i + 1).filter(n => n !== target);
     const value = choices[Math.floor(Math.random() * choices.length)];
     return { value, isTarget: false };
   }, [maxNumber]);
 
-  // Per-round speed factor
   const speedFactorForRound = useCallback((r) => {
     const steps = Math.max(0, (r ?? 1) - 1);
     const factor = SPEED_MIN + steps * SPEED_STEP;
     return Math.min(SPEED_MAX, factor);
   }, []);
 
-  // Spawn at random X
   const spawnDrop = useCallback((target) => {
     const { value, isTarget } = pickNextValue(target);
     const margin = 12;
@@ -165,7 +151,6 @@ export default function NumberDrop({
     const maxX = BASE_W - NUM_SIZE - margin;
     const x = Math.random() * (maxX - minX) + minX;
 
-    // start just below the HUD, with a little gap
     const startY = Math.max(hudVHRef.current + 8, 0);
 
     dropRef.current = { x, y: startY, vy: BASE_DROP_VY, value, isTarget };
@@ -178,59 +163,61 @@ export default function NumberDrop({
     }
   }, [pickNextValue]);
 
-  // ---- Lives in a ref for immediate reads in callbacks ----
   const livesRef = useRef(INITIAL_LIVES);
   useEffect(() => { livesRef.current = lives; }, [lives]);
 
-  
+  const makeIdempotencyKey = useCallback(() => {
+    const sid = currentStudentId();
+    const ymd = new Date().toISOString().slice(0, 10);
+    return `spm:${sid}:${lessonId}:${ymd}`;
+  }, [lessonId]);
 
-  // ---- Backend submit ----
+  // ---- Backend submit (deduped) ----
   const submitProgress = useCallback(async ({ score, status, durationSec }) => {
-    const lessonId = 4;
-    try {
-      if (!lessonId) {
-        console.warn("[NumberDrop] Missing lessonId; skipping backend submit.");
-        return;
-      }
-      // Try some common token keys; adjust to your app’s auth storage
-      const token =
-        localStorage.getItem("token") ||
-        localStorage.getItem("authToken") ||
-        localStorage.getItem("jwt") ||
-        null;
+    if (!lessonId) {
+      console.warn("[NumberDrop] Missing lessonId; skipping backend submit.");
+      return;
+    }
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("authToken") ||
+      localStorage.getItem("jwt") ||
+      null;
 
-      const payload = {
-        lessonId: lessonId,
-        score,
-        status, // "PASSED" | "FAILED"
-        retakes_count: 0,
-        timeSpentInSeconds: durationSec,
-      };
+    const payload = {
+      lessonId,
+      score,
+      status, // "COMPLETED" | "FAILED"
+      retakes_count: 0,
+      timeSpentInSeconds: durationSec,
+      idempotencyKey: makeIdempotencyKey(),
+    };
 
-      const headers = {
-        "Content-Type": "application/json",
-      };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
 
-      const res = await fetch("http://localhost:8080/api/student-progress/submit", {
+    return postOnce(`submit:${payload.idempotencyKey}`, () =>
+      fetch("http://localhost:8080/api/student-progress/submit", {
         method: "POST",
         headers,
         body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        console.error("Backend submit failed:", res.status, text);
-      }
-    } catch (err) {
-      console.error("Backend submit error:", err);
-    }
-  }, [lessonId]);
+      }).then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          console.error("Backend submit failed:", res.status, text);
+        }
+        return res;
+      })
+    );
+  }, [lessonId, makeIdempotencyKey]);
 
   // ---- Round advancement / finish ----
   const finishGame = useCallback(() => {
     setRunning(false);
 
+    if (submittedRef.current) return; // guard
     const total = TOTAL_ROUNDS;
     const passed = score >= PASS_THRESHOLD;
     const status = passed ? "COMPLETED" : "FAILED";
@@ -238,14 +225,12 @@ export default function NumberDrop({
       ? Math.max(0, Math.round((Date.now() - gameStartRef.current) / 1000))
       : 0;
 
-    // show results overlay
     setFinished({ score, total, passed, status, durationSec });
-
-    // clear drop
     dropRef.current = null;
 
-    // Submit to backend and notify parent (deferred to avoid React warnings)
     setTimeout(() => {
+      if (submittedRef.current) return;
+      submittedRef.current = true;
       submitProgress({ score, status, durationSec });
       onGameOver?.({ score, total, wrongs, rounds: TOTAL_ROUNDS, status, durationSec });
     }, 0);
@@ -256,15 +241,12 @@ export default function NumberDrop({
       const next = r + 1;
       if (next > TOTAL_ROUNDS) {
         finishGame();
-        return r; // keep last
+        return r;
       }
-      // reset per-round state
       setCurrentTarget(1);
       setLives(INITIAL_LIVES);
-      // reposition basket to center for each round (optional)
       basketXRef.current = BASE_W / 2 - BASKET_W / 2;
       if (basketElRef.current) basketElRef.current.style.left = `${basketXRef.current}px`;
-      // spawn first target for the new round after a short breather
       setTimeout(() => spawnDrop(1), ROUND_START_DELAY_MS);
       return next;
     });
@@ -272,13 +254,11 @@ export default function NumberDrop({
 
   const loseOneLife = useCallback(() => {
     setLastLostFlash(Date.now());
-
     const prevLives = livesRef.current;
     const newLives = prevLives - 1;
     const hitZero = newLives <= 0;
 
     if (hitZero) {
-      // Count one wrong, then go to next round
       setWrongs((w) => w + 1);
       advanceRound();
     } else {
@@ -298,42 +278,39 @@ export default function NumberDrop({
   };
 
   const startGame = () => {
-    setFinished(null); // hide results overlay if present
+    setFinished(null);
     setStarted(true);
     setRunning(true);
     resetForStart();
     gameStartRef.current = Date.now();
-    // gentle delay so the Start overlay can fade
+    submittedRef.current = false;
     setTimeout(() => spawnDrop(1), 300);
   };
 
-  // ---- Debug: force perfect score submit ----
-const debugSubmitPerfect = useCallback(() => {
-  // stop animation/game
-  if (rafRef.current) cancelAnimationFrame(rafRef.current);
-  setRunning(false);
+  // Debug: force perfect
+  const debugSubmitPerfect = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    setRunning(false);
 
-  const total = TOTAL_ROUNDS;
-  const score = 10;            // force perfect
-  const durationSec = 150;     // force 150s
-  const passed = score >= PASS_THRESHOLD;
-  const status = passed ? "COMPLETED" : "FAILED";
+    if (submittedRef.current) return;
+    const total = TOTAL_ROUNDS;
+    const forcedScore = 10;
+    const durationSec = 150;
+    const passed = forcedScore >= PASS_THRESHOLD;
+    const status = passed ? "COMPLETED" : "FAILED";
 
-  // show results overlay immediately
-  setFinished({ score, total, passed, status, durationSec });
+    setFinished({ score: forcedScore, total, passed, status, durationSec });
+    dropRef.current = null;
 
-  // clear any active drop
-  dropRef.current = null;
+    setTimeout(() => {
+      if (submittedRef.current) return;
+      submittedRef.current = true;
+      submitProgress({ score: forcedScore, status, durationSec });
+      onGameOver?.({ score: forcedScore, total, wrongs, rounds: TOTAL_ROUNDS, status, durationSec });
+    }, 0);
+  }, [PASS_THRESHOLD, TOTAL_ROUNDS, onGameOver, submitProgress, wrongs]);
 
-  // submit + notify parent on next tick
-  setTimeout(() => {
-    submitProgress({ score, status, durationSec });
-    onGameOver?.({ score, total, wrongs, rounds: TOTAL_ROUNDS, status, durationSec });
-  }, 0);
-}, [PASS_THRESHOLD, TOTAL_ROUNDS, onGameOver, submitProgress, wrongs]);
-
-
-  // ---------- Keyboard controls (desktop) ----------
+  // ---------- Keyboard controls ----------
   useEffect(() => {
     const onKey = (e) => {
       if (!running) return;
@@ -343,23 +320,21 @@ const debugSubmitPerfect = useCallback(() => {
       } else if (e.key === "ArrowRight") {
         basketXRef.current = Math.min(BASE_W - BASKET_W, basketXRef.current + speed);
       }
-      if (basketElRef.current) {
-        basketElRef.current.style.left = `${basketXRef.current}px`;
-      }
+      if (basketElRef.current) basketElRef.current.style.left = `${basketXRef.current}px`;
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [running]);
 
-  // ---------- Touch/Mouse drag (scale-aware) ----------
+  // ---------- Touch/Mouse drag ----------
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
     const getLocalX = (pageX) => {
       const rect = el.getBoundingClientRect();
-      const px = pageX - rect.left;   // pixels within scaled box
-      const vx = px / scale;          // convert to virtual coords
+      const px = pageX - rect.left;
+      const vx = px / scale;
       return Math.max(0, Math.min(BASE_W - BASKET_W, vx - BASKET_W / 2));
     };
 
@@ -397,7 +372,7 @@ const debugSubmitPerfect = useCallback(() => {
     };
   }, [scale, running]);
 
-  // ---------- Game loop (rAF + direct style writes) ----------
+  // ---------- Game loop ----------
   useEffect(() => {
     if (!ready || !running) return;
 
@@ -408,20 +383,15 @@ const debugSubmitPerfect = useCallback(() => {
 
       const drop = dropRef.current;
       if (drop) {
-        // round-based speed scaling (predictable)
         const speedScale = speedFactorForRound(round);
-
-        // optional tiny air resistance
         drop.vy *= 0.999;
         drop.y += drop.vy * speedScale * dt;
 
-        // Paint number position
         if (numberElRef.current) {
           numberElRef.current.style.left = `${drop.x}px`;
           numberElRef.current.style.top  = `${drop.y}px`;
         }
 
-        // Collision with basket?
         const bx = basketXRef.current;
         const by = BASE_H - 12 - BASKET_H;
         const overlapX = drop.x < bx + BASKET_W && drop.x + NUM_SIZE > bx;
@@ -429,12 +399,10 @@ const debugSubmitPerfect = useCallback(() => {
 
         if (overlapX && overlapY) {
           if (drop.isTarget) {
-            // Correct catch
             const next = currentTarget + 1;
             setCurrentTarget(next);
 
             if (next > maxNumber) {
-              // Finished the sequence for this round → score +1, then next round
               setScore((s) => s + 1);
               advanceRound();
               dropRef.current = null;
@@ -442,26 +410,18 @@ const debugSubmitPerfect = useCallback(() => {
               spawnDrop(next);
             }
           } else {
-            // Caught a distractor → lose life, same target continues
             loseOneLife();
             spawnDrop(currentTarget);
           }
         }
 
-        // Fell past bottom
         if (drop && drop.y > BASE_H + NUM_SIZE) {
-          if (drop.isTarget) {
-            // Missing a target should cost a life
-            loseOneLife();
-          }
-          // In both cases, spawn new for the same target
+          if (drop.isTarget) loseOneLife();
           spawnDrop(currentTarget);
         }
       }
 
-      // Keep basket visually synced
       if (basketElRef.current) basketElRef.current.style.left = `${basketXRef.current}px`;
-
       rafRef.current = requestAnimationFrame(tick);
     };
 
@@ -472,13 +432,12 @@ const debugSubmitPerfect = useCallback(() => {
   // ---- Render ----
   const isFlashing = Date.now() - lastLostFlash < 180;
 
-  // Render fixed 3 heart slots to avoid HUD shifts
   const HeartRow = ({ lives }) => {
-    const slots = INITIAL_LIVES; // fixed slots
+    const slots = INITIAL_LIVES;
     return (
-      <span style={{ display: "inline-flex", gap: 4 }}>
+      <span className="inline-flex gap-1">
         {Array.from({ length: slots }).map((_, i) => (
-          <span key={i} style={{ width: 20, display: "inline-block", textAlign: "center" }}>
+          <span key={i} className="w-5 inline-block text-center">
             {i < lives ? "❤️" : "🤍"}
           </span>
         ))}
@@ -486,149 +445,73 @@ const debugSubmitPerfect = useCallback(() => {
     );
   };
 
-  const restartGame = () => {
-    startGame();
-  };
-
-  const goToDashboard = () => {
-    window.location.href = dashboardPath;
-  };
+  const restartGame = () => startGame();
+  const goToDashboard = () => { window.location.href = dashboardPath; };
 
   return (
     <div
       ref={wrapRef}
-      style={{
-        width: "100vw",
-        height: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
-      }}
+      className="w-screen h-screen flex items-center justify-center overflow-hidden"
     >
-
       {/* DEV-only debug button */}
-{((typeof process !== "undefined" && process.env.NODE_ENV !== "production") ||
-  (typeof window !== "undefined" && window.location.search.includes("debug=1"))) && (
-  <button
-    onClick={debugSubmitPerfect}
-    style={{
-      position: "absolute",
-      top: 12,
-      right: 12,
-      zIndex: 50,
-      padding: "6px 10px",
-      background: "#111827",
-      color: "#fff",
-      border: "1px solid rgba(255,255,255,0.35)",
-      borderRadius: 10,
-      fontWeight: 800,
-      fontSize: 12,
-      boxShadow: "0 6px 14px rgba(0,0,0,0.25)",
-      opacity: 0.9,
-    }}
-    title="Force-submit 10/10, 150s"
-  >
-    DEV: Submit 10/10
-  </button>
-)}
+      {((typeof process !== "undefined" && process.env.NODE_ENV !== "production") ||
+        (typeof window !== "undefined" && window.location.search.includes("debug=1"))) && (
+        <button
+          onClick={debugSubmitPerfect}
+          className="absolute top-3 right-3 z-50 px-2.5 py-1.5 rounded-lg bg-gray-900 text-white border border-white/30 font-extrabold text-xs shadow opacity-90"
+          title="Force-submit 10/10, 150s"
+        >
+          DEV: Submit 10/10
+        </button>
+      )}
 
       <div
         ref={containerRef}
-        className="nd-area"
+        className={`relative`}
         style={{
           width: BASE_W,
           height: BASE_H,
           transform: `scale(${scale})`,
           transformOrigin: "center",
           outline: isFlashing ? "3px solid rgba(255,0,0,0.7)" : "none",
-          position: "relative",
         }}
         aria-label="Number Drop Game"
       >
         {/* HUD */}
-        <div
-          ref={hudRef}
-          className="nd-hud"
-          style={{
-            padding: "10px 12px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-          }}
-        >
-          {/* Top row: Left (Round) • Center (Sequence) • Right (Lives + Score) */}
-          <div
-            className="nd-row"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "180px 1fr 220px", // fixed left/right widths to prevent shifts
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
+        <div ref={hudRef} className="p-3 flex flex-col gap-2">
+          <div className="grid grid-cols-[180px_1fr_220px] items-center gap-2">
             {/* Left: Round */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span className="nd-label">Round:</span>
-              <span className="nd-score" style={{ fontWeight: 800 }}>
-                {round}/{TOTAL_ROUNDS}
-              </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm opacity-80">Round:</span>
+              <span className="font-extrabold">{round}/{TOTAL_ROUNDS}</span>
             </div>
 
             {/* Center: Sequence */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                justifyContent: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              <span
-                className="nd-seq"
-                style={{
-                  display: "flex",
-                  gap: 6,
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                }}
-              >
+            <div className="flex items-center gap-2 justify-center flex-wrap">
+              <span className="flex gap-1.5 flex-wrap items-center">
                 {Array.from({ length: maxNumber }, (_, i) => i + 1).map((n) => (
                   <span
                     key={n}
-                    className={`nd-seq-num ${n < currentTarget ? "done" : n === currentTarget ? "current" : ""}`}
-                    style={{
-                      minWidth: 28,
-                      height: 28,
-                      lineHeight: "28px",
-                      textAlign: "center",
-                      borderRadius: 6,
-                      padding: "0 6px",
-                    }}
+                    className={[
+                      "min-w-7 h-7 leading-7 text-center rounded-md px-1.5",
+                      n < currentTarget ? "bg-green-500 text-white font-bold" :
+                      n === currentTarget ? "bg-yellow-300 text-slate-900 font-bold" :
+                      "bg-white/60 text-slate-800"
+                    ].join(" ")}
                   >
                     {n}
                   </span>
                 ))}
               </span>
             </div>
-            
-            
 
             {/* Right: Lives + Score */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                justifyContent: "flex-end",
-              }}
-            >
-              <span className="nd-label">Lives:</span>
+            <div className="flex items-center gap-3 justify-end">
+              <span className="text-sm opacity-80">Lives:</span>
               <HeartRow lives={lives} />
-              <div style={{ width: 1, height: 18, background: "rgba(0,0,0,0.15)" }} />
-              <span className="nd-label">Score:</span>
-              <span className="nd-score" style={{ fontWeight: 800 }}>{score}</span>
+              <div className="w-px h-[18px] bg-black/15" />
+              <span className="text-sm opacity-80">Score:</span>
+              <span className="font-extrabold">{score}</span>
             </div>
           </div>
         </div>
@@ -638,7 +521,7 @@ const debugSubmitPerfect = useCallback(() => {
           ref={basketElRef}
           src="/munchie/eyelessneutral_Munchie.png"
           alt="Munchie"
-          className="nd-basket"
+          className="absolute bottom-3 select-none"
           style={{ left: basketXRef.current, width: BASKET_W, height: BASKET_H }}
           draggable={false}
         />
@@ -649,39 +532,35 @@ const debugSubmitPerfect = useCallback(() => {
             ref={numberElRef}
             src={`/photos/number_pngs/number_${dropValue}.png`}
             alt="Falling number"
-            className="nd-number"
+            className="absolute select-none"
             style={{ width: NUM_SIZE, height: NUM_SIZE, left: 0, top: -NUM_SIZE }}
             draggable={false}
           />
         )}
 
-        {!ready && <div className="nd-loading">Loading numbers…</div>}
+        {!ready && (
+          <div className="absolute inset-0 flex items-center justify-center text-slate-800">
+            Loading numbers…
+          </div>
+        )}
 
         {/* Start overlay */}
         {!started && !finished && (
-          <div
-            className="nd-finish"
-            style={{ background: "rgba(255,255,255,0.5)", color: "#0b3a66" }}
-          >
-            <div style={{ textAlign: "center" }}>
+          <div className="absolute inset-0 flex items-center justify-center bg-white/50 text-[#0b3a66]">
+            <div className="text-center">
               <img
                 src="/munchie/eyelessneutral_Munchie.png"
                 alt="Munchie"
-                style={{ width: 120, height: 120, margin: "0 auto 10px" }}
+                className="w-30 h-30 mx-auto mb-2.5 select-none"
                 draggable={false}
+                style={{ width: 120, height: 120 }}
               />
-              <div style={{ fontSize: 28, fontWeight: 800, marginBottom: 10 }}>
+              <div className="text-2xl font-black mb-2.5">
                 Catch the numbers in order! (10 rounds)
               </div>
               <button
                 onClick={startGame}
-                className="px-6 py-3 rounded-lg"
-                style={{
-                  background: "#22c55e",
-                  color: "#fff",
-                  fontWeight: 800,
-                  boxShadow: "0 6px 14px rgba(0,0,0,0.25)",
-                }}
+                className="px-6 py-3 rounded-lg bg-green-500 text-white font-extrabold shadow"
               >
                 Start
               </button>
@@ -689,63 +568,29 @@ const debugSubmitPerfect = useCallback(() => {
           </div>
         )}
 
-        {/* Finish overlay with pass/fail + actions */}
+        {/* Finish overlay */}
         {finished && (
-          <div
-            className="nd-finish"
-            style={{
-              background: "rgba(0,0,0,0.45)",
-              color: "#fff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center",
-              padding: 24,
-            }}
-          >
-            <div
-              style={{
-                background: "rgba(255,255,255,0.15)",
-                borderRadius: 16,
-                padding: 20,
-                minWidth: 320,
-                boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
-                backdropFilter: "blur(6px)",
-              }}
-            >
-              <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 8 }}>
+          <div className="absolute inset-0 flex items-center justify-center text-white text-center p-6 bg-black/45">
+            <div className="bg-white/15 rounded-xl p-5 min-w-80 shadow-2xl backdrop-blur-md">
+              <div className="text-[30px] font-black mb-2.5">
                 {finished.passed ? "🎉 You Passed!" : "Keep Trying!"}
               </div>
-              <div style={{ opacity: 0.9, marginBottom: 12 }}>
+              <div className="opacity-90 mb-3">
                 Rounds cleared: <b>{finished.score}</b> / {finished.total}
               </div>
-              <div style={{ opacity: 0.8, marginBottom: 18 }}>
+              <div className="opacity-80 mb-4">
                 Time: {finished.durationSec}s
               </div>
-              <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <div className="flex gap-2 justify-center">
                 <button
                   onClick={restartGame}
-                  className="px-6 py-3 rounded-lg"
-                  style={{
-                    background: "#22c55e",
-                    color: "#fff",
-                    fontWeight: 800,
-                    boxShadow: "0 6px 14px rgba(0,0,0,0.25)",
-                    minWidth: 140,
-                  }}
+                  className="px-6 py-3 rounded-lg bg-green-500 text-white font-extrabold shadow min-w-[140px]"
                 >
                   Restart
                 </button>
                 <button
                   onClick={goToDashboard}
-                  className="px-6 py-3 rounded-lg"
-                  style={{
-                    background: "transparent",
-                    color: "#fff",
-                    border: "1px solid rgba(255,255,255,0.5)",
-                    fontWeight: 800,
-                    minWidth: 180,
-                  }}
+                  className="px-6 py-3 rounded-lg bg-transparent text-white border border-white/50 font-extrabold min-w-[180px]"
                 >
                   Return to Dashboard
                 </button>

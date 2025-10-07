@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../reusable/Sidebar";
 import StudentTable from "../reusable/StudentTable";
 import CreateStudentForm from "../reusable/CreateStudentForm";
 import axios from "axios";
 import TeacherHeader from "../reusable/TeacherHeader";
+import { postOnce } from "../../utils/requestDedupe";
 
 function ManageStudent() {
   const navigate = useNavigate();
   const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);  
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     fname: "",
     lname: "",
@@ -19,6 +20,9 @@ function ManageStudent() {
   });
   const [showForm, setShowForm] = useState(false);
   const [editingStudentID, setEditingStudentID] = useState(null);
+
+  // prevents rapid double-submits from clicking twice or strict-mode re-runs
+  const isSubmittingRef = useRef(false);
 
   // Fetch students from the API
   useEffect(() => {
@@ -34,7 +38,7 @@ function ManageStudent() {
           headers: { Authorization: `Bearer ${token}` },
         });
         setStudents(response.data.map((student) => ({ ...student, showPassword: false })));
-        setLoading(false); 
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching students:", error);
         setLoading(false);
@@ -67,6 +71,8 @@ function ManageStudent() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmittingRef.current) return; // guard: ignore if a submit is already in flight
+    isSubmittingRef.current = true;
 
     const form = new FormData();
     form.append("fname", formData.fname);
@@ -84,6 +90,11 @@ function ManageStudent() {
 
     try {
       const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/teacher-login");
+        return;
+      }
+
       const headers = {
         "Content-Type": "multipart/form-data",
         Authorization: `Bearer ${token}`,
@@ -91,12 +102,26 @@ function ManageStudent() {
 
       let response;
       if (editingStudentID) {
-        response = await axios.put(`http://localhost:8080/api/students/${editingStudentID}`, form, { headers });
+        // Deduplicate UPDATE requests for the same student id within ~1.5s
+        response = await postOnce(
+          `student:update:${editingStudentID}`,
+          () => axios.put(`http://localhost:8080/api/students/${editingStudentID}`, form, { headers })
+        );
+
         setStudents((prev) =>
           prev.map((s) => (s.studentID === editingStudentID ? { ...response.data, showPassword: false } : s))
         );
       } else {
-        response = await axios.post("http://localhost:8080/api/students/create", form, { headers });
+        // Use username (or timestamp fallback) to dedupe CREATE for same data
+        const createKey = formData.username && formData.username.trim().length > 0
+          ? formData.username.trim()
+          : String(Date.now());
+
+        response = await postOnce(
+          `student:create:${createKey}`,
+          () => axios.post("http://localhost:8080/api/students/create", form, { headers })
+        );
+
         setStudents((prev) => [...prev, { ...response.data, showPassword: false }]);
       }
 
@@ -105,6 +130,8 @@ function ManageStudent() {
       setEditingStudentID(null);
     } catch (error) {
       console.error("Error submitting student form:", error);
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 
@@ -154,7 +181,10 @@ function ManageStudent() {
                 className="border rounded-xl px-4 py-2 w-64 focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-800" onClick={() => setShowForm(true)}>
+            <button
+              className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-800"
+              onClick={() => setShowForm(true)}
+            >
               + Create New Student
             </button>
           </div>
@@ -175,7 +205,7 @@ function ManageStudent() {
             togglePassword={togglePassword}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            loading={loading}  
+            loading={loading}
           />
         </section>
       </main>
