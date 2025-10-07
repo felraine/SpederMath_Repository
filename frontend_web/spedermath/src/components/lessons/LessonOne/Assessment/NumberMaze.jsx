@@ -1,6 +1,8 @@
 // NumberMaze.jsx
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import axios from "axios";
+import { postOnce } from "../../../../utils/requestDedupe";
+import { currentStudentId } from "../../../../utils/auth";
 
 /** ===== Tuning knobs ===== */
 const MAZE_ROWS = 6;
@@ -894,38 +896,40 @@ const submitProgressToBackend = useCallback(async () => {
     return;
   }
 
-  // Minimal payload that your StudentProgress accepts (server sets student & lastUpdated)
-  // NOTE: status must match your enum exactly; try "COMPLETED" or "FAILED".
   const payload = {
-    lessonId: effectiveLessonId,                  // maps to @JsonProperty("lesson_id") on Lesson getter
-    score: correct,                                // int NOT NULL
-    status: correct >= PASSING_SCORE ? "COMPLETED" : "FAILED",  // must match your Status enum         // boolean NOT NULL
-    retakes_count: 0,                              // int NOT NULL
+    lessonId: effectiveLessonId,
+    score: correct,
+    status: correct >= PASSING_SCORE ? "COMPLETED" : "FAILED",
+    retakes_count: 0,
     timeSpentInSeconds: assessStartRef.current
       ? Math.max(0, Math.floor((Date.now() - assessStartRef.current) / 1000))
       : 0,
   };
 
-  // Optional: log JWT payload for role/expiry check
+  // Optional: peek at JWT; keep your existing console too if you like
   try {
     const [, b64] = token.split(".");
     console.log("[JWT payload]", JSON.parse(atob(b64)));
   } catch {}
 
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+  const baseHeaders = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+    // future-friendly if you later add backend idempotency;
+    // rotate ~4s via bitshift to avoid being "once per day"
+    "Idempotency-Key": `nm-${currentStudentId()}-${effectiveLessonId}-${Date.now() >> 12}`,
   };
 
   try {
-    // Try the endpoint you wired in your controller (swap if you actually mapped /submit)
-    const res = await axios.post(
-      "http://localhost:8080/api/student-progress/submit",
-      payload,
-      config
+    const key = `submit:${currentStudentId()}:${effectiveLessonId}`;
+    const res = await postOnce(key, () =>
+      axios.post(
+        "http://localhost:8080/api/student-progress/submit",
+        payload,
+        { headers: baseHeaders }
+      )
     );
+
     console.log("Submit OK", res.status);
     postedRef.current = true;
   } catch (err) {

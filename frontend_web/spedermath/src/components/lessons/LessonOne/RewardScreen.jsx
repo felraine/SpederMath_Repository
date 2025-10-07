@@ -2,6 +2,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
+import { postOnce } from "../../../utils/requestDedupe";
+import { currentStudentId } from "../../../utils/auth";
 
 export default function RewardScreen() {
   const navigate = useNavigate();
@@ -40,10 +42,18 @@ export default function RewardScreen() {
 
   const submitBackend = async (payload) => {
     const token = localStorage.getItem("token");
-    return axios.post(
-      "http://localhost:8080/api/student-progress/submit",
-      payload,
-      { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+    if (!token) return;
+
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": `reward-${currentStudentId()}-${payload.lessonId}-${Date.now() >> 12}`,
+    };
+
+    const key = `submit:${currentStudentId()}:${payload.lessonId}`;
+
+    await postOnce(key, () =>
+      axios.post("http://localhost:8080/api/student-progress/submit", payload, { headers })
     );
   };
 

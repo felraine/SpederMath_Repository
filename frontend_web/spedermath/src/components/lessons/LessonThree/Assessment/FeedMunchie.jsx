@@ -1,9 +1,11 @@
+// src/lessons/lesson3/FeedMunchie.jsx
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import LessonLayout from "../../../reusable/LessonLayout";
-import axios from "axios";
 import Confetti from "react-confetti";
 import MunchieTutorial from "../../tutorial/MunchieTutorial";
+import { postOnce } from "../../../../utils/requestDedupe";    
+import { currentStudentId } from "../../../../utils/auth";      
 
 /** NEW: counting rounds instead of addition */
 const generateCountingRounds = (total = 10, maxCount = 10) => {
@@ -42,6 +44,7 @@ const eatSound = () => new Audio("/munchie/munchie-eat.mp3").play();
  * - totalRounds?: number (default 10)
  * - maxCountPerRound?: number (default 10; capped by 10 because tray has 10 slots)
  * - passRate?: number (0..1, default 0.7)
+ * - retakes_count?: number (default 0)
  */
 const FeedMunchieCounting = ({
   lessonId = 6,
@@ -79,7 +82,6 @@ const FeedMunchieCounting = ({
   const wasDroppedRef = useRef(false);
   const munchieRef = useRef(null);
 
-  const token = localStorage.getItem("token");
   const navigate = useNavigate();
   const current = rounds[currentStep];
   const passThreshold = Math.ceil(passRate * rounds.length);
@@ -210,50 +212,53 @@ const FeedMunchieCounting = ({
   };
 
   const submitProgress = async () => {
-  if (!lessonId) {
-    alert("Missing lessonId. Pass lessonId prop to FeedMunchieCounting.");
-    return;
-  }
-  const token = localStorage.getItem("token");
-  if (!token) {
-    alert("Missing auth token. Please log in again.");
-    return;
-  }
+    if (!lessonId) {
+      alert("Missing lessonId. Pass lessonId prop to FeedMunchieCounting.");
+      return;
+    }
 
-  const progress = {
-    lessonId,
-    score,
-    status,
-    timeSpentInSeconds: timeSpent,
-    retakes_count: 0,
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Missing auth token. Please log in again.");
+      return;
+    }
+
+    const progress = {
+      lessonId,
+      score,
+      status,
+      timeSpentInSeconds: timeSpent,
+      retakes_count: retakes_count ?? 0,
+    };
+    console.log("Submitting progress payload (guarded):", progress);
+
+    try {
+      const sid = currentStudentId();
+      const key = `submit:${sid}:${lessonId}:${status}`;
+
+      await postOnce(key, async () => {
+        const res = await fetch("http://localhost:8080/api/student-progress/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(progress),
+        });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(`Submit failed ${res.status}: ${text || res.statusText}`);
+        }
+      });
+
+      alert("Progress submitted!");
+      navigate("/student-dashboard");
+    } catch (err) {
+      console.error("Submit FAILED (guarded):", err);
+      alert(err.message || "Submit failed.");
+    }
   };
-  console.log("Submitting progress payload:", progress);
-
-  try {
-    const res = await axios.post(
-      "http://localhost:8080/api/student-progress/submit",
-      progress,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    console.log("Submit OK:", res.status, res.data);
-    alert("Progress submitted!");
-    navigate("/student-dashboard");
-  } catch (err) {
-    const status = err?.response?.status;
-    const data = err?.response?.data;
-    const message =
-      typeof data === "string"
-        ? data
-        : data?.message || JSON.stringify(data || {});
-    console.error("Submit FAILED:", status, data, err);
-    alert(`Submit failed (${status ?? "no status"}): ${message}`);
-  }
-};
 
   const handleDragEnd = (e) => {
     const index = parseInt(e.dataTransfer.getData("text/plain"), 10);
@@ -269,6 +274,7 @@ const FeedMunchieCounting = ({
     setMunchieFace("/munchie/neutral_Munchie.png");
   };
 
+  // --- Screens ---
   if (showTutorial) {
     return <MunchieTutorial onNext={onTutorialFinish} />;
   }
@@ -353,11 +359,7 @@ const FeedMunchieCounting = ({
             </h2>
             <div className="bg-white rounded-full px-4 py-1 text-gray-700 font-neucha text-lg shadow-md border">
               Fruits added:{" "}
-              <span
-                className={`font-bold ${
-                  addedFruit > current.target ? "text-red-600" : "text-green-700"
-                }`}
-              >
+              <span className={`font-bold ${addedFruit > current.target ? "text-red-600" : "text-green-700"}`}>
                 {addedFruit}
               </span>
             </div>
@@ -404,7 +406,19 @@ const FeedMunchieCounting = ({
                               document.body.removeChild(dragImg);
                             }, 1000);
                           }}
-                          onDragEnd={handleDragEnd}
+                          onDragEnd={(e) => {
+                            const index = parseInt(e.dataTransfer.getData("text/plain"), 10);
+                            if (!wasDroppedRef.current) {
+                              requestAnimationFrame(() => {
+                                setTrayFruits((prev) => {
+                                  const updated = [...prev];
+                                  updated[index] = true;
+                                  return updated;
+                                });
+                              });
+                            }
+                            setMunchieFace("/munchie/neutral_Munchie.png");
+                          }}
                           className="h-14 w-14 object-contain cursor-grab z-10"
                           alt="fruit"
                         />

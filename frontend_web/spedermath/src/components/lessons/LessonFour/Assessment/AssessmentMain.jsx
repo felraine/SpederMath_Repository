@@ -2,9 +2,16 @@
 import React, { useEffect, useState, useRef } from "react";
 
 const numberAudioMap = {
-  1: "one", 2: "two", 3: "three", 4: "four",
-  5: "five", 6: "six", 7: "seven", 8: "eight",
-  9: "nine", 10: "ten"
+  1: "one",
+  2: "two",
+  3: "three",
+  4: "four",
+  5: "five",
+  6: "six",
+  7: "seven",
+  8: "eight",
+  9: "nine",
+  10: "ten",
 };
 
 const correctAudios = [
@@ -17,21 +24,11 @@ const wrongAudios = [
   "/audio/lesson2/wrong/nice_try.mp3",
 ];
 
-const oceanTheme = {
-  tile: "rgba(0, 95, 160, 0.35)",
-  tileHover: "rgba(0, 95, 160, 0.5)",
-  tileCorrect: "linear-gradient(145deg, #37d67a, #1aa35b)",
-  tileWrong: "linear-gradient(145deg, #ff6b6b, #c81e1e)",
-  textShadow: "2px 3px 8px rgba(0,0,0,0.35)",
-  panel: "rgba(0, 40, 85, 0.22)",
-};
-
 const MAX_N = 10;
 const TOTAL_QUESTIONS = 10;
 
-const AssessmentMain = ({ onFinish }) => {
+export default function AssessmentMain({ onFinish }) {
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [questionType, setQuestionType] = useState("apple");
   const [correctAnswer, setCorrectAnswer] = useState(1);
   const [selected, setSelected] = useState(null);
   const [isCounting, setIsCounting] = useState(false);
@@ -46,40 +43,44 @@ const AssessmentMain = ({ onFinish }) => {
   useEffect(() => {
     mountedRef.current = true;
     startNewRound();
-    return () => { mountedRef.current = false; };
-    // eslint-disable-next-line
+    return () => {
+      mountedRef.current = false;
+      if (activeAudio.current) {
+        activeAudio.current.pause?.();
+        activeAudio.current.currentTime = 0;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questionIndex]);
 
   const shuffleArray = (array) =>
-    array.map((v) => ({ v, sort: Math.random() }))
-         .sort((a,b) => a.sort - b.sort)
-         .map(({ v }) => v);
+    array
+      .map((v) => ({ v, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ v }) => v);
 
   const playRandomAudio = (list, cb) => {
-    const f = list[Math.floor(Math.random()*list.length)];
+    const f = list[Math.floor(Math.random() * list.length)];
     const a = new Audio(f);
     activeAudio.current = a;
-    a.play().catch(()=>{});
+    a.play().catch(() => {});
     if (cb) a.onended = cb;
   };
 
   const startNewRound = () => {
     const randomCount = Math.floor(Math.random() * MAX_N) + 1;
-    const randomType = Math.random() > 0.5 ? "apple" : "balloon";
 
-    setQuestionType(randomType);
     setCorrectAnswer(randomCount);
-    setShuffledAnswers(shuffleArray(Array.from({ length: MAX_N }, (_, i) => i+1)));
+    setShuffledAnswers(
+      shuffleArray(Array.from({ length: MAX_N }, (_, i) => i + 1))
+    );
     setSelected(null);
     setIsCounting(false);
     setHighlightIndex(-1);
     setShowChoices(false);
 
-    const qAudio = new Audio(
-      randomType === "apple"
-        ? "/audio/lesson2/how_many_apples.mp3"
-        : "/audio/lesson2/how_many_balloons.mp3"
-    );
+    // Generic prompt (replace with your actual file)
+    const qAudio = new Audio("/audio/lesson2/how_many_objects.mp3");
     activeAudio.current = qAudio;
     qAudio.onended = () => setShowChoices(true);
     qAudio.onerror = () => setShowChoices(true);
@@ -96,20 +97,24 @@ const AssessmentMain = ({ onFinish }) => {
       if (!mountedRef.current) return;
       if (i <= correctAnswer) {
         const word = numberAudioMap[i];
-        const terminal = `/audio/lesson2/${word}_${questionType}s.mp3`;
-        const base = `/audio/lesson2/${word}.mp3`;
-
-        setHighlightIndex(i-1);
-
-        const clip = new Audio(i===correctAnswer ? terminal : base);
+        const clip = new Audio(`/audio/lesson2/${word}.mp3`);
         activeAudio.current = clip;
-        clip.play().catch(()=>{});
-        clip.onended = () => { i++; playNext(); };
-        clip.onerror = () => { i++; playNext(); };
+
+        setHighlightIndex(i - 1);
+
+        clip.play().catch(() => {});
+        clip.onended = () => {
+          i++;
+          playNext();
+        };
+        clip.onerror = () => {
+          i++;
+          playNext();
+        };
       } else {
         setTimeout(() => {
           if (num === correctAnswer) {
-            setScore((s)=>s+1);
+            setScore((s) => s + 1);
             playRandomAudio(correctAudios, nextQuestion);
           } else {
             playRandomAudio(wrongAudios, nextQuestion);
@@ -117,87 +122,98 @@ const AssessmentMain = ({ onFinish }) => {
         }, 400);
       }
     };
+
     playNext();
   };
 
   const nextQuestion = () => {
     setIsCounting(false);
     setHighlightIndex(-1);
-    if (questionIndex < TOTAL_QUESTIONS-1) {
-      setQuestionIndex((q)=>q+1);
+    if (questionIndex < TOTAL_QUESTIONS - 1) {
+      setQuestionIndex((q) => q + 1);
     } else {
       onFinish?.(score);
     }
   };
 
-  const niceType = questionType === "apple" ? "apples" : "balloons";
-
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-start p-6" style={{ color:"#f5faff" }}>
-      <button onClick={()=>window.history.back()} className="absolute top-4 left-4">
-        <img src="/Back%20Button.png" alt="Back" className="w-10 h-10"/>
+    <div className="relative w-full h-full min-h-screen text-white flex flex-col items-center justify-start p-6">
+      {/* Back Button */}
+      <button
+        onClick={() => window.history.back()}
+        className="absolute top-4 left-4 rounded-xl bg-white/15 hover:bg-white/25 active:bg-white/30 transition px-2 py-2"
+      >
+        <img src="/Back%20Button.png" alt="Back" className="w-10 h-10" />
       </button>
 
-      {/* Top banner */}
-      <div style={{
-        display:"flex",alignItems:"center",gap:14,padding:"10px 18px",
-        background:oceanTheme.panel,borderRadius:999,backdropFilter:"blur(4px)",
-        boxShadow:"0 6px 14px rgba(0,0,0,0.25)",marginBottom:18,fontWeight:700,
-        textShadow:oceanTheme.textShadow
-      }}>
-        🧠 Question {questionIndex+1}/{TOTAL_QUESTIONS}
-        <span style={{ width:1,height:22,background:"rgba(255,255,255,0.35)" }}/>
-        ⭐ Score: {score}
+      {/* HUD */}
+      <div className="mt-2 mb-6 inline-flex items-center gap-3 px-5 py-2 rounded-full bg-white/10 backdrop-blur shadow">
+        <span className="font-bold">
+          🧠 Question {questionIndex + 1}/{TOTAL_QUESTIONS}
+        </span>
+        <span className="h-5 w-px bg-white/40" />
+        <span className="font-bold">⭐ Score: {score}</span>
       </div>
 
-      <h2 style={{ fontSize:36,fontWeight:800,margin:"40px 0 20px",textShadow:oceanTheme.textShadow }}>
-        Let’s count the {niceType}!
+      {/* Title */}
+      <h2 className="text-3xl sm:text-4xl font-extrabold mb-5 text-center">
+        Count the objects!
       </h2>
 
-      {/* Objects */}
-      <div style={{display:"flex",justifyContent:"center",gap:32,margin:"20px 0 30px",flexWrap:"wrap"}}>
-        {[...Array(correctAnswer)].map((_,i)=>(
-          <img
+      {/* Objects row */}
+      <div className="flex flex-wrap justify-center gap-8 my-6">
+        {[...Array(correctAnswer)].map((_, i) => (
+          <div
             key={i}
-            src={questionType==="apple" ? "/photos/lesson2/apple.png" : "/photos/lesson2/red_balloon.png"}
-            alt={questionType}
-            style={{
-              width:140,maxHeight:150,objectFit:"contain",
-              transform: highlightIndex===i ? "scale(1.3)" : "scale(1)",
-              filter: highlightIndex===i ? "drop-shadow(0 0 12px gold)" : "drop-shadow(0 3px 7px rgba(0,0,0,0.25))",
-              transition:"transform 0.3s ease, filter 0.3s ease"
-            }}
-          />
+            className={[
+              "w-24 h-24 rounded-full bg-white/20 flex items-center justify-center text-3xl",
+              "transition-transform duration-300 shadow-[0_6px_14px_rgba(0,0,0,0.25)]",
+              highlightIndex === i ? "scale-125 ring-4 ring-yellow-300/70" : "scale-100",
+            ].join(" ")}
+            aria-hidden="true"
+          >
+            {/* simple neutral token */}
+            ⚪
+          </div>
         ))}
       </div>
 
+      {/* Choices */}
       {showChoices && (
         <>
-          <div style={{ margin:"20px 0 18px",fontSize:26,fontWeight:700,textShadow:oceanTheme.textShadow }}>
-            How many {niceType}?
+          <div className="mt-2 mb-4 text-2xl font-bold text-center">
+            How many objects?
           </div>
-          <div style={{display:"flex",justifyContent:"center",gap:22,flexWrap:"wrap",maxWidth:600}}>
-            {shuffledAnswers.map((n)=>(
-              <button
-                key={n}
-                onClick={()=>!isCounting && handleAnswer(n)}
-                style={{
-                  width:95,height:95,borderRadius:18,
-                  border:"1px solid rgba(255,255,255,0.35)",
-                  background: selected===n ? (n===correctAnswer?oceanTheme.tileCorrect:oceanTheme.tileWrong) : oceanTheme.tile,
-                  color:"#fff",fontSize:32,fontWeight:800,cursor:"pointer",
-                  boxShadow:"0 6px 12px rgba(0,0,0,0.28)",transition:"all 0.18s ease",
-                  textShadow:oceanTheme.textShadow
-                }}
-              >
-                {n}
-              </button>
-            ))}
+
+          <div className="flex flex-wrap justify-center gap-4 max-w-[680px]">
+            {shuffledAnswers.map((n) => {
+              const isSelected = selected === n;
+              const isCorrect = isSelected && n === correctAnswer;
+
+              return (
+                <button
+                  key={n}
+                  onClick={() => !isCounting && handleAnswer(n)}
+                  disabled={isCounting}
+                  className={[
+                    "w-24 h-24 rounded-2xl border text-3xl font-extrabold",
+                    "transition-all shadow-[0_6px_12px_rgba(0,0,0,0.28)]",
+                    "border-white/30",
+                    isSelected
+                      ? isCorrect
+                        ? "bg-green-600"
+                        : "bg-rose-600"
+                      : "bg-white/15 hover:bg-white/25",
+                    isCounting ? "cursor-not-allowed opacity-90" : "cursor-pointer",
+                  ].join(" ")}
+                >
+                  {n}
+                </button>
+              );
+            })}
           </div>
         </>
       )}
     </div>
   );
-};
-
-export default AssessmentMain;
+}

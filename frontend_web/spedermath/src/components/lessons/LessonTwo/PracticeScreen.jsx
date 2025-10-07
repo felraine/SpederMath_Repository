@@ -125,7 +125,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
 
     const playNextNumber = () => {
       if (i <= num) {
-        const base = `/audio/lesson1/${numberAudioMap[i]}.mp3`;
+        const base = `/audio/numbers/${numberAudioMap[i]}.mp3`;
         // Terminal clip (e.g., "one_fish.mp3"); if missing, we fallback to base
         const terminal = `/audio/lesson1/${numberAudioMap[i]}_fish.mp3`;
 
