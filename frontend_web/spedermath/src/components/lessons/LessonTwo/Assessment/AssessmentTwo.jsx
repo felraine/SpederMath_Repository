@@ -32,7 +32,7 @@ const AssessmentIndex = () => {
         {step === 1 && (
           <NumberDrop
             maxNumber={5}
-            lessonId={5}                 // <- set the correct lesson id here
+            lessonId={4}                 // <- set the correct lesson id here
             dashboardPath="/student-dashboard"
             onGameOver={handleFinish}
           />

@@ -1,5 +1,7 @@
 // src/lessons/LessonFour/Assessment/NumberPlatform.jsx
 import React, { useEffect, useRef, useState } from "react";
+import { postOnce } from "../../../../utils/requestDedupe";   // ← your util
+import { currentStudentId } from "../../../../utils/auth";     // ← your util
 
 const clampNum = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
@@ -12,8 +14,8 @@ export default function NumberPlatform({
   rounds = 5,
   livesPerRound = 3,
   range = [1, 10],
-  lessonId,
-  onGameOver,
+  lessonId,              // ← submit with this lessonId when game ends
+  onGameOver,            // ← optional callback (will be called after guarded submit)
 }) {
   const [roundIndex, setRoundIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -82,7 +84,8 @@ export default function NumberPlatform({
       const durationSec = Math.max(0, Math.round((Date.now() - startedAtRef.current) / 1000));
       const total = rounds;
       const status = score >= Math.ceil(total * 0.6) ? "PASSED" : "FAILED";
-      onGameOver?.({
+
+      const result = {
         lessonId,
         score,
         total,
@@ -91,7 +94,50 @@ export default function NumberPlatform({
         status,
         durationSec,
         game: "NumberPlatform",
-      });
+      };
+
+      // Submit with guard if we have a lessonId
+      (async () => {
+        if (!lessonId) {
+          onGameOver?.(result);
+          return;
+        }
+
+        try {
+          const token = localStorage.getItem("token");
+          if (!token) throw new Error("Missing auth token");
+
+          const sid = currentStudentId();
+          // status is part of the key to dedupe repeated finishes with the same outcome
+          const key = `submit:${sid}:${lessonId}:${status}`;
+
+          await postOnce(key, async () => {
+            const res = await fetch("http://localhost:8080/api/student-progress/submit", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                lessonId,
+                score,
+                status,
+                timeSpentInSeconds: durationSec,
+                retakes_count: 0,
+              }),
+            });
+            if (!res.ok) {
+              const text = await res.text().catch(() => "");
+              throw new Error(`Submit failed ${res.status}: ${text || res.statusText}`);
+            }
+          });
+        } catch (e) {
+          console.warn("NumberPlatform submit failed (guarded):", e);
+          // continue; result still returned to parent so UX isn’t blocked
+        } finally {
+          onGameOver?.(result);
+        }
+      })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roundIndex]);
@@ -183,20 +229,18 @@ export default function NumberPlatform({
   // ---------------- visuals ----------------
   const hud = "px-4 py-2 rounded-full bg-black/30 text-white font-bold backdrop-blur";
 
-  // Slim grass cap; numbers live in the dirt
-  // Grass 18% / edge 4% / dirt 78%
-  const PLATFORM_BG =
-    "linear-gradient(#59c94b 0 18%, #3aa33a 18% 22%, #8b5a2b 22% 100%)";
+  // Slim grass cap; numbers live in the dirt (kept as a runtime gradient)
+  const PLATFORM_BG = "linear-gradient(#59c94b 0 18%, #3aa33a 18% 22%, #8b5a2b 22% 100%)";
 
   // Layout config per form factor
   const layout = isDesktop
     ? {
-        arenaH: "min(66vh, 560px)",                            // desktop: a bit shorter so it doesn't look low
+        arenaH: "min(66vh, 560px)",                            // desktop: a bit shorter
         topTop: "clamp(80px, calc(var(--arena-h) * 0.22), 180px)",
         bottomBottom: "clamp(60px, calc(var(--arena-h) * 0.11), 110px)",
         avatarBottom: "clamp(92px, calc(var(--arena-h) * 0.25), 150px)",
         gap: "clamp(20px, 3vw, 40px)",
-        topWidthClass: "w-[86%]",                               // tighter row width on desktop
+        topWidthClass: "w-[86%]",
         platW: "clamp(260px, 22vw, 420px)",
         platH: "clamp(92px, 9.5vw, 120px)",
         bottomW: "clamp(340px, 30vw, 560px)",
@@ -222,16 +266,9 @@ export default function NumberPlatform({
         ref={ref}
         onClick={onClick}
         disabled={disabled}
-        className={`relative rounded-2xl border
-                    border-black/25 shadow-[0_10px_24px_rgba(0,0,0,0.28)] transition
-                    ${highlight ? "ring-4 ring-yellow-300/70" : ""}
-                    active:scale-[0.99]`}
-        style={{
-          width: layout.platW,
-          height: layout.platH,
-          background: PLATFORM_BG,
-          ...style,
-        }}
+        className={`relative rounded-2xl border border-black/25 shadow-[0_10px_24px_rgba(0,0,0,0.28)]
+                    transition active:scale-[0.99] ${highlight ? "ring-4 ring-yellow-300/70" : ""}`}
+        style={{ width: layout.platW, height: layout.platH, background: PLATFORM_BG, ...style }}
         aria-label={`Platform ${label}`}
       >
         {/* subtle dirt texture */}
@@ -277,18 +314,12 @@ export default function NumberPlatform({
       {/* ARENA (CSS var so positions scale consistently per layout) */}
       <div
         className="relative w-full max-w-6xl mt-8"
-        style={{
-          "--arena-h": layout.arenaH,
-          height: "var(--arena-h)",
-        }}
+        style={{ "--arena-h": layout.arenaH, height: "var(--arena-h)" }}
       >
         {/* upper platforms (choices) */}
         <div
           className={`absolute left-1/2 -translate-x-1/2 ${layout.topWidthClass} flex items-start justify-between px-4`}
-          style={{
-            top: layout.topTop,
-            gap: layout.gap,
-          }}
+          style={{ top: layout.topTop, gap: layout.gap }}
         >
           <Platform
             ref={platLeftRef}
@@ -305,17 +336,8 @@ export default function NumberPlatform({
         </div>
 
         {/* bottom center platform (current) */}
-        <div
-          className="absolute left-1/2 -translate-x-1/2"
-          style={{ bottom: layout.bottomBottom }}
-        >
-          <Platform
-            ref={platBottomRef}
-            label={current}
-            highlight
-            disabled
-            style={{ width: layout.bottomW }}
-          />
+        <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: layout.bottomBottom }}>
+          <Platform ref={platBottomRef} label={current} highlight disabled style={{ width: layout.bottomW }} />
         </div>
 
         {/* avatar anchor (movement is via transform offsets) */}
@@ -325,14 +347,9 @@ export default function NumberPlatform({
           style={{ bottom: layout.avatarBottom }}
           aria-hidden="true"
         >
-          <div
-            className="transition-transform duration-300 ease-out"
-            style={{ transform: `translate(${avatarOffset.x}px, ${avatarOffset.y}px)` }}
-          >
+          <div className="transition-transform duration-300 ease-out" style={{ transform: `translate(${avatarOffset.x}px, ${avatarOffset.y}px)` }}>
             {/* avatar */}
-            <div className="w-[84px] h-[84px] rounded-full border-2 border-white/80
-                            bg-gradient-to-b from-sky-200 to-sky-500 flex items-center justify-center
-                            shadow-[0_10px_24px_rgba(0,0,0,0.33)] text-3xl">
+            <div className="w-[84px] h-[84px] rounded-full border-2 border-white/80 bg-gradient-to-b from-sky-200 to-sky-500 flex items-center justify-center shadow-[0_10px_24px_rgba(0,0,0,0.33)] text-3xl">
               🐟
             </div>
             <div className="text-center mt-1 font-bold text-black/80">You</div>
