@@ -66,7 +66,7 @@ const TeachScreen = ({ onNext }) => {
   const COUNT_WITH_FISH_PREFACE = "/audio/lesson1/count_with_fish.mp3";
   const LETS_REVIEW_AUDIO = "/audio/lesson1/lets_review.mp3";
 
-  const numberWords = ["Zero", "One", "Two", "Three"];
+  const numberWords = ["Zero", "One", "Two", "Three"]; //erm zero?! hmmm
 
   /** Promise-based audio play that respects “latest playVersion” */
   const playAudioAsync = (src) => {
@@ -291,107 +291,109 @@ const handleChallengeClick = async (clickedIndex) => {
 
         {/* Review row (step 4) */}
         {step === 4 && (
-          <div className="flex flex-row gap-12 justify-center items-center">
-            {Object.keys(stepData).map((num) => (
-              <motion.img
-                key={num}
-                src={stepData[num].img}
-                alt={stepData[num].alt}
-                className="max-w-[140px] w-full"
-                animate={{ scale: highlightIndex === parseInt(num) ? 1.35 : 1 }}
-                transition={{ duration: 0.4 }}
-              />
-            ))}
-          </div>
+          <div className="flex flex-wrap justify-center items-center gap-6 md:gap-10 lg:gap-16">
+          {Object.keys(stepData).map((num) => (
+            <motion.img
+              key={num}
+              src={stepData[num].img}
+              alt={stepData[num].alt}
+              className="w-20 sm:w-24 md:w-28 lg:w-36 max-w-full"
+              animate={{ scale: highlightIndex === parseInt(num) ? 1.35 : 1 }}
+              transition={{ duration: 0.4 }}
+            />
+          ))}
+        </div>
+
         )}
 
         {/* Fish counting (5–7) OR challenge */}
         {step >= 5 && step <= 7 && (
           <>
             {!challengeActive && (
-              <div className="flex flex-row items-center justify-between w-full px-10 -mt-1">
-                <div className="flex flex-row gap-10">
-                  <AnimatePresence>
-                    {fishSet.slice(0, currentCount).map((src, idx) => (
-                      <motion.img
-                        key={`${src}-${idx}`}
-                        src={src}
-                        alt="Fish"
-                        className="w-[110px] sm:w-[120px] md:w-[140px]"
-                        initial={{ opacity: 0, scale: 0.6, y: 12 }}
-                        animate={{ opacity: 1, scale: highlightIndex === idx + 1 ? 1.3 : 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.6 }}
-                        transition={{ duration: 0.5 }}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </div>
+            <div className="flex justify-center items-center w-full px-4 md:px-10 mt-4 gap-6">
+  {/* Invisible container to keep number in fixed place */}
+  <div className="flex items-center justify-center gap-10 w-full max-w-[800px] mx-auto">
+    
+    {/* Fish Row */}
+    <div className="flex flex-wrap justify-start gap-4 md:gap-6 flex-1">
+      <AnimatePresence>
+        {fishSet.slice(0, currentCount).map((src, idx) => (
+          <motion.img
+            key={`${src}-${idx}`}
+            src={src}
+            alt="Fish"
+            className="w-[80px] sm:w-[100px] md:w-[120px] lg:w-[140px]"
+            initial={{ opacity: 0, scale: 0.6, y: 12 }}
+            animate={{ opacity: 1, scale: highlightIndex === idx + 1 ? 1.3 : 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.6 }}
+            transition={{ duration: 0.5 }}
+          />
+        ))}
+      </AnimatePresence>
+    </div>
 
-                <div className="flex flex-col items-center mr-8">
-                  {currentCount > 0 && (
-                    <>
-                      <motion.img
-                        key={`num-${currentCount}-fish`}
-                        src={stepData[currentCount]?.img}
-                        alt={stepData[currentCount]?.alt}
-                        className="w-[180px] sm:w-[200px] md:w-[220px]"
-                        style={{ filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.35)) drop-shadow(0 0 8px rgba(255,255,255,0.65))" }}
-                        initial={{ opacity: 0, scale: 0.85 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
-                      />
-                      <motion.span
-                        className="text-3xl sm:text-4xl font-bold capitalize mt-1"
-                        animate={{ opacity: [0, 1], y: [8, 0] }}
-                        transition={{ duration: 0.35 }}
-                      >
-                        {numberWords[currentCount]}
-                      </motion.span>
-                    </>
-                  )}
-                </div>
-              </div>
+        {/* Number Image + Text fixed position */}
+        {currentCount > 0 && (
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            <motion.img
+              key={`num-${currentCount}-fish`}
+              src={stepData[currentCount]?.img}
+              alt={stepData[currentCount]?.alt}
+              className="w-[120px] sm:w-[140px] md:w-[160px] lg:w-[220px]"
+              style={{ filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.35)) drop-shadow(0 0 8px rgba(255,255,255,0.65))" }}
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            />
+            <motion.span
+              className="text-2xl sm:text-3xl md:text-4xl font-bold capitalize"
+              animate={{ opacity: [0, 1], y: [8, 0] }}
+              transition={{ duration: 0.35 }}
+            >
+              {numberWords[currentCount]}
+            </motion.span>
+          </div>
+        )}
+      </div>
+    </div>
+
             )}
 
             {challengeActive && (
-              <div className="flex flex-col items-center gap-6">
-                <h3 className="text-2xl sm:text-3xl font-bold">
-                  Click on <span className="underline">fish number {targetIndex}</span>.
-                </h3>
+             <div className="flex flex-col items-center gap-4 md:gap-6 mt-10">
+            <h3 className="text-2xl sm:text-3xl font-bold text-center">
+              Click on <span className="underline">fish number {targetIndex}</span>.
+            </h3>
 
-                <div className="flex flex-row gap-10">
-                  {challengeFish.map((src, i) => (
-                    <motion.div
-                      key={`${src}-challenge-${i}`}
-                      className="relative w-[120px] sm:w-[140px] md:w-[160px] cursor-pointer"
-                      initial={{ opacity: 0, scale: 0.85, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => handleChallengeClick(i + 1)}
-                      aria-label={`Fish number ${i + 1}`}
-                    >
-                      <motion.img
-                        src={src}
-                        alt={`Fish number ${i + 1}`}
-                        className="w-full h-auto select-none pointer-events-none"
-                        draggable={false}
-                      />
-                      {/* Centered number overlay; pointer-events-none so clicks pass to wrapper */}
-                      <span
-                        className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                      >
-                        <span
-                          className="text-white text-3xl sm:text-4xl font-extrabold drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]
-                                   rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center"
-                        >
-                          {i + 1}
-                        </span>
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
+            <div className="flex flex-wrap justify-center gap-4 sm:gap-6 md:gap-8">
+              {challengeFish.map((src, i) => (
+                <motion.div
+                  key={`${src}-challenge-${i}`}
+                  className="relative w-[80px] sm:w-[100px] md:w-[120px] lg:w-[140px] cursor-pointer"
+                  initial={{ opacity: 0, scale: 0.85, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleChallengeClick(i + 1)}
+                  aria-label={`Fish number ${i + 1}`}
+                >
+                  <motion.img
+                    src={src}
+                    alt={`Fish number ${i + 1}`}
+                    className="w-full h-auto select-none pointer-events-none"
+                    draggable={false}
+                  />
+                  {/* Number overlay */}
+                  <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="text-white text-2xl sm:text-3xl md:text-4xl font-extrabold drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)] rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">
+                      {i + 1}
+                    </span>
+                  </span>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
             )}
           </>
         )}
