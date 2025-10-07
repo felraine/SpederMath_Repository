@@ -29,7 +29,7 @@ const AssessmentIndex = () => {
         {step === 1 && <NumberMaze onFinish={handleFinish} />}
         {step === 2 && (
           <div className="text-center text-white">
-            <h1 className="text-4xl mb-6">Assessment Complete 🎉</h1>
+            <h1 className="text-4xl mb-6">Assessment Complete</h1>
             <p className="text-2xl">Your Score: {finalScore}/10</p>
             <button
               onClick={() => (window.location.href = "/student-dashboard")}

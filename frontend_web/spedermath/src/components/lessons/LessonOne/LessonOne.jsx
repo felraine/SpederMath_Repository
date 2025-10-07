@@ -31,7 +31,6 @@ const LessonOne = () => {
   ]);
 
   const handleBack = () => {
-    // Works with plain history. If you use react-router, swap to: navigate(-1)
     if (window.history.length > 1) window.history.back();
     else window.location.href = "/student-dashboard";
   };
@@ -40,7 +39,6 @@ const LessonOne = () => {
     <div
       className="relative w-full h-screen overflow-hidden text-white"
       style={{
-        // 👇 if you want Intro to account for header space, expose this variable
         "--header-h": "72px",
         backgroundImage: `url(${bgImage})`,
         backgroundSize: "cover",
@@ -56,7 +54,7 @@ const LessonOne = () => {
           aria-label="Go back"
         >
           <img
-            src="/Back%20Button.png"
+            src="/Back Button.png"
             alt=""
             className="w-7 h-7 object-contain drop-shadow"
             draggable="false"

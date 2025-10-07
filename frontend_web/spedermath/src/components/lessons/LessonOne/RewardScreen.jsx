@@ -88,7 +88,7 @@ export default function RewardScreen() {
 
   return (
     <div className="screen" style={{ textAlign: "center", marginTop: 50, color: "#fff" }}>
-      <h1 className="text-4xl font-bold">You did it! 🎉</h1>
+      <h1 className="text-4xl font-bold">You did it!</h1>
 
       <div style={{
         width: 150, height: 150, backgroundColor: "#FFD700", margin: "12px auto",
@@ -99,7 +99,7 @@ export default function RewardScreen() {
 
       <div style={{ marginTop: 10, fontSize: 14, opacity: 0.95 }}>
         {submitting && `Saving your progress (lessonId = ${lessonId})…`}
-        {!submitting && !submitError && "Progress saved! ✅"}
+        {!submitting && !submitError && "Progress saved!"}
         {submitError && <span style={{ color: "#fde68a" }}>{submitError}</span>}
       </div>
 
@@ -107,16 +107,14 @@ export default function RewardScreen() {
         {submitError && (
           <button
             onClick={submit}
-            className="px-4 py-2 rounded-lg"
-            style={{ background: "#f59e0b", color: "#0b2344", fontWeight: 700 }}
+            className="px-4 py-2 rounded-lg bg-amber-500 text-[#0b2344] font-bold cursor-pointer hover:bg-amber-600 disabled:opacity-60"
           >
             Retry Submit
           </button>
         )}
         <button
           onClick={() => navigate("/student-dashboard")}
-          className="px-4 py-2 rounded-lg"
-          style={{ background: "#16a34a", color: "#fff", fontWeight: 700 }}
+          className="px-4 py-2 rounded-lg bg-green-600 text-white font-bold disabled:opacity-60 hover:bg-green-700 cursor-pointer"
           disabled={submitting}
         >
           Return to Dashboard
