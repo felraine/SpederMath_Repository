@@ -1,7 +1,7 @@
 // src/lessons/LessonFour/Assessment/NumberPlatform.jsx
 import React, { useEffect, useRef, useState } from "react";
-import { postOnce } from "../../../../utils/requestDedupe";   // ← your util
-import { currentStudentId } from "../../../../utils/auth";     // ← your util
+import { postOnce } from "../../../../utils/requestDedupe"; 
+import { currentStudentId } from "../../../../utils/auth";     
 
 const clampNum = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
