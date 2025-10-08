@@ -65,7 +65,7 @@ const LessonTwo = () => {
           aria-label="Go back"
         >
           <img
-            src="/Back%20Button.png"
+            src="/Back Button.png"
             alt=""
             className="w-7 h-7 object-contain drop-shadow"
             draggable="false"

@@ -256,8 +256,7 @@ const handleChallengeClick = async (clickedIndex) => {
   }, []);
 
   return (
-    <section className="lesson-screen fixed inset-0 w-screen h-screen flex flex-col items-center justify-start overflow-hidden m-0 p-0">
-      {/* Background Video */}
+    <section className="lesson-screen fixed inset-0 w-screen h-screen flex flex-col items-center justify-start overflow-hidden m-0 p-0"> 
 
       {/* Headers */}
       {step === 4 && (
