@@ -138,7 +138,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
             setTimeout(() => {
               i++;
               playNextNumber();
-            }, 600);
+            }, 400);
           }
         );
       } else {
