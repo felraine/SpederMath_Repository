@@ -258,14 +258,6 @@ const handleChallengeClick = async (clickedIndex) => {
   return (
     <section className="lesson-screen fixed inset-0 w-screen h-screen flex flex-col items-center justify-start overflow-hidden m-0 p-0">
       {/* Background Video */}
-    <video
-      className="absolute top-0 left-0 w-full h-full object-cover -z-10"
-      src="/backgrounds/lesson_one.mp4"
-      autoPlay
-      loop
-      muted
-      playsInline
-    />
 
       {/* Headers */}
       {step === 4 && (
