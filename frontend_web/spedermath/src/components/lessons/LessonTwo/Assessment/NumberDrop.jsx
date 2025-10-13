@@ -489,28 +489,38 @@ export default function NumberDrop({
         }}
         aria-label="Number Drop Game"
       >
-        {/* HUD */}
-      <div ref={hudRef} className="p-3 flex flex-col gap-2 text-white">
-        <div className="grid grid-cols-[180px_1fr_220px] items-center gap-2">
+       {/* HUD */}
+      <div
+        ref={hudRef}
+        className="p-3 flex flex-col gap-3 text-white w-full max-w-5xl mx-auto"
+      >
+        <div
+          className="
+            grid grid-cols-1 sm:grid-cols-[180px_1fr_220px]
+            items-center gap-3 sm:gap-2 text-center sm:text-left
+          "
+        >
           {/* Left: Round */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm opacity-90">Round:</span>
-            <span className="font-extrabold">{round}/{TOTAL_ROUNDS}</span>
+          <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+            <span className="text-sm sm:text-base opacity-90">Round:</span>
+            <span className="font-extrabold text-base sm:text-lg">
+              {round}/{TOTAL_ROUNDS}
+            </span>
           </div>
 
           {/* Center: Sequence */}
-          <div className="flex items-center gap-2 justify-center flex-wrap">
-            <span className="flex gap-1.5 flex-wrap items-center">
+          <div className="flex items-center justify-center flex-wrap gap-1.5">
+            <span className="flex gap-1.5 flex-wrap justify-center">
               {Array.from({ length: maxNumber }, (_, i) => i + 1).map((n) => (
                 <span
                   key={n}
                   className={[
-                    "min-w-7 h-7 leading-7 text-center rounded-md px-1.5",
+                    "min-w-7 h-7 sm:min-w-8 sm:h-8 leading-7 sm:leading-8 text-center rounded-md px-1.5 text-xs sm:text-sm",
                     n < currentTarget
                       ? "bg-green-500 text-white font-bold"
                       : n === currentTarget
                       ? "bg-yellow-300 text-slate-900 font-bold"
-                      : "bg-white/40 text-white font-semibold"
+                      : "bg-white/40 text-white font-semibold",
                   ].join(" ")}
                 >
                   {n}
@@ -520,15 +530,16 @@ export default function NumberDrop({
           </div>
 
           {/* Right: Lives + Score */}
-          <div className="flex items-center gap-3 justify-end">
-            <span className="text-sm opacity-90">Lives:</span>
+          <div className="flex items-center justify-center sm:justify-end gap-3 flex-wrap">
+            <span className="text-sm sm:text-base opacity-90">Lives:</span>
             <HeartRow lives={lives} />
-            <div className="w-px h-[18px] bg-white/30" />
-            <span className="text-sm opacity-90">Score:</span>
-            <span className="font-extrabold">{score}</span>
+            <div className="hidden sm:block w-px h-[18px] bg-white/30" />
+            <span className="text-sm sm:text-base opacity-90">Score:</span>
+            <span className="font-extrabold text-base sm:text-lg">{score}</span>
           </div>
         </div>
       </div>
+
 
         {/* Basket = Munchie */}
         <img
