@@ -449,13 +449,25 @@ export default function NumberDrop({
   const goToDashboard = () => { window.location.href = dashboardPath; };
 
   return (
+   
     <div
       ref={wrapRef}
       className="w-screen h-screen flex items-center justify-center overflow-hidden"
+      
     >
+    {/* Background video */}
+    <video
+      autoPlay
+      loop
+      muted
+      playsInline
+      className="absolute inset-0 w-full h-full object-cover z-0"
+      src="/backgrounds/lesson_two.mp4"
+      type="video/mp4"
+    />
       {/* DEV-only debug button */}
       {((typeof process !== "undefined" && process.env.NODE_ENV !== "production") ||
-        (typeof window !== "undefined" && window.location.search.includes("debug=1"))) && (
+        (typeof window !== "undefined" && window.location.search.includes("?debug=1"))) && (
         <button
           onClick={debugSubmitPerfect}
           className="absolute top-3 right-3 z-50 px-2.5 py-1.5 rounded-lg bg-gray-900 text-white border border-white/30 font-extrabold text-xs shadow opacity-90"
@@ -477,44 +489,57 @@ export default function NumberDrop({
         }}
         aria-label="Number Drop Game"
       >
-        {/* HUD */}
-        <div ref={hudRef} className="p-3 flex flex-col gap-2">
-          <div className="grid grid-cols-[180px_1fr_220px] items-center gap-2">
-            {/* Left: Round */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm opacity-80">Round:</span>
-              <span className="font-extrabold">{round}/{TOTAL_ROUNDS}</span>
-            </div>
+       {/* HUD */}
+      <div
+        ref={hudRef}
+        className="p-3 flex flex-col gap-3 text-white w-full max-w-5xl mx-auto"
+      >
+        <div
+          className="
+            grid grid-cols-1 sm:grid-cols-[180px_1fr_220px]
+            items-center gap-3 sm:gap-2 text-center sm:text-left
+          "
+        >
+          {/* Left: Round */}
+          <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+            <span className="text-sm sm:text-base opacity-90">Round:</span>
+            <span className="font-extrabold text-base sm:text-lg">
+              {round}/{TOTAL_ROUNDS}
+            </span>
+          </div>
 
-            {/* Center: Sequence */}
-            <div className="flex items-center gap-2 justify-center flex-wrap">
-              <span className="flex gap-1.5 flex-wrap items-center">
-                {Array.from({ length: maxNumber }, (_, i) => i + 1).map((n) => (
-                  <span
-                    key={n}
-                    className={[
-                      "min-w-7 h-7 leading-7 text-center rounded-md px-1.5",
-                      n < currentTarget ? "bg-green-500 text-white font-bold" :
-                      n === currentTarget ? "bg-yellow-300 text-slate-900 font-bold" :
-                      "bg-white/60 text-slate-800"
-                    ].join(" ")}
-                  >
-                    {n}
-                  </span>
-                ))}
-              </span>
-            </div>
+          {/* Center: Sequence */}
+          <div className="flex items-center justify-center flex-wrap gap-1.5">
+            <span className="flex gap-1.5 flex-wrap justify-center">
+              {Array.from({ length: maxNumber }, (_, i) => i + 1).map((n) => (
+                <span
+                  key={n}
+                  className={[
+                    "min-w-7 h-7 sm:min-w-8 sm:h-8 leading-7 sm:leading-8 text-center rounded-md px-1.5 text-xs sm:text-sm",
+                    n < currentTarget
+                      ? "bg-green-500 text-white font-bold"
+                      : n === currentTarget
+                      ? "bg-yellow-300 text-slate-900 font-bold"
+                      : "bg-white/40 text-white font-semibold",
+                  ].join(" ")}
+                >
+                  {n}
+                </span>
+              ))}
+            </span>
+          </div>
 
-            {/* Right: Lives + Score */}
-            <div className="flex items-center gap-3 justify-end">
-              <span className="text-sm opacity-80">Lives:</span>
-              <HeartRow lives={lives} />
-              <div className="w-px h-[18px] bg-black/15" />
-              <span className="text-sm opacity-80">Score:</span>
-              <span className="font-extrabold">{score}</span>
-            </div>
+          {/* Right: Lives + Score */}
+          <div className="flex items-center justify-center sm:justify-end gap-3 flex-wrap">
+            <span className="text-sm sm:text-base opacity-90">Lives:</span>
+            <HeartRow lives={lives} />
+            <div className="hidden sm:block w-px h-[18px] bg-white/30" />
+            <span className="text-sm sm:text-base opacity-90">Score:</span>
+            <span className="font-extrabold text-base sm:text-lg">{score}</span>
           </div>
         </div>
+      </div>
+
 
         {/* Basket = Munchie */}
         <img

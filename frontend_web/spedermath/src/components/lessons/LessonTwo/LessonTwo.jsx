@@ -1,7 +1,4 @@
-
 import React, { useState, useMemo } from "react";
-import useRandomBackground from "../../reusable/RandomBackground";
-
 import IntroScreen from "./IntroScreen";
 import TeachScreen from "./TeachScreen";
 import PracticeScreen from "./PracticeScreen";
@@ -11,10 +8,10 @@ const LessonTwo = () => {
   // Centralized lesson metadata (display + backend)
   const lessonMeta = useMemo(
     () => ({
-      lessonNumber: 2,          // display number
-      title: "Numbers 1–5",     // updated title
-      lessonId: 3,              // backend DB id for Lesson 1 (1–5)
-      range: [1, 5],            // handy for child screens if needed
+      lessonNumber: 2, // display number
+      title: "Numbers 1–5", // updated title
+      lessonId: 3, // backend DB id for Lesson 1 (1–5)
+      range: [1, 5], // handy for child screens if needed
     }),
     []
   );
@@ -34,13 +31,6 @@ const LessonTwo = () => {
   const progress = `${Math.min(index + 1, totalSteps)}/${totalSteps}`;
   const CurrentScreen = steps[index];
 
-  // 🎨 Pick one random background at mount
-  const bgImage = useRandomBackground([
-    "/photos/lesson1/ocean1.jpg",
-    "/photos/lesson1/ocean2.jpg",
-    "/photos/lesson1/ocean3.jpg",
-  ]);
-
   const handleBack = () => {
     if (window.history.length > 1) window.history.back();
     else window.location.href = "/student-dashboard";
@@ -51,7 +41,7 @@ const LessonTwo = () => {
       className="relative w-full h-screen overflow-hidden text-white"
       style={{
         "--header-h": "72px",
-        backgroundImage: `url(${bgImage})`,
+        backgroundImage: `url(/photos/lesson2/space_bg.jpg)`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
