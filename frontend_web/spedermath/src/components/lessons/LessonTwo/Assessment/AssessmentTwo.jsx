@@ -16,16 +16,6 @@ const AssessmentIndex = () => {
 
   return (
     <div className="relative w-full h-screen overflow-hidden">
-      {/* Background Video */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="absolute top-0 left-0 w-full h-full object-cover"
-      >
-        <source src="/backgrounds/lesson_one.mp4" type="video/mp4" />
-      </video>
 
       {/* Overlay Content */}
       <div className="relative z-10 flex items-center justify-center w-full h-full p-6">
