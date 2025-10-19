@@ -13,26 +13,32 @@ function TeacherHeader() {
       try {
         const token = localStorage.getItem("token");
         if (!token) {
-          console.error("No token found");
           navigate("/teacher-login");
           return;
         }
 
-        const decoded = jwtDecode(token);
-        const teacherId = decoded.id || decoded.teacherId || decoded.sub;
-
-        if (!teacherId) {
-          console.error("Teacher ID not found in token");
+        // sanity: validate token shape (optional)
+        try {
+          jwtDecode(token);
+        } catch {
+          localStorage.removeItem("token");
+          navigate("/teacher-login");
           return;
         }
 
-        const response = await axios.get(`http://localhost:8080/api/teachers/id/${teacherId}`, {
+        // ✅ call /me so we never rely on numeric IDs
+        const res = await axios.get("http://localhost:8080/api/teachers/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        setTeacherName(response.data.name);
+        setTeacherName(res.data?.name || "");
       } catch (error) {
         console.error("Error fetching teacher info:", error);
+        // if unauthorized, force re-login
+        if (error?.response?.status === 401) {
+          localStorage.removeItem("token");
+          navigate("/teacher-login");
+        }
       }
     };
 

@@ -2,10 +2,19 @@ import { motion } from "framer-motion";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 
+async function readJsonSafe(resp) {
+  const ct = resp.headers.get("content-type") || "";
+  const raw = await resp.text();
+  if (!resp.ok) throw new Error(`HTTP ${resp.status} – ${raw.slice(0, 300)}`);
+  if (!ct.includes("application/json")) throw new Error(`Expected JSON but got ${ct}`);
+  return JSON.parse(raw);
+}
+
 function StudentLogin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [autoLogging, setAutoLogging] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -13,36 +22,97 @@ function StudentLogin() {
     try {
       const response = await fetch("http://localhost:8080/api/students/student-login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ username: user, password: pass }),
       });
 
-      const result = await response.json();
+      const result = await readJsonSafe(response);
 
-      if (response.ok && result.token) {
-        localStorage.setItem("token", result.token);
+      if (result.token || result.jwt) {
+        // keep your existing keys
+        localStorage.setItem("token", result.token || result.jwt);
+        localStorage.setItem("student_username", user);
+        // optionally store ids if backend returns them
+        if (result.studentId != null) localStorage.setItem("student_id", String(result.studentId));
         navigate("/student-dashboard");
       } else {
         setErrorMsg(result.message || "Login failed: Invalid username or password.");
       }
     } catch (error) {
       console.error("Login error:", error);
-      setErrorMsg("An error occurred. Please try again.");
+      setErrorMsg(error.message || "An error occurred. Please try again.");
     }
   };
 
+  // QR token flow (auto-login)
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get("token"); // from /public/qr-login?token=...
     const urlUsername = params.get("username");
     const urlPassword = params.get("password");
 
+    const existingToken = localStorage.getItem("token");
+    if (existingToken && !urlToken) return;
+
+    // 1) If a QR token is present, exchange it and auto-login
+    if (urlToken) {
+      (async () => {
+        try {
+          setAutoLogging(true);
+          setErrorMsg("");
+
+          // CHANGED: use POST (JSON body) for QR exchange
+          const res = await fetch("http://localhost:8080/public/qr-exchange", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({ token: urlToken }),
+          });
+
+          const data = await readJsonSafe(res);
+
+          // accept direct payload { jwt, studentId, username }
+          const jwt = data.jwt || data.token;
+          if (!jwt && data.error) {
+            setErrorMsg(data.error || "QR token invalid or expired.");
+            return;
+          }
+
+          if (data.username) setUsername(data.username);
+
+          if (jwt) {
+            localStorage.setItem("token", jwt); // keep your 'token' key
+          }
+          if (data.studentId != null) {
+            localStorage.setItem("student_id", String(data.studentId));
+          }
+          if (data.username) {
+            localStorage.setItem("student_username", data.username);
+          }
+
+          // Clean URL so refreshes don't retry the one-time token
+          window.history.replaceState({}, "", window.location.pathname);
+          navigate("/student-dashboard", { replace: true });
+        } catch (e) {
+          console.error(e);
+          setErrorMsg(e.message || "QR login failed. Please try again.");
+        } finally {
+          setAutoLogging(false);
+        }
+      })();
+
+      return; // Don't also run the username/password autologin block below
+    }
+
+    // 2) If username & password were passed in URL, auto-submit them
     if (urlUsername && urlPassword) {
       setUsername(urlUsername);
       setPassword(urlPassword);
       handleLogin(urlUsername, urlPassword);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
   return (
@@ -80,7 +150,7 @@ function StudentLogin() {
           transition={{ delay: 1.5 }}
           className="text-base text-black mb-8"
         >
-          Hello Student, input your username and password
+          {autoLogging ? "Logging you in…" : "Hello Student, input your username and password"}
         </motion.p>
 
         <motion.div
@@ -111,9 +181,10 @@ function StudentLogin() {
 
           <motion.button
             onClick={() => handleLogin()}
-            className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px] font-neucha"
+            disabled={autoLogging}
+            className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px] font-neucha disabled:opacity-60"
           >
-            Login
+            {autoLogging ? "Logging in…" : "Login"}
           </motion.button>
         </motion.div>
       </div>
