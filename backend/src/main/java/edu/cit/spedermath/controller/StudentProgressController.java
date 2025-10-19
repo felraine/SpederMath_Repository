@@ -36,6 +36,9 @@ public class StudentProgressController {
     // Endpoint to fetch all progress for the authenticated student
     @GetMapping("/my")
     public ResponseEntity<List<StudentProgressDTO>> getMyProgress(Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Long studentId = Long.parseLong(authentication.getName()); // unify extraction
 
         List<StudentProgress> progressList = service.getProgressByStudent(studentId);

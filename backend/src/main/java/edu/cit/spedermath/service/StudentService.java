@@ -195,7 +195,7 @@ public class StudentService {
             return response;
         }
 
-        String token = jwtUtil.generateToken(student.getStudentID());
+        String token = jwtUtil.generateStudentToken(student.getStudentID());
         response.put("token", token);
         response.put("message", "Login successful!");
         return response;

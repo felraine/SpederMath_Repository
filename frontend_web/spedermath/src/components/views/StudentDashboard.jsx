@@ -52,19 +52,39 @@ function StudentDashboard() {
       }
     };
 
-    const fetchStudent = async (id) => {
-      try {
-        const response = await fetch(`http://localhost:8080/api/students/${id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setStudent(data);
-        }
-      } catch (error) {
-        console.error("Error fetching student info:", error);
+    async function fetchStudent() {
+      const token =
+        localStorage.getItem("studentToken") || localStorage.getItem("token");
+      if (!token) throw new Error("No student token found");
+
+      // decode studentId from JWT (adjust claim name if different)
+      const payload = JSON.parse(
+        atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+      );
+      const studentId = payload.studentId || payload.sid || payload.id;
+
+      const resp = await fetch(`http://localhost:8080/api/students/${studentId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      });
+
+      const contentType = resp.headers.get("content-type") || "";
+      const raw = await resp.text(); // read raw so we can log/show it
+
+      if (!resp.ok) {
+        // This will show you the actual HTML/text Spring returned (403/404/etc.)
+        throw new Error(`HTTP ${resp.status} – ${raw.slice(0, 300)}`);
       }
-    };
+
+      if (!contentType.includes("application/json")) {
+        throw new Error("Expected JSON but got: " + contentType + " — " + raw.slice(0, 120));
+      }
+
+      const data = JSON.parse(raw);
+      setStudent(data);
+    }
 
     const fetchProgress = async () => {
       try {

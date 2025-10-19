@@ -1,6 +1,22 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+/* ================ helpers (added) ================ */
+async function readJsonSafe(response) {
+  const ct = response.headers.get("content-type") || "";
+  const raw = await response.text();
+  if (!ct.includes("application/json")) {
+    // Return a shape we can show in UI if backend sends HTML/text for 4xx
+    return { error: raw?.slice(0, 300) || "Unexpected response." };
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { error: "Invalid JSON response." };
+  }
+}
+/* ================================================ */
+
 function Login() {
   const navigate = useNavigate();
 
@@ -9,34 +25,41 @@ function Login() {
   const [errorMsg, setErrorMsg] = useState("");
 
   const handleLogin = async () => {
+    setErrorMsg("");
     try {
       const response = await fetch("http://localhost:8080/api/teachers/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
-        body: JSON.stringify({ email, password }), // Assuming email and password are being correctly handled
+        body: JSON.stringify({ email, password }),
       });
-  
-      const result = await response.json();
-  
+
+      const result = await readJsonSafe(response);
+
       if (response.ok) {
-        if (result.token) {
-          // Store the token in localStorage if it's available in the response
-          localStorage.setItem("token", result.token);
-          navigate("/teacher-dashboard"); // Redirect to the teacher dashboard
+        const token = result.token || result.jwt || null;
+        if (token) {
+          localStorage.setItem("token", token);
+          navigate("/teacher-dashboard");
         } else {
           setErrorMsg("Login failed: No token received.");
         }
-      } else {
-        setErrorMsg(result.message || "Invalid email or password.");
+        return;
       }
+
+      // Not OK (403/401/etc.)
+      const message =
+        result.message ||
+        result.error ||
+        `Login failed (HTTP ${response.status}).`;
+      setErrorMsg(message);
     } catch (error) {
-      console.error("Login error:", error); // Log the error for debugging purposes
+      console.error("Login error:", error);
       setErrorMsg("An error occurred. Please try again.");
     }
   };
-  
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -63,7 +86,7 @@ function Login() {
             <h2 className="text-[40px] sm:text-[50px] md:text-[60px] lg:text-[70px] font-neucha text-center leading-none mb-2">LOGIN</h2>
             <p className="text-sm font-semibold text-center mb-6">Welcome back!</p>
 
-            <form className="flex flex-col gap-4">
+            <form className="flex flex-col gap-4" onSubmit={(e) => e.preventDefault()}>
               <input 
                 type="email" 
                 placeholder="Email"

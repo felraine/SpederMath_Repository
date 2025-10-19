@@ -2,11 +2,19 @@ import { motion } from "framer-motion";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 
+async function readJsonSafe(resp) {
+  const ct = resp.headers.get("content-type") || "";
+  const raw = await resp.text();
+  if (!resp.ok) throw new Error(`HTTP ${resp.status} – ${raw.slice(0, 300)}`);
+  if (!ct.includes("application/json")) throw new Error(`Expected JSON but got ${ct}`);
+  return JSON.parse(raw);
+}
+
 function StudentLogin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-  const [autoLogging, setAutoLogging] = useState(false); // <-- added
+  const [autoLogging, setAutoLogging] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -14,32 +22,37 @@ function StudentLogin() {
     try {
       const response = await fetch("http://localhost:8080/api/students/student-login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ username: user, password: pass }),
       });
 
-      const result = await response.json();
+      const result = await readJsonSafe(response);
 
-      if (response.ok && result.token) {
-        localStorage.setItem("token", result.token);
-        // Optional convenience keys (if your app uses them):
+      if (result.token || result.jwt) {
+        // keep your existing keys
+        localStorage.setItem("token", result.token || result.jwt);
         localStorage.setItem("student_username", user);
+        // optionally store ids if backend returns them
+        if (result.studentId != null) localStorage.setItem("student_id", String(result.studentId));
         navigate("/student-dashboard");
       } else {
         setErrorMsg(result.message || "Login failed: Invalid username or password.");
       }
     } catch (error) {
       console.error("Login error:", error);
-      setErrorMsg("An error occurred. Please try again.");
+      setErrorMsg(error.message || "An error occurred. Please try again.");
     }
   };
 
-  // NEW: QR token flow (auto-login)
+  // QR token flow (auto-login)
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const urlToken = params.get("token");      // from /public/qr-login?token=...
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get("token"); // from /public/qr-login?token=...
     const urlUsername = params.get("username");
     const urlPassword = params.get("password");
+
+    const existingToken = localStorage.getItem("token");
+    if (existingToken && !urlToken) return;
 
     // 1) If a QR token is present, exchange it and auto-login
     if (urlToken) {
@@ -47,40 +60,45 @@ function StudentLogin() {
         try {
           setAutoLogging(true);
           setErrorMsg("");
-          const res = await fetch(
-            `http://localhost:8080/public/qr-exchange?token=${encodeURIComponent(urlToken)}`,
-            { method: "POST" }
-          );
 
-          const data = await res.json();
+          // CHANGED: use POST (JSON body) for QR exchange
+          const res = await fetch("http://localhost:8080/public/qr-exchange", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({ token: urlToken }),
+          });
 
-          if (!res.ok || !data?.ok) {
-            setErrorMsg(data?.error || "QR token invalid or expired.");
-            setAutoLogging(false);
+          const data = await readJsonSafe(res);
+
+          // accept direct payload { jwt, studentId, username }
+          const jwt = data.jwt || data.token;
+          if (!jwt && data.error) {
+            setErrorMsg(data.error || "QR token invalid or expired.");
             return;
           }
 
-          // data contains: ok, studentId, username, (optionally jwt if you add it on backend)
-          setUsername(data.username || "");
-          // If your backend returns a JWT for students, store it as your normal token:
-          if (data.jwt) {
-            localStorage.setItem("token", data.jwt);
-          } else {
-            // Fallback: store lightweight session markers if you don't issue JWT yet
-            // (Adjust if your student area expects a specific key)
+          if (data.username) setUsername(data.username);
+
+          if (jwt) {
+            localStorage.setItem("token", jwt); // keep your 'token' key
+          }
+          if (data.studentId != null) {
             localStorage.setItem("student_id", String(data.studentId));
-            localStorage.setItem("student_username", data.username || "");
-            // Optional: a temporary client-only token marker so guards that check 'token' don't fail
-            if (!localStorage.getItem("token")) {
-              localStorage.setItem("token", `qr:${data.studentId}:${Date.now()}`);
-            }
+          }
+          if (data.username) {
+            localStorage.setItem("student_username", data.username);
           }
 
-          // Navigate straight to the student dashboard
+          // Clean URL so refreshes don't retry the one-time token
+          window.history.replaceState({}, "", window.location.pathname);
           navigate("/student-dashboard", { replace: true });
         } catch (e) {
           console.error(e);
-          setErrorMsg("QR login failed. Please try again.");
+          setErrorMsg(e.message || "QR login failed. Please try again.");
+        } finally {
           setAutoLogging(false);
         }
       })();
@@ -88,13 +106,14 @@ function StudentLogin() {
       return; // Don't also run the username/password autologin block below
     }
 
-    // 2) Old flow: if username & password were passed in URL, auto-submit them
+    // 2) If username & password were passed in URL, auto-submit them
     if (urlUsername && urlPassword) {
       setUsername(urlUsername);
       setPassword(urlPassword);
       handleLogin(urlUsername, urlPassword);
     }
-  }, [location]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
 
   return (
     <div className="relative min-h-screen bg-white overflow-hidden font-sans">
@@ -153,7 +172,7 @@ function StudentLogin() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className="border border-gray-300 rounded-[12px] px-4 py-3 text:[16px] font-neucha focus:outline-none focus:ring-2 focus:ring-[#6a4fa3]"
+            className="border border-gray-300 rounded-[12px] px-4 py-3 text-[16px] font-neucha focus:outline-none focus:ring-2 focus:ring-[#6a4fa3]"
           />
 
           {errorMsg && (

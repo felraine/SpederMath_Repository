@@ -2,6 +2,8 @@ package edu.cit.spedermath.controller;
 
 import edu.cit.spedermath.model.Teacher;
 import edu.cit.spedermath.service.TeacherService;
+import edu.cit.spedermath.util.JwtUtil;
+import edu.cit.spedermath.repository.TeacherRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.Optional;
+import jakarta.servlet.http.HttpServletRequest;
 
 //testing CORS with localhost:3000
 @CrossOrigin(origins = "http://localhost:5173")
@@ -20,6 +23,12 @@ public class TeacherController {
 
     @Autowired
     private TeacherService teacherService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private TeacherRepository teacherRepository;
 
     @PostMapping("/register")
     public ResponseEntity<String> registerTeacher(@RequestBody Map<String, String> request) {
@@ -92,5 +101,26 @@ public class TeacherController {
         } else {
             return new ResponseEntity<>("Teacher not found!", HttpStatus.NOT_FOUND);
         }
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentTeacher(HttpServletRequest request) {
+        String token = jwtUtil.extractToken(request);
+        if (token == null || !jwtUtil.validateToken(token)) {
+            return ResponseEntity.status(401).body(Map.of("message", "Invalid or missing token"));
+        }
+
+        Long teacherId = jwtUtil.extractTeacherId(token);
+        if (teacherId == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Token missing teacher id"));
+        }
+
+        return teacherRepository.findById(teacherId)
+                .<ResponseEntity<?>>map(t -> ResponseEntity.ok(Map.of(
+                        "id", t.getId(),
+                        "name", t.getName(),
+                        "email", t.getEmail()
+                )))
+                .orElseGet(() -> ResponseEntity.status(404).body(Map.of("message", "Teacher not found")));
     }
 }

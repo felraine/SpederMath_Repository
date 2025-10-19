@@ -2,57 +2,93 @@ package edu.cit.spedermath.controller;
 
 import edu.cit.spedermath.model.Student;
 import edu.cit.spedermath.service.StudentLoginTokenService;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
+import edu.cit.spedermath.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 
-@Controller
+@RestController
+@RequestMapping("/public")
 public class PublicAuthController {
 
-    @Autowired private StudentLoginTokenService tokenService;
+    @Autowired
+    private StudentLoginTokenService tokenService;
 
-    @Value("${app.webBaseUrl}")
-    private String webBaseUrl;
+    @Autowired
+    private JwtUtil jwtUtil;
 
     /**
-     * 1) Scanner opens this with GET.
-     * DO NOT validate/consume here — just pass the token to the frontend.
-     * Example redirect: http://localhost:5173/student-login?token=...
+     * Exchange a one-time QR token for a Student JWT (JSON response).
+     * Legacy GET support:
+     *   GET /public/qr-exchange?token=<uuid>
      */
-    @GetMapping("/public/qr-login")
-    public void qrLogin(@RequestParam String token, HttpServletResponse res) throws IOException {
-        res.sendRedirect(webBaseUrl + "/student-login?token=" + token);
+    @GetMapping("/qr-exchange")
+    public ResponseEntity<?> exchangeQrGet(@RequestParam("token") String rawToken) {
+        if (!StringUtils.hasText(rawToken)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Missing token"));
+        }
+
+        Optional<Student> studentOpt = tokenService.validateAndConsume(rawToken);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Token invalid or expired"));
+        }
+
+        Student student = studentOpt.get();
+        String studentJwt = jwtUtil.generateStudentToken(student.getStudentID());
+
+        return ResponseEntity.ok(Map.of(
+                "jwt", studentJwt,
+                "studentId", String.valueOf(student.getStudentID()),
+                "username", student.getUsername()
+        ));
     }
 
     /**
-     * 2) Frontend calls this with POST to validate & consume the token ONCE.
-     * Returns student info (and later, a JWT if you decide to issue one).
+     * New POST variant so the frontend can send JSON:
+     *   POST /public/qr-exchange
+     *   { "token": "<uuid>" }
      */
-    @PostMapping("/public/qr-exchange")
-    @ResponseBody
-    public ResponseEntity<?> qrExchange(@RequestParam String token) {
-        Optional<Student> studentOpt = tokenService.validateAndConsume(token); // one-time + TTL
-        if (studentOpt.isEmpty()) {
-            return ResponseEntity.status(401).body(Map.of("error", "Token invalid or expired"));
+    @PostMapping("/qr-exchange")
+    public ResponseEntity<?> exchangeQrPost(@RequestBody Map<String, String> body) {
+        String rawToken = body == null ? null : body.get("token");
+        if (!StringUtils.hasText(rawToken)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Missing token"));
         }
-        Student s = studentOpt.get();
 
-        String fname = s.getFName();
-        String lname = s.getLName();
+        Optional<Student> studentOpt = tokenService.validateAndConsume(rawToken);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Token invalid or expired"));
+        }
+
+        Student student = studentOpt.get();
+        String studentJwt = jwtUtil.generateStudentToken(student.getStudentID());
 
         return ResponseEntity.ok(Map.of(
-            "ok", true,
-            "studentId", String.valueOf(s.getStudentID()),
-            "username", s.getUsername(),
-            "fname", fname == null ? "" : fname,
-            "lname", lname == null ? "" : lname
+                "jwt", studentJwt,
+                "studentId", String.valueOf(student.getStudentID()),
+                "username", student.getUsername()
         ));
+    }
+
+    /**
+     * Optional redirect-based flow for QR links (dev mode → localhost).
+     *   GET /public/qr-login?token=<uuid>
+     */
+    @GetMapping("/qr-login")
+    public ResponseEntity<?> redirectQr(@RequestParam("token") String rawToken) {
+        String url = "http://localhost:5173/student-login?token=" 
+                + java.net.URLEncoder.encode(rawToken, java.nio.charset.StandardCharsets.UTF_8);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
+                .header("Location", url)
+                .build();
     }
 }

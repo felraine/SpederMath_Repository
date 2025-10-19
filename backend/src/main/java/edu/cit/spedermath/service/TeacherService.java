@@ -56,7 +56,7 @@ public class TeacherService {
         }
 
         if (passwordEncoder.matches(password, teacher.getPassword())) {
-            String token = jwtUtil.generateToken(teacher.getId());
+            String token = jwtUtil.generateTeacherToken(teacher.getId(), teacher.getEmail());
             response.put("token", token);
             response.put("message", "Login successful!");
         } else {
@@ -95,5 +95,13 @@ public class TeacherService {
 
     public Optional<Teacher> getTeacherById(Long id) {
         return teacherRepository.findById(id);
+    }
+
+    public Optional<Teacher> findById(Long id) {
+        return teacherRepository.findById(id);
+    }
+
+    public Optional<Teacher> findByEmail(String email) {
+        return teacherRepository.findByEmail(email.toLowerCase());
     }
 }

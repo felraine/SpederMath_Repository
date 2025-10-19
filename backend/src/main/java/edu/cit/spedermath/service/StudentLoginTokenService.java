@@ -17,26 +17,24 @@ public class StudentLoginTokenService {
     @Autowired
     private StudentLoginTokenRepository tokenRepo;
 
-    private static final Duration TOKEN_TTL = Duration.ofMinutes(5);
-
     public String createTokenForStudent(Student student) {
-            StudentLoginToken t = new StudentLoginToken();
-            t.setToken(UUID.randomUUID().toString());
-            t.setExpiresAt(Instant.now().plus(TOKEN_TTL));
-            t.setUsed(false);
-            t.setStudent(student);
-            tokenRepo.save(t);
-            return t.getToken();
-        }
+        StudentLoginToken t = new StudentLoginToken();
+        t.setToken(UUID.randomUUID().toString());
+        t.setStudent(student);
+        t.setUsed(false);
+        t.setExpiresAt(Instant.now().plus(Duration.ofMinutes(10)));
+        tokenRepo.save(t);
+        return t.getToken();
+    }
 
     public Optional<Student> validateAndConsume(String token) {
         Optional<StudentLoginToken> tokenOpt = tokenRepo.findByToken(token);
         if (tokenOpt.isEmpty()) return Optional.empty();
 
         StudentLoginToken loginToken = tokenOpt.get();
-        boolean expired = loginToken.getExpiresAt() != null &&
-                          loginToken.getExpiresAt().isBefore(Instant.now());
-        if (loginToken.isUsed() || expired) return Optional.empty();
+        if (loginToken.isUsed() || loginToken.getExpiresAt().isBefore(Instant.now())) {
+            return Optional.empty();
+        }
 
         loginToken.setUsed(true);
         tokenRepo.save(loginToken);
