@@ -17,8 +17,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -32,7 +30,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .cors(withDefaults())
+                // ✅ use our CORS bean explicitly
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
@@ -52,7 +51,7 @@ public class SecurityConfig {
                                 "/api/students/*/qr-token",
                                 "/public/**",
                                 "/error",
-                                "/api/debug/echo-auth"   // (debug endpoint below)
+                                "/api/debug/echo-auth"
                         ).permitAll()
 
                         // Protected endpoints
@@ -68,18 +67,29 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
+
+        // If you send cookies/Authorization from the browser:
+        config.setAllowCredentials(true);
+
+        // Dev origins
+        config.setAllowedOriginPatterns(List.of(
                 "http://localhost:5173",
                 "http://127.0.0.1:5173",
                 "http://localhost:3000",
                 "http://127.0.0.1:3000"
         ));
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
-        // ✅ IMPORTANT: be explicit so the browser lets you send Authorization
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin"));
-        config.setExposedHeaders(List.of("Authorization"));
-        config.setAllowCredentials(true);
+        // 🔑 Fix: allow the custom header used in preflight.
+        // Easiest & future-proof:
+        config.setAllowedHeaders(List.of("*"));
+        // (If you prefer explicit, use this instead)
+        // config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin",
+        //         "Idempotency-Key", "idempotency-key"));
+
+        // Optional: expose headers you may want to read client-side
+        config.setExposedHeaders(List.of("Authorization", "Location", "Idempotency-Key"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
