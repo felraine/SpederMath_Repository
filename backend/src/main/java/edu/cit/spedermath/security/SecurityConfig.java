@@ -46,7 +46,10 @@ public class SecurityConfig {
                             "/v3/api-docs/**",
                             "/api/lessons/**",
                             "/api/student-progress/**",
-                            "/api/lesson-stats"
+                            "/api/lesson-stats",
+                            "/api/students/*/qr-token",
+                            "/public/qr-login",
+                            "/public/qr-exchange"
                         ).permitAll()
 
                         // Secure your student API

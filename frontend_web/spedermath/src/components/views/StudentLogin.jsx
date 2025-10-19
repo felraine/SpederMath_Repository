@@ -6,6 +6,7 @@ function StudentLogin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [autoLogging, setAutoLogging] = useState(false); // <-- added
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -13,9 +14,7 @@ function StudentLogin() {
     try {
       const response = await fetch("http://localhost:8080/api/students/student-login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: user, password: pass }),
       });
 
@@ -23,6 +22,8 @@ function StudentLogin() {
 
       if (response.ok && result.token) {
         localStorage.setItem("token", result.token);
+        // Optional convenience keys (if your app uses them):
+        localStorage.setItem("student_username", user);
         navigate("/student-dashboard");
       } else {
         setErrorMsg(result.message || "Login failed: Invalid username or password.");
@@ -33,17 +34,67 @@ function StudentLogin() {
     }
   };
 
+  // NEW: QR token flow (auto-login)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
+    const urlToken = params.get("token");      // from /public/qr-login?token=...
     const urlUsername = params.get("username");
     const urlPassword = params.get("password");
 
+    // 1) If a QR token is present, exchange it and auto-login
+    if (urlToken) {
+      (async () => {
+        try {
+          setAutoLogging(true);
+          setErrorMsg("");
+          const res = await fetch(
+            `http://localhost:8080/public/qr-exchange?token=${encodeURIComponent(urlToken)}`,
+            { method: "POST" }
+          );
+
+          const data = await res.json();
+
+          if (!res.ok || !data?.ok) {
+            setErrorMsg(data?.error || "QR token invalid or expired.");
+            setAutoLogging(false);
+            return;
+          }
+
+          // data contains: ok, studentId, username, (optionally jwt if you add it on backend)
+          setUsername(data.username || "");
+          // If your backend returns a JWT for students, store it as your normal token:
+          if (data.jwt) {
+            localStorage.setItem("token", data.jwt);
+          } else {
+            // Fallback: store lightweight session markers if you don't issue JWT yet
+            // (Adjust if your student area expects a specific key)
+            localStorage.setItem("student_id", String(data.studentId));
+            localStorage.setItem("student_username", data.username || "");
+            // Optional: a temporary client-only token marker so guards that check 'token' don't fail
+            if (!localStorage.getItem("token")) {
+              localStorage.setItem("token", `qr:${data.studentId}:${Date.now()}`);
+            }
+          }
+
+          // Navigate straight to the student dashboard
+          navigate("/student-dashboard", { replace: true });
+        } catch (e) {
+          console.error(e);
+          setErrorMsg("QR login failed. Please try again.");
+          setAutoLogging(false);
+        }
+      })();
+
+      return; // Don't also run the username/password autologin block below
+    }
+
+    // 2) Old flow: if username & password were passed in URL, auto-submit them
     if (urlUsername && urlPassword) {
       setUsername(urlUsername);
       setPassword(urlPassword);
       handleLogin(urlUsername, urlPassword);
     }
-  }, [location]);
+  }, [location]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="relative min-h-screen bg-white overflow-hidden font-sans">
@@ -80,7 +131,7 @@ function StudentLogin() {
           transition={{ delay: 1.5 }}
           className="text-base text-black mb-8"
         >
-          Hello Student, input your username and password
+          {autoLogging ? "Logging you in…" : "Hello Student, input your username and password"}
         </motion.p>
 
         <motion.div
@@ -102,7 +153,7 @@ function StudentLogin() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className="border border-gray-300 rounded-[12px] px-4 py-3 text-[16px] font-neucha focus:outline-none focus:ring-2 focus:ring-[#6a4fa3]"
+            className="border border-gray-300 rounded-[12px] px-4 py-3 text:[16px] font-neucha focus:outline-none focus:ring-2 focus:ring-[#6a4fa3]"
           />
 
           {errorMsg && (
@@ -111,9 +162,10 @@ function StudentLogin() {
 
           <motion.button
             onClick={() => handleLogin()}
-            className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px] font-neucha"
+            disabled={autoLogging}
+            className="bg-[#6a4fa3] hover:bg-[#563d91] text-white font-bold text-[18px] tracking-wide py-[13px] rounded-[18px] font-neucha disabled:opacity-60"
           >
-            Login
+            {autoLogging ? "Logging in…" : "Login"}
           </motion.button>
         </motion.div>
       </div>

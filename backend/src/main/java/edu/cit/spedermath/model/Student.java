@@ -54,7 +54,7 @@ public class Student {
     }
 
     // Constructor with all fields except ID
-    public Student(String fname, String lname, String username, String password, LocalDate birthdate, LocalDate createdAt, int level, byte[] profilePicture, Teacher teacher) {
+    public Student(String fname, String lname, String username, String password, LocalDate birthdate, LocalDate createdAt, byte[] profilePicture, Teacher teacher) {
         this.fname = fname;
         this.lname = lname;
         this.username = username;

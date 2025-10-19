@@ -5,13 +5,17 @@ import edu.cit.spedermath.model.Teacher;
 import edu.cit.spedermath.service.StudentService;
 import edu.cit.spedermath.repository.TeacherRepository; 
 import edu.cit.spedermath.util.JwtUtil;
+import edu.cit.spedermath.service.StudentLoginTokenService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URLEncoder;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
@@ -20,8 +24,8 @@ import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-@CrossOrigin(origins = "http://localhost:5173")
 @RestController
+@CrossOrigin(origins = "*")
 @RequestMapping("/api/students")
 public class StudentController {
 
@@ -29,10 +33,16 @@ public class StudentController {
     private StudentService studentService;
 
     @Autowired
+    private StudentLoginTokenService tokenService;
+
+    @Autowired
     private JwtUtil jwtUtil;
 
     @Autowired
-    private TeacherRepository teacherRepository;  // Autowire TeacherRepository
+    private TeacherRepository teacherRepository;
+
+    @Value("${app.publicApiBaseUrl}")
+    private String publicApiBaseUrl;
 
     // Create new student
     @PostMapping("/create")
@@ -78,7 +88,6 @@ public class StudentController {
                                                   @RequestParam String fname,
                                                   @RequestParam String lname,
                                                   @RequestParam String username,
-                                                  @RequestParam(required = false) Integer level,
                                                   @RequestParam(required = false) MultipartFile profilePicture,
                                                   @RequestHeader("Authorization") String authHeader) {
         try {
@@ -87,7 +96,7 @@ public class StudentController {
             Long teacherId = jwtUtil.extractTeacherId(token); // Extract teacherId
     
             // Update student
-            Student updatedStudent = studentService.updateStudent(studentID, fname, lname, username, level, profilePicture, teacherId);
+            Student updatedStudent = studentService.updateStudent(studentID, fname, lname, username, profilePicture, teacherId);
             return new ResponseEntity<>(updatedStudent, HttpStatus.OK);
         } catch (IOException | RuntimeException e) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -152,5 +161,17 @@ public class StudentController {
     public ResponseEntity<String> getLoginUrl(@PathVariable Long studentID) {
         String loginUrl = "http://localhost:5173/login/" + studentID;
         return new ResponseEntity<>(loginUrl, HttpStatus.OK);
+    }
+
+    @PostMapping("/{studentId}/qr-token")
+    public ResponseEntity<Map<String, String>> createQrToken(@PathVariable Long studentId) {
+        Student s = studentService.getStudentById(studentId)
+                .orElseThrow(() -> new RuntimeException("Student not found."));
+
+        String token = tokenService.createTokenForStudent(s);
+        String qrUrl = publicApiBaseUrl + "/public/qr-login?token=" +
+                URLEncoder.encode(token, StandardCharsets.UTF_8);
+
+        return ResponseEntity.ok(Map.of("qrUrl", qrUrl));
     }
 }

@@ -1,19 +1,34 @@
 import React, { useState } from "react";
 import { Eye, EyeOff, Pencil, Trash2, X } from "lucide-react";
 import ReactQRCode from "react-qr-code";
+import axios from "axios";
 
 function StudentRow({ student, togglePassword, onEdit, onDelete }) {
   const [showQRCode, setShowQRCode] = useState(false);
-
-  const generateQRCodeData = (student) => {
-    const baseUrl = "https://spedermath.web.app/student-login";
-    const query = `?username=${encodeURIComponent(student.username)}&password=${encodeURIComponent(student.password)}`;
-    return baseUrl + query;
-  };
+  const [qrUrl, setQrUrl] = useState("");
+  const [loadingQR, setLoadingQR] = useState(false); // <-- added
 
   const handleDelete = () => {
-    if (window.confirm(`Are you sure you want to delete ${student.fname} ${student.lname}?`)) {
+    if (window.confirm(`Delete ${student.fname} ${student.lname}?`)) {
       onDelete(student.studentID);
+    }
+  };
+
+  const handleGenerateQR = async () => {
+    try {
+      setLoadingQR(true);
+      // Backend builds full qrUrl using app.publicApiBaseUrl; FE just uses it
+      const res = await axios.post(
+        `http://localhost:8080/api/students/${student.studentID}/qr-token`
+      );
+      const { qrUrl } = res.data;
+      setQrUrl(qrUrl);
+      setShowQRCode(true);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to generate QR code token.");
+    } finally {
+      setLoadingQR(false);
     }
   };
 
@@ -23,15 +38,7 @@ function StudentRow({ student, togglePassword, onEdit, onDelete }) {
         <td className="p-3">{`${student.fname} ${student.lname}`}</td>
         <td className="p-3">{student.username}</td>
         <td className="p-3 flex items-center space-x-2">
-          <span
-            className="password-display"
-            style={{
-              minWidth: "80px",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-            }}
-          >
+          <span style={{ minWidth: "80px", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden" }}>
             {student.showPassword ? student.password : "********"}
           </span>
           <button onClick={() => togglePassword(student.studentID)}>
@@ -45,33 +52,22 @@ function StudentRow({ student, togglePassword, onEdit, onDelete }) {
             day: "2-digit",
           })}
         </td>
-        {/* Removed level cell */}
         <td className="p-3 text-center">
           <button onClick={() => onEdit(student)}>
             <Pencil className="text-blue-600 hover:text-blue-800" />
           </button>
-          <button
-            className="ml-2 text-red-600 hover:text-red-800"
-            onClick={handleDelete}
-          >
+          <button onClick={handleDelete} className="ml-2 text-red-600 hover:text-red-800">
             <Trash2 />
           </button>
-          <button
-            className="ml-2 text-green-600 hover:text-green-800"
-            onClick={() => setShowQRCode(true)}
-          >
-            <span className="w-5 h-5">QR</span>
+          <button onClick={handleGenerateQR} className="ml-2 text-green-600 hover:text-green-800">
+            {loadingQR ? "..." : "QR"}
           </button>
         </td>
       </tr>
 
       {showQRCode && (
-        <div
-          className="fixed inset-0 bg-black flex justify-center items-center z-50"
-          style={{ background: "rgba(0, 0, 0, 0.3)" }}
-        >
+        <div className="fixed inset-0 bg-black flex justify-center items-center z-50" style={{ background: "rgba(0,0,0,0.3)" }}>
           <div className="relative bg-white p-6 rounded-lg shadow-lg text-center">
-            {/* Close Button (X) */}
             <button
               onClick={() => setShowQRCode(false)}
               className="absolute top-2 right-2 text-gray-500 hover:text-red-600"
@@ -80,7 +76,7 @@ function StudentRow({ student, togglePassword, onEdit, onDelete }) {
             </button>
 
             <h2 className="text-lg font-semibold mb-4">Scan QR to Login</h2>
-            <ReactQRCode value={generateQRCodeData(student)} size={200} />
+            {qrUrl ? <ReactQRCode value={qrUrl} size={200} /> : <p>Generating...</p>}
           </div>
         </div>
       )}
