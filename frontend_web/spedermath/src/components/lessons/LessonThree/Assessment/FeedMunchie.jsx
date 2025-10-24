@@ -21,13 +21,8 @@ const allFruits = [
   "/munchie/fruit_apple.png",
   "/munchie/fruit_grape.png",
   "/munchie/fruit_mango.png",
-  "/munchie/fruit_strawberry.png",
   "/munchie/fruit_orange.png",
-  "/munchie/fruit_blueberry.png",
-  "/munchie/fruit_watermelon.png",
-  "/munchie/fruit_pear.png",
-  "/munchie/fruit_pineapple.png",
-  "/munchie/fruit_dragon.png",
+
 ];
 
 const correctClickSound = () => new Audio("/correct-sound.mp3").play();
@@ -54,12 +49,12 @@ const FeedMunchieCounting = ({
   passRate = 0.7,
   retakes_count = 0,
 }) => {
-  const SAFE_MAX = Math.max(1, Math.min(10, maxCountPerRound)); // tray has 10 slots
+  const SAFE_MAX = Math.max(1, Math.min(7, maxCountPerRound)); // tray has 10 slots
   const [rounds] = useState(() => generateCountingRounds(totalRounds, SAFE_MAX));
 
   const [currentStep, setCurrentStep] = useState(0);
   const [addedFruit, setAddedFruit] = useState(0);
-  const [trayFruits, setTrayFruits] = useState(Array.from({ length: 10 }, () => true));
+  const [trayFruits, setTrayFruits] = useState(Array.from({ length: 4}, () => true));
   const [score, setScore] = useState(0);
   const [status, setStatus] = useState("IN_PROGRESS");
 
@@ -88,7 +83,7 @@ const FeedMunchieCounting = ({
 
   // lock a set of fruit images per round (still 10 tray slots)
   const fruitPerStep = useMemo(() => {
-    return rounds.map(() => allFruits.slice(0, 10));
+    return rounds.map(() => allFruits.slice(0, 7));
   }, [rounds]);
 
   const fruitImages = fruitPerStep[currentStep];
@@ -130,7 +125,7 @@ const FeedMunchieCounting = ({
     wasDroppedRef.current = true;
 
     // Don’t exceed tray capacity of 10
-    if (addedFruit < 10) {
+    if (addedFruit < 7) {
       setAddedFruit((prev) => prev + 1);
       setMunchieFace("/munchie/muching_Munchie.png");
       eatSound();
@@ -174,7 +169,7 @@ const FeedMunchieCounting = ({
       setTimerActive(false);
     } else {
       setAddedFruit(0);
-      setTrayFruits(Array.from({ length: 10 }, () => true));
+      setTrayFruits(Array.from({ length: 4 }, () => true));
       setCurrentStep((p) => p + 1);
       setScore(nextScore);
     }
