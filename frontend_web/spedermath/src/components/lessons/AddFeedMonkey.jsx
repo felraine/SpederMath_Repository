@@ -91,6 +91,7 @@ const AddFeedMonkey = () => {
 
   return (
     <LessonLayout
+
   lesson={{ lessonid: 3, title: 'Feed the Monkey' }}
   progress={`${currentStep + 1}/${lessons.length}`}
 >
@@ -200,7 +201,7 @@ const AddFeedMonkey = () => {
         </button>
       </div>
     </>
-  )}
+  )}  
 </LessonLayout>
 
   );

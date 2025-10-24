@@ -61,10 +61,7 @@ const TeachScreen = ({ onNext, meta }) => {
     });
 
   const FISH_IMAGES = [
-    "/photos/lesson1/fish1.png",
-    "/photos/lesson1/fish2.png",
-    "/photos/lesson1/fish3.png",
-    "/photos/lesson1/fish4.png",
+    "/photos/lesson3/monkey.png",
   ];
 
   const challengePromptAudio = (n) => ({
