@@ -62,6 +62,7 @@ const TeachScreen = ({ onNext, meta }) => {
 
   const FISH_IMAGES = [
     "/photos/lesson3/monkey.png",
+
   ];
 
   const challengePromptAudio = (n) => ({
