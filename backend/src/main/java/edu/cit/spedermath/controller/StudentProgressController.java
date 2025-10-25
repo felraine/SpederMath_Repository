@@ -7,6 +7,8 @@ import edu.cit.spedermath.model.StudentProgress;
 import edu.cit.spedermath.service.StudentProgressService;
 import edu.cit.spedermath.service.LessonService;
 import edu.cit.spedermath.service.StudentService;
+import edu.cit.spedermath.service.StudentAttemptService;
+import edu.cit.spedermath.dto.AttemptHistoryDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -16,12 +18,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.Optional;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/student-progress")
 public class StudentProgressController {
 
     private final StudentProgressService service;
+
+    @Autowired
+    private StudentAttemptService studentAttemptService;
 
     @Autowired
     private LessonService lessonService;
@@ -102,6 +109,17 @@ public class StudentProgressController {
         // Save the progress in the repository
         StudentProgress savedProgress = service.submitLessonProgress(incomingProgress, studentId);
 
+        // Log the attempt using StudentAttemptService
+        studentAttemptService.logAttempt(
+            student,
+            lesson,
+            progressDTO.getScore(),
+            progressDTO.getStatus(),
+            progressDTO.getTimeSpentInSeconds() != null 
+                ? progressDTO.getTimeSpentInSeconds().intValue() 
+                : null
+        );
+
         return ResponseEntity.ok(savedProgress);
     }
 
@@ -127,5 +145,42 @@ public class StudentProgressController {
             throw new IllegalStateException("Unauthenticated access — student ID missing!");
         }
         return Long.parseLong(authentication.getName());  // Make sure JWT holds the studentID as the 'sub' field
+    }
+
+    @GetMapping("/my/lesson/{lessonId}/summary")
+    public ResponseEntity<Map<String, Object>> getMyLessonSummary(
+            @PathVariable Long lessonId,
+            Authentication authentication
+    ) {
+        Long studentId = extractStudentIdFromAuthentication(authentication);
+
+        // Current = StudentProgress → StudentProgressDTO (using your existing DTO shape)
+        var progressOpt = service.getStudentLessonProgress(studentId, lessonId);
+        StudentProgressDTO current = null;
+        if (progressOpt.isPresent()) {
+            var p = progressOpt.get();
+            var dto = new StudentProgressDTO();
+            dto.setProgressID(p.getProgressID());
+            dto.setScore(p.getScore());
+            dto.setStatus(p.getStatus());
+            dto.setLastUpdated(p.getLastUpdated());
+            dto.setUnlocked(p.isUnlocked());
+            dto.setTimeSpentInSeconds(p.getTimeSpentInSeconds());
+            if (p.getLesson() != null) dto.setLessonId(p.getLesson().getLessonID());
+            current = dto;
+        }
+
+        // Previous = last StudentAttempt DTO for this lesson (already mapped by your service)
+        AttemptHistoryDTO previousAttempt = studentAttemptService
+                .getHistoryDTOForLesson(studentId, lessonId)
+                .stream()
+                .findFirst()   // list is already DESC by attemptedAt
+                .orElse(null);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("current", current);
+        body.put("previousAttempt", previousAttempt);
+
+        return ResponseEntity.ok(body);
     }
 }

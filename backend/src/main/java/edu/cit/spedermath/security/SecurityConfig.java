@@ -55,7 +55,7 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // Protected endpoints
-                        .requestMatchers("/api/student-progress/**", "/api/students/**").authenticated()
+                        .requestMatchers("/api/student-progress/**", "/api/students/**", "/api/attempts/**").authenticated()
 
                         // Anything else requires auth
                         .anyRequest().authenticated()

@@ -114,6 +114,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities())
                         );
                     }
+                } else if (path.startsWith("/api/attempts")) {
+                    // ✅ NEW: Allow TEACHER or STUDENT to access attempts
+                    Long teacherId = jwtUtil.extractTeacherId(token);
+                    if (teacherId != null) {
+                        UserDetails user = new User(String.valueOf(teacherId), "", Collections.emptyList());
+                        SecurityContextHolder.getContext().setAuthentication(
+                                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities())
+                        );
+                    } else {
+                        Long studentId = jwtUtil.extractStudentId(token);
+                        if (studentId != null) {
+                            UserDetails user = new User(String.valueOf(studentId), "", Collections.emptyList());
+                            SecurityContextHolder.getContext().setAuthentication(
+                                    new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities())
+                            );
+                        }
+                    }
                 }
                 // ============================================
 
