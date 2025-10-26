@@ -10,9 +10,9 @@ import StudentLogin from "./components/views/StudentLogin";
 import StudentDashboard from "./components/views/StudentDashboard";
 import LessonLoader from "./components/views/LessonLoader";
 import SpederLayout from "./components/views/SpederLayout";
+import Settings from "./components/views/Settings"; 
 
 function App() {
-
   return (
     <Router>
       <Routes>
@@ -32,6 +32,7 @@ function App() {
             </PrivateRoute>
           }
         />
+
         <Route
           path="/manage-students"
           element={
@@ -42,52 +43,18 @@ function App() {
             </PrivateRoute>
           }
         />
-<Route
-  path="/settings"
-  element={
-    <PrivateRoute>
-      <SpederLayout>
-        <div style={{ textAlign: "center", marginBottom: "1rem" }}>Wow such empty</div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
-          <pre
-            style={{
-              fontFamily: "monospace",
-              fontSize: "14px",
-              lineHeight: "1.1",
-              margin: 0,
-            }}
-          >
-            {`
-         ▄              ▄    
-        ▌▒█           ▄▀▒▌   
-        ▌▒▒█        ▄▀▒▒▒▐   
-       ▐▄█▒▒▀▀▀▀▄▄▄▀▒▒▒▒▒▐   
-     ▄▄▀▒▒▒▒▒▒▒▒▒▒▒█▒▒▄█▒▐   
-   ▄▀▒▒▒░░░▒▒▒░░░▒▒▒▀██▀▒▌   
-  ▐▒▒▒▄▄▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▀▄▒▌  
-  ▌░░▌█▀▒▒▒▒▒▄▀█▄▒▒▒▒▒▒▒█▒▐  
- ▐░░░▒▒▒▒▒▒▒▒▌██▀▒▒░░░▒▒▒▀▄▌ 
- ▌░▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░░░░▒▒▒▒▌ 
-▌▒▒▒▄██▄▒▒▒▒▒▒▒▒░░░░░░░░▒▒▒▐ 
-▐▒▒▐▄█▄█▌▒▒▒▒▒▒▒▒▒▒░▒░▒░▒▒▒▒▌
-▐▒▒▐▀▐▀▒▒▒▒▒▒▒▒▒▒▒▒▒░▒░▒░▒▒▐ 
- ▌▒▒▀▄▄▄▄▄▄▒▒▒▒▒▒▒▒░▒░▒░▒▒▒▌ 
- ▐▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░▒░▒▒▄▒▒▐  
-  ▀▄▒▒▒▒▒▒▒▒▒▒▒▒▒░▒░▒▄▒▒▒▒▌  
-    ▀▄▒▒▒▒▒▒▒▒▒▒▄▄▄▀▒▒▒▒▄▀   
-      ▀▄▄▄▄▄▄▀▀▀▒▒▒▒▒▄▄▀     
-         ▀▀▀▀▀▀▀▀▀▀▀▀         `}
-          </pre>
-        </div>
-      </SpederLayout>
-    </PrivateRoute>
-  }
-/>
+
+        <Route
+          path="/settings"
+          element={
+            <PrivateRoute>
+              <SpederLayout>
+                <Settings />
+              </SpederLayout>
+            </PrivateRoute>
+          }
+        />
+
         <Route
           path="/student-dashboard"
           element={
