@@ -90,17 +90,49 @@ export default function StudentAttemptDetails({ studentId }) {
       m.get(id).push(a);
     }
 
-    const arr = [...m.entries()].map(([lessonId, list]) => ({
-      lessonId,
-      title: list[0]?.lessonTitle || `Lesson ${lessonId}`,
-      list,
-      sortKey: getLessonSortKey(list),
-    }));
+    const arr = [...m.entries()].map(([lessonId, list]) => {
+      const first = list[0];
+      return {
+        lessonId,
+        title: first?.lessonTitle || `Lesson ${lessonId}`,
+        maxScore: first?.maxScore ?? 10,
+        list,
+        sortKey: getLessonSortKey(list),
+      };
+    });
 
     // Sort ascending by lessonOrder or fallback time
     arr.sort((A, B) => (A.sortKey ?? 0) - (B.sortKey ?? 0));
     return arr;
   }, [attempts]);
+
+  // Build compact per-lesson summary for the AI
+  const buildSummary = useCallback(() => {
+    if (!lessons.length) return "No assessment attempts.";
+    const mean = (arr)=> arr.length ? (arr.reduce((s,v)=>s+v,0)/arr.length) : 0;
+
+    const parts = lessons.map((L, i) => {
+      const list = [...L.list].sort((a,b)=>new Date(a.attemptedAt)-new Date(b.attemptedAt));
+      const n = list.length;
+      const scores = list.map(x => Number(x.score||0));
+      const times  = list.map(x => Number(x.timeSpentSeconds||0));
+      const last = scores.at(-1) ?? 0;
+      const prev = scores.length>1 ? scores.at(-2) : null;
+      const trend = prev==null ? "no-trend" : (last>prev ? "up" : last<prev ? "down" : "flat");
+      const best = Math.max(...scores, 0);
+      const avgS = Math.round(mean(scores));
+      const avgT = Math.round(mean(times));
+      return `Assessment ${i+1} "${L.title}": attempts=${n}, last=${last}, best=${best}, avgScore=${avgS}, avgTimeSec=${avgT}, trend=${trend}`;
+    });
+
+    return parts.join(" | ") + " | Overall: highlight low last scores, down trends, and high times.";
+  }, [lessons]);
+
+  // Expose to window for the StudentCard button
+  useEffect(() => {
+    window.spederBuildSummary = buildSummary;
+    return () => { delete window.spederBuildSummary; };
+  }, [buildSummary]);
 
   // Current lesson index + keyboard nav
   const [idx, setIdx] = useState(0);
@@ -127,8 +159,7 @@ export default function StudentAttemptDetails({ studentId }) {
   const current = lessons[idx];
 
   return (
-    <div className="space-y-3">
-      {/* Header row under student info: lesson counter + nav */}
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="text-xs text-gray-500">Lesson {idx + 1} / {lessons.length}</div>
         <div className="flex items-center gap-2">
@@ -141,11 +172,11 @@ export default function StudentAttemptDetails({ studentId }) {
         </div>
       </div>
 
-      {/* Single chart view */}
       <LessonAttemptsChart
-        key={`${current.lessonId}-${current.list.length}-${current.list[0]?.attemptedAt || ""}`} // force a fresh mount per lesson
+        key={`${current.lessonId}-${current.list.length}-${current.list[0]?.attemptedAt || ""}`}
         title={current.title}
         list={current.list}
+        goalScore={current.maxScore}
       />
     </div>
   );
@@ -204,10 +235,7 @@ function LessonAttemptsChart({ title, list, goalScore = 10 }) {
       <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5">
         <span
           className="inline-block h-2.5 w-2.5 rounded"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(99,102,241,1) 0%, rgba(139,92,246,1) 100%)",
-          }}
+          style={{ background: "linear-gradient(180deg, rgba(99,102,241,1) 0%, rgba(139,92,246,1) 100%)" }}
         />
         Time (seconds)
       </span>
@@ -221,11 +249,7 @@ function LessonAttemptsChart({ title, list, goalScore = 10 }) {
     dataLabels: { enabled: false },
     markers: { size: 0, discrete: discreteMarkers },
     grid: { borderColor: "#e5e7eb", strokeDashArray: 3, xaxis: { lines: { show: false } } },
-    xaxis: {
-      categories,
-      labels: { style: { fontSize: "12px" }, rotate: -10 },
-      axisBorder: { show: false }, axisTicks: { show: false },
-    },
+    xaxis: { categories, labels: { style: { fontSize: "12px" }, rotate: -10 }, axisBorder: { show: false }, axisTicks: { show: false } },
     yaxis: [
       { title: { text: "Score" }, min: 0, max: yLeftMax, decimalsInFloat: 0 },
       { opposite: true, title: { text: "Seconds" }, min: 0, max: yRightMax, decimalsInFloat: 0 },
@@ -233,16 +257,12 @@ function LessonAttemptsChart({ title, list, goalScore = 10 }) {
     plotOptions: { bar: { borderRadius: 7, columnWidth: "45%" } },
     fill: {
       type: ["solid", "gradient"],
-      gradient: {
-        shade: "light", type: "vertical",
-        gradientToColors: ["#60a5fa", "#8b5cf6"],
-        stops: [0, 100], opacityFrom: 0.9, opacityTo: 0.9,
-      },
+      gradient: { shade: "light", type: "vertical", gradientToColors: ["#60a5fa", "#8b5cf6"], stops: [0, 100], opacityFrom: 0.9, opacityTo: 0.9 },
     },
     tooltip: {
       theme: "dark",
       shared: true,
-      custom: ({ dataPointIndex, w }) => {
+      custom: ({ dataPointIndex }) => {
         const d = prepared[dataPointIndex];
         if (!d) return "";
         return `
@@ -282,9 +302,7 @@ function LessonAttemptsChart({ title, list, goalScore = 10 }) {
       <div className="flex items-center justify-between mb-2">
         <div>
           <div className="font-semibold">{title}</div>
-          <div className="text-[11px] text-gray-400 font-medium mt-0.5">
-            Score = line • Time = bars
-          </div>
+          <div className="text-[11px] text-gray-400 font-medium mt-0.5">Score = line • Time = bars</div>
         </div>
         <div className="text-xs text-gray-500 flex items-center gap-3">
           <span>ASSESSMENT • Recent attempts</span>
@@ -294,9 +312,7 @@ function LessonAttemptsChart({ title, list, goalScore = 10 }) {
       <div className="w-full" style={{ height: 320 }}>
         <ReactApexChart options={options} series={series} height={320} />
       </div>
-      <div className="text-[11px] text-gray-500 mt-2">
-        Showing up to the last 10 attempts (oldest → newest).
-      </div>
+      <div className="text-[11px] text-gray-500 mt-2">Showing up to the last 10 attempts (oldest → newest).</div>
     </div>
   );
 }

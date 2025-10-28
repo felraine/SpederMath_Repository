@@ -71,7 +71,8 @@ public class StudentAttemptService {
                         a.getTimeSpentSeconds(),
                         a.getAttemptedAt(),
                         a.getLesson().getLessonType(),
-                        a.getLesson().getLessonOrder() // ✅ Added here
+                        a.getLesson().getLessonOrder(),
+                        a.getLesson().getMax_score()
                 ))
                 .toList();
     }
@@ -88,7 +89,8 @@ public class StudentAttemptService {
                         a.getTimeSpentSeconds(),
                         a.getAttemptedAt(),
                         a.getLesson().getLessonType(),
-                        a.getLesson().getLessonOrder() // ✅ Added here
+                        a.getLesson().getLessonOrder(),
+                        a.getLesson().getMax_score()
                 ))
                 .toList();
     }
@@ -105,7 +107,8 @@ public class StudentAttemptService {
                         a.getTimeSpentSeconds(),
                         a.getAttemptedAt(),
                         a.getLesson().getLessonType(),
-                        a.getLesson().getLessonOrder() // ✅ Added here
+                        a.getLesson().getLessonOrder(),
+                        a.getLesson().getMax_score()
                 ))
                 .toList();
     }

@@ -14,12 +14,13 @@ public class AttemptHistoryDTO {
     private LocalDateTime attemptedAt;
     private LessonType lessonType;
     private Integer lessonOrder;
+    private Integer maxScore;
 
     public AttemptHistoryDTO() {}
 
     public AttemptHistoryDTO(Long attemptId, Long lessonId, String lessonTitle,
                              Integer score, String status, Integer timeSpentSeconds,
-                             LocalDateTime attemptedAt, LessonType lessonType, Integer lessonOrder) {
+                             LocalDateTime attemptedAt, LessonType lessonType, Integer lessonOrder, Integer maxScore) {
         this.attemptId = attemptId;
         this.lessonId = lessonId;
         this.lessonTitle = lessonTitle;
@@ -29,6 +30,7 @@ public class AttemptHistoryDTO {
         this.attemptedAt = attemptedAt;
         this.lessonType = lessonType;
         this.lessonOrder = lessonOrder;
+        this.maxScore = maxScore;
     }
 
     public Long getAttemptId() { return attemptId; }
@@ -49,4 +51,6 @@ public class AttemptHistoryDTO {
     public void setLessonType(LessonType lessonType) { this.lessonType = lessonType; }
     public Integer getLessonOrder() { return lessonOrder; }
     public void setLessonOrder(Integer lessonOrder) { this.lessonOrder = lessonOrder; }
+    public Integer getMaxScore() { return maxScore;}
+    public void setMaxScore(Integer maxScore) { this.maxScore = maxScore; }
 }

@@ -22,17 +22,28 @@ public interface StudentAttemptRepository extends JpaRepository<StudentAttempt, 
     """)
     List<StudentAttempt> findRecentAttempts(Long studentId, Pageable pageable);
 
+        @Query("""
+            SELECT a FROM StudentAttempt a
+            JOIN FETCH a.lesson
+            WHERE a.student.studentID = :studentId
+            AND (:type IS NULL OR a.lesson.lessonType = :type)
+            ORDER BY a.attemptedAt DESC
+        """)
+        List<StudentAttempt> findRecentByStudentAndType(
+                @Param("studentId") Long studentId,
+                @Param("type") LessonType type,
+                Pageable pageable
+        );
+
     @Query("""
-        SELECT a
-        FROM StudentAttempt a
-        JOIN a.lesson l
+        SELECT a FROM StudentAttempt a
+        JOIN FETCH a.lesson
         WHERE a.student.studentID = :studentId
-          AND (:type IS NULL OR l.lessonType = :type)
+        AND (:type IS NULL OR a.lesson.lessonType = :type)
         ORDER BY a.attemptedAt DESC
     """)
-    List<StudentAttempt> findRecentByStudentAndType(
-            @Param("studentId") Long studentId,
-            @Param("type") LessonType type,
-            Pageable pageable
+    List<StudentAttempt> findRecentAttemptsByStudentId(
+        @Param("studentId") Long studentId,
+        @Param("type") String type
     );
 }

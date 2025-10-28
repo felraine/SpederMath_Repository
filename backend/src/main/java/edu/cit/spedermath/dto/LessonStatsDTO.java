@@ -15,11 +15,12 @@ public class LessonStatsDTO {
     private Long notStartedCount;
     private Long failedCount;
     private LessonType lessonType;
+    private int maxScore;
 
     // Constructor
     public LessonStatsDTO(Long lessonID, String title, Double avgScore, Double avgTimeSpent, Long retakesCount,
             Long unlockedCount, Long notUnlockedCount, Long completedCount, Long inProgressCount,
-            Long notStartedCount, Long failedCount, LessonType lessonType) {
+            Long notStartedCount, Long failedCount, LessonType lessonType, int maxScore) {
         this.lessonID = lessonID;
         this.title = title;
         this.avgScore = avgScore;
@@ -32,6 +33,7 @@ public class LessonStatsDTO {
         this.notStartedCount = notStartedCount;
         this.failedCount = failedCount;
         this.lessonType = lessonType;
+        this.maxScore = maxScore;
         }
 
 
@@ -107,5 +109,11 @@ public class LessonStatsDTO {
     }
     public void setLessonType(LessonType lessonType) {
         this.lessonType = lessonType;
+    }
+    public int getMaxScore() {
+        return maxScore;
+    }
+    public void setMaxScore(int maxScore) {
+        this.maxScore = maxScore;
     }
 }

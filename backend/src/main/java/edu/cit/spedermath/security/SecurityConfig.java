@@ -49,6 +49,7 @@ public class SecurityConfig {
                                 "/api/lessons/**",
                                 "/api/lesson-stats",
                                 "/api/students/*/qr-token",
+                                "/api/summarize",
                                 "/public/**",
                                 "/error",
                                 "/api/debug/echo-auth"
