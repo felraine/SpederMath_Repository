@@ -58,10 +58,7 @@ const TeachScreen = ({ onNext }) => {
     });
 
   const FISH_IMAGES = [
-    "/photos/lesson1/fish1.png",
-    "/photos/lesson1/fish2.png",
-    "/photos/lesson1/fish3.png",
-    "/photos/lesson1/fish4.png",
+    "/photos/lesson2/star.png",
   ];
 
   // Challenge audios (provide 4/5 when ready; we’ll fallback gracefully)
@@ -298,7 +295,11 @@ const TeachScreen = ({ onNext }) => {
     };
   }, []);
 
-  // ======= UI =======
+  // Convert number index to word
+  const numberWordMap = ["zero", "one", "two", "three", "four", "five"];
+  const targetWord =
+  targetIndex <= 5 ? numberWordMap[targetIndex] : targetIndex.toString();
+
   return (
     <section className="lesson-screen relative w-full h-full flex flex-col items-center justify-start">
       {/* Headers */}
@@ -309,7 +310,7 @@ const TeachScreen = ({ onNext }) => {
       )}
       {step === COUNT_START && (
         <div className="flex items-center justify-center mb-2">
-          <h1 className="text-3xl font-bold drop-shadow-sm">Now let’s count with our fish friends!</h1>
+          <h1 className="text-3xl font-bold drop-shadow-sm">Now let’s count the stars!</h1>
         </div>
       )}
 
@@ -408,7 +409,7 @@ const TeachScreen = ({ onNext }) => {
             {challengeActive && (
               <div className="flex flex-col items-center gap-6">
                 <h3 className="text-2xl sm:text-3xl font-bold">
-                  Click on <span className="underline">fish number {targetIndex}</span>.
+                  Click on star number {targetWord}.
                 </h3>
 
                 <div className="flex flex-row gap-6 sm:gap-8 flex-wrap justify-center">
