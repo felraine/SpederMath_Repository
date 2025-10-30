@@ -56,7 +56,7 @@ const TeachScreen = ({ onNext }) => {
   const COUNT_WITH_FISH_PREFACE = "/audio/lesson1/count_with_fish.mp3";
   const LETS_REVIEW_AUDIO = "/audio/lesson1/lets_review.mp3";
 
-  const numberWords = ["One", "Two", "Three"];
+  const numberWords = ["Zero","One", "Two", "Three"];
 
   const playAudioAsync = (src) => {
     const myVersion = ++playVersion.current;
