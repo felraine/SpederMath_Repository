@@ -1,161 +1,96 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { X, RefreshCw, Check, Copy } from "lucide-react";
+import { X, Check, Copy } from "lucide-react";
 
 const Spinner = () => (
   <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700" />
 );
 
-/* ===================== Parsing & Basic Cleaners ===================== */
+/* ===================== Parsing & Cleaners ===================== */
 
 function takeBetweenTags(raw = "") {
-  const m = String(raw).match(/<assessment[^>]*>([\s\S]*?)<\/assessment>/i);
+  const m =
+    String(raw).match(/<assessment[^>]*>([\s\S]*?)<\/assessment>/i) ||
+    String(raw).match(/<assessment[^>]*>([\s\S]*)$/i);
   return m?.[1]?.trim() || "";
 }
 function looksLikeParagraph(s = "") {
   const t = s.trim();
   if (!t) return false;
-  const banned =
-    /(DATA|INSTRUCTION|Using the DATA|Output ONLY|RESPONSE FORMAT|Task:|Instruction:)/i;
+  const banned = /(DATA|INSTRUCTION|Using the DATA|Output ONLY|RESPONSE FORMAT|Task:|Instruction:)/i;
   if (banned.test(t)) return false;
   const sentences = t.split(/(?<=[.!?])\s+/).filter(Boolean);
-  return sentences.length >= 2 && sentences.length <= 7 && t.length >= 80;
+  return sentences.length >= 2 && sentences.length <= 9 && t.length >= 80;
 }
 function cleanParagraph(text = "") {
   let out = text.replace(/\s+/g, " ").trim();
   out = out
-    .replace(/^task:.*?$/gi, "")
-    .replace(/^instructions?:.*?$/gi, "")
-    .replace(/^data:.*?$/gi, "")
-    .replace(/^(role|response format).*?$/gi, "")
+    .replace(/^task:.*?$/gim, "")
+    .replace(/^instructions?:.*?$/gim, "")
+    .replace(/^data:.*?$/gim, "")
+    .replace(/^(role|response format).*?$/gim, "")
     .trim();
   if (!/[.!?]$/.test(out)) out += ".";
   return out;
 }
 
-/* ===================== Small Utils ===================== */
+/* ===================== Prompts (SPED-aware) ===================== */
 
-function listify(arr) {
-  if (!arr.length) return "";
-  if (arr.length === 1) return arr[0];
-  if (arr.length === 2) return `${arr[0]} and ${arr[1]}`;
-  return `${arr.slice(0, -1).join(", ")}, and ${arr.at(-1)}`;
-}
-function uniqueStrings(arr) {
-  const s = new Set();
-  return arr.filter((x) => (x && !s.has(x) && s.add(x), x));
-}
-
-/* ===================== Parse perf summary into objects ===================== */
-/** Accept either "Lesson 1 "..." : ..." or "Assessment 1 "..." : ..." */
-function parseAssessments(perfSummary = "") {
-  const out = [];
-  for (const rawChunk of perfSummary.split("|")) {
-    const chunk = rawChunk.trim();
-    const m = chunk.match(/\b(?:Lesson|Assessment)\s+(\d+)\s+"([^"]+)"\s*:\s*(.*)$/i);
-    if (!m) continue;
-    const [, idxStr, title, rest] = m;
-    const getNum = (rx) => Number((rest.match(rx) || [])[1] || 0);
-    const attempts = getNum(/attempts=(\d+)/i);
-    const last = getNum(/last=(\d+)/i);
-    const best = getNum(/best=(\d+)/i);
-    const avgScore = getNum(/avgScore=(\d+)/i);
-    const avgTime = getNum(/avgTimeSec=(\d+)/i);
-    const maxScore = getNum(/maxScore=(\d+)/i);
-    const trend = ((rest.match(/trend=([a-z\-]+)/i) || [])[1] || "flat").toLowerCase();
-    out.push({
-      idx: Number(idxStr),
-      title,
-      attempts,
-      last,
-      best,
-      avgScore,
-      avgTime,
-      maxScore,
-      trend,
-    });
-  }
-  return out;
+function buildPromptPrimary(perfSummary, fullName) {
+  return [
+    `You are an educational analyst writing a teacher-facing progress note for a learner in a SPED (special education) context.`,
+    ``,
+    `Write as if this will appear in a professional report to teachers/parents. Use strengths-based, respectful language and avoid deficit framing.`,
+    `Consider common SPED supports (e.g., visual cues, chunking, repetition, errorless learning, gradual release, AAC, sensory breaks, predictable routines).`,
+    ``,
+    `Rules:`,
+    `• Output exactly one insightful paragraph (6–8 sentences, ~130–180 words).`,
+    `• Third person, professional teacher tone.`,
+    `• **Begin the paragraph with the student's full name: "${fullName}".**`,
+    `• Summarize overall trajectory first, then identify strengths and needs by full assessment titles (e.g., “Assessment (1–3): NumberMaze”).`,
+    `• If "maxScore" is present and > 0, you may reference it; NEVER write "(max 0)". If missing, say “near the maximum” instead of a number.`,
+    `• Provide concrete, SPED-informed next steps (scaffolding, pacing, visuals, practice dosage, mastery criteria).`,
+    `Wrap only the final paragraph in <assessment>...</assessment>.`,
+    ``,
+    `STUDENT ASSESSMENT DATA:`,
+    perfSummary,
+    ``,
+    `RESPONSE:`,
+    `<assessment>...</assessment>`,
+  ].join("\n");
 }
 
-/* ===================== Dynamic heuristic (no hardcoding) ===================== */
-/** Simpler heuristic if AI call fails */
-function heuristicAssessment(perfSummary = "", studentName = "The student") {
-  const assessments = parseAssessments(perfSummary);
-  if (!assessments.length) {
-    return `${studentName} has limited assessment activity so far. Begin with the first assessment (1–3) and guide short review sessions to improve accuracy.`;
-  }
-
-  const weak = assessments
-    .filter((a) => a.last <= a.maxScore * 0.7 || a.trend === "down" || a.avgTime >= 60)
-    .sort((a, b) => (a.last - b.last) || (b.avgTime - a.avgTime));
-  const strong = assessments.filter(
-    (a) => a.last >= a.maxScore * 0.9 || a.best >= a.maxScore
-  );
-
-  let opener = "";
-  if (weak.length && !strong.length)
-    opener = `${studentName} is still developing confidence on the early assessments.`;
-  else if (weak.length && strong.length)
-    opener = `${studentName} shows progress in some assessments but still needs practice in key areas.`;
-  else opener = `${studentName} is performing consistently across recent assessments.`;
-
-  const focus = (weak.length ? weak : assessments).slice(0, 3);
-  const focusText = focus.map(a => `${a.title} (max ${a.maxScore})`).join(", ");
-
-  const closer = `Focus next on ${focusText}, helping the student gradually approach each assessment’s full score and maintain that performance for at least two rounds.`;
-
-  return cleanParagraph(`${opener} ${closer}`);
+function buildPromptFewShot(perfSummary, fullName) {
+  return [
+    `You generate concise, SPED-aware assessment summaries for a math learning app.`,
+    `Write ONE paragraph (6–8 sentences, ~130–180 words) in third person and wrap it in <assessment>...</assessment>.`,
+    `**Start with the student's full name: "${fullName}".**`,
+    `Include: overall progress; strengths and needs by assessment title; interpretation using maxScore if > 0 (never "(max 0)"), or qualitative phrasing if absent; practical SPED-aligned next steps (e.g., chunking tasks, visual prompts, short high-success trials, timed practice only after accuracy stabilizes).`,
+    ``,
+    `STUDENT ASSESSMENT DATA:`,
+    perfSummary,
+    ``,
+    `OUTPUT:`,
+    `<assessment>...</assessment>`,
+  ].join("\n");
 }
 
-/* ===================== Teacher-Friendly Prompts (AI-driven) ===================== */
+/* ===================== Filled Sparkle Icon ===================== */
 
-    function buildPromptPrimary(perfSummary, name) {
-    return [
-        `You are an educational analyst helping a teacher prepare a detailed progress note about a student's math learning performance.`,
-        ``,
-        `Write the comment as if the teacher is recording observations for a report or professional log — NOT speaking to the student directly.`,
-        `The note should discuss the student's progress, observed patterns, and instructional recommendations.`,
-        ``,
-        `Rules:`,
-        `• Write one insightful paragraph (6–8 sentences, around 130–180 words).`,
-        `• Use a professional teacher tone, in third person (e.g., “Felraine shows progress…” or “The student demonstrates…”).`,
-        `• Do NOT use “you” or “your.” The audience is another teacher, not the student.`,
-        `• Summarize overall progress first, then highlight assessments showing strengths and weaknesses.`,
-        `• Mention assessments by their full titles (e.g., “Assessment (1–3): NumberMaze”).`,
-        `• Refer to "maxScore" to identify mastery thresholds (e.g., consistent scores near the maximum).`,
-        `• Conclude with evidence-based teaching recommendations or next steps (e.g., repetition, pacing, scaffolding).`,
-        `Wrap only the final paragraph in <assessment>...</assessment>.`,
-        ``,
-        `STUDENT ASSESSMENT DATA:`,
-        perfSummary,
-        ``,
-        `RESPONSE:`,
-        `<assessment>...</assessment>`,
-    ].join("\n");
-    }
-
-    function buildPromptFewShot(perfSummary, name) {
-    return [
-        `You are generating teacher-facing assessment summaries describing a student's performance trends in a math learning application.`,
-        ``,
-        `Each summary should sound like it belongs in a progress report — analytical, professional, and written in third person.`,
-        `Avoid addressing the student directly; write as though another educator or parent will read this.`,
-        `Each output is one paragraph (6–8 sentences, roughly 130–180 words) wrapped in <assessment>...</assessment>.`,
-        ``,
-        `The paragraph must include:`,
-        `• Overview of the student’s current performance and improvement pattern.`,
-        `• Identification of strong and weak assessment areas by name.`,
-        `• Interpretation of the data using maxScore to define mastery or gaps.`,
-        `• Practical next steps for teaching or reinforcement strategies.`,
-        ``,
-        `STUDENT ASSESSMENT DATA:`,
-        perfSummary,
-        ``,
-        `OUTPUT:`,
-        `<assessment>...</assessment>`,
-    ].join("\n");
-    }
+const FilledSparkle = ({ size = 16, color = "#FACC15", className = "" }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill={color}
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    className={className}
+  >
+    <path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5L12 2z" />
+    <path d="M6 13l.8 3 3.2.8-3.2.8L6 21l-.8-3.2L2 16.8l3.2-.8L6 13z" />
+    <path d="M17 14l.6 2 2.4.6-2.4.6L17 20l-.6-2.4L14 16.6l2.4-.6L17 14z" />
+  </svg>
+);
 
 /* ===================== Component ===================== */
 
@@ -175,7 +110,7 @@ export default function StudentAssessmentModal({
   const fullName = useMemo(() => {
     if (!student) return "";
     const fn = `${student.fname ?? ""} ${student.lname ?? ""}`.trim();
-    return fn || (student.username ? `@${student.username}` : "Student");
+    return fn || (student.username ? `@${student.username}` : "The student");
   }, [student]);
 
   const getPerfSummary = () =>
@@ -187,55 +122,51 @@ export default function StudentAssessmentModal({
     const token = localStorage.getItem("token");
     const res = await axios.post(
       endpoint,
-      { text: promptText, useGpt: true, maxWords: 250 },
+      { text: promptText, useGpt: !!useGpt, maxWords: 250 },
       token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
     );
     return res?.data?.summary ?? res?.data?.text ?? res?.data?.message ?? "";
   }
 
-  const callAI = async () => {
+  const runAI = async () => {
     if (!student) return;
     setPhase("loading");
     setErr("");
     setText("");
 
     const perfSummary = getPerfSummary();
-    const name = fullName || "the student";
 
     try {
-      const raw1 = await callSummarizer(buildPromptPrimary(perfSummary, name));
+      const raw1 = await callSummarizer(buildPromptPrimary(perfSummary, fullName));
       let extracted = takeBetweenTags(raw1);
 
       if (!extracted || !looksLikeParagraph(extracted)) {
-        const raw2 = await callSummarizer(buildPromptFewShot(perfSummary, name));
+        const raw2 = await callSummarizer(buildPromptFewShot(perfSummary, fullName));
         extracted = takeBetweenTags(raw2);
       }
 
       if (extracted && looksLikeParagraph(extracted)) {
-        setText(cleanParagraph(extracted));
+        const safe = extracted.replace(/\(max\s*0\)/gi, "(near the maximum)");
+        setText(cleanParagraph(safe));
         setPhase("ready");
         return;
       }
 
-      const local = heuristicAssessment(perfSummary, fullName || "The student");
-      setText(local);
+      setErr("AI did not return a valid assessment. Please try again later.");
       setPhase("ready");
     } catch (e) {
       console.error("[AI assessment] error:", e);
-      const local = heuristicAssessment(perfSummary, fullName || "The student");
-      setText(local);
       setErr(
         e?.response?.data?.message ||
-          "AI service error — showing an auto-generated assessment instead."
+          "AI service error — unable to generate an assessment right now."
       );
       setPhase("ready");
     }
   };
 
   useEffect(() => {
-    if (open && student) {
-      callAI();
-    } else {
+    if (open && student) runAI();
+    else {
       setPhase("idle");
       setText("");
       setErr("");
@@ -244,9 +175,7 @@ export default function StudentAssessmentModal({
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose();
-    };
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
@@ -276,12 +205,20 @@ export default function StudentAssessmentModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-scaleIn">
-          <div className="flex items-center justify-between px-5 py-3 border-b">
-            <div className="min-w-0">
-              <div className="text-xs uppercase tracking-wide text-gray-500">
-                AI Assessment
+          {/* Header with circular filled sparkle */}
+          <div className="flex items-center justify-between px-5 py-3 border-b bg-white/80">
+            <div className="min-w-0 flex items-center gap-2">
+              <div className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-indigo-600">
+                <FilledSparkle size={16} color="#FACC15" />
               </div>
-              <h3 className="font-bold text-lg truncate">{fullName}</h3>
+              <div className="min-w-0">
+                <div className="text-xs uppercase tracking-wide text-gray-500">
+                  AI Assessment
+                </div>
+                <h3 className="font-bold text-base sm:text-lg truncate text-gray-900">
+                  {fullName}
+                </h3>
+              </div>
             </div>
             <button
               ref={closeBtnRef}
@@ -297,7 +234,7 @@ export default function StudentAssessmentModal({
             {phase === "loading" && (
               <div className="flex flex-col items-center justify-center text-center py-14">
                 <Spinner />
-                <div className="mt-3 font-medium text-gray-800">
+                <div className="mt-3 font-medium text-gray-900 text-[15px]">
                   Generating assessment…
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
@@ -308,41 +245,36 @@ export default function StudentAssessmentModal({
 
             {phase === "ready" && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
                   <Check className="w-4 h-4" />
                   <span className="font-medium">Assessment ready</span>
                 </div>
 
                 {err && (
-                  <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                     {err}
                   </div>
                 )}
 
-                <div className="text-sm leading-relaxed text-gray-800 bg-gray-50/70 border border-gray-200 rounded-xl p-4 whitespace-pre-line">
-                  {text}
-                </div>
+                {text && (
+                  <div className="text-[15px] leading-7 text-gray-900 bg-white border border-gray-200 rounded-xl p-4 shadow-sm whitespace-pre-wrap">
+                    {text}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between pt-1">
                   <div className="text-[11px] text-gray-500">
-                    Tip: Click “Regenerate” to refresh after new attempts.
+                    Tip: Copy and paste into your progress notes.
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={copyOut}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm hover:bg-gray-50 active:scale-95 transition"
+                      disabled={!text}
                     >
                       {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       {copied ? "Copied" : "Copy"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={callAI}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      Regenerate
                     </button>
                   </div>
                 </div>

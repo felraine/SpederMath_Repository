@@ -92,10 +92,24 @@ export default function StudentAttemptDetails({ studentId }) {
 
     const arr = [...m.entries()].map(([lessonId, list]) => {
       const first = list[0];
+
+      // --- derive a reliable maxScore per lesson (logic-only, no UI change) ---
+      const attemptMaxes = list
+        .map(a => Number(a.maxScore || 0))
+        .filter(n => Number.isFinite(n) && n > 0);
+      const scorePeaks = list
+        .map(a => Number(a.score || 0))
+        .filter(n => Number.isFinite(n) && n >= 0);
+
+      const derivedMax =
+        (attemptMaxes.length ? Math.max(...attemptMaxes) : 0) ||
+        Number(first?.maxScore || 0) ||
+        (scorePeaks.length ? Math.max(10, Math.max(...scorePeaks)) : 10);
+
       return {
         lessonId,
         title: first?.lessonTitle || `Lesson ${lessonId}`,
-        maxScore: first?.maxScore ?? 10,
+        maxScore: derivedMax, // <- this is what we’ll send to the modal/AI
         list,
         sortKey: getLessonSortKey(list),
       };
@@ -106,7 +120,7 @@ export default function StudentAttemptDetails({ studentId }) {
     return arr;
   }, [attempts]);
 
-  // Build compact per-lesson summary for the AI
+  // Build compact per-lesson summary for the AI (now includes maxScore)
   const buildSummary = useCallback(() => {
     if (!lessons.length) return "No assessment attempts.";
     const mean = (arr)=> arr.length ? (arr.reduce((s,v)=>s+v,0)/arr.length) : 0;
@@ -122,13 +136,14 @@ export default function StudentAttemptDetails({ studentId }) {
       const best = Math.max(...scores, 0);
       const avgS = Math.round(mean(scores));
       const avgT = Math.round(mean(times));
-      return `Assessment ${i+1} "${L.title}": attempts=${n}, last=${last}, best=${best}, avgScore=${avgS}, avgTimeSec=${avgT}, trend=${trend}`;
+      // <<< only change here: add maxScore to the string >>>
+      return `Assessment ${i+1} "${L.title}": attempts=${n}, last=${last}, best=${best}, avgScore=${avgS}, avgTimeSec=${avgT}, maxScore=${L.maxScore}, trend=${trend}`;
     });
 
     return parts.join(" | ") + " | Overall: highlight low last scores, down trends, and high times.";
   }, [lessons]);
 
-  // Expose to window for the StudentCard button
+  // Expose to window for the StudentCard button / Assessment modal
   useEffect(() => {
     window.spederBuildSummary = buildSummary;
     return () => { delete window.spederBuildSummary; };
