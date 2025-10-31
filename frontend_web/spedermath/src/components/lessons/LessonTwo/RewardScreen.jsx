@@ -13,7 +13,7 @@ export default function RewardScreen({ meta }) {
   const resolvedLessonId =
     Number(meta?.lessonId) ||
     Number(location.state?.lessonId) ||
-    6;
+    3;
 
   const startedAtRef = useRef(Date.now());
   const submittedRef = useRef(false);

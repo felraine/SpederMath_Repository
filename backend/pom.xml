@@ -121,6 +121,21 @@
             <artifactId>core</artifactId>
             <version>3.5.1</version>
         </dependency>
+
+        <!-- OpenAI HTTP Client -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>4.12.0</version>
+        </dependency>
+
+        <!-- JSON Parser -->
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20240303</version>
+        </dependency>
+        
     </dependencies>
 
     <build>

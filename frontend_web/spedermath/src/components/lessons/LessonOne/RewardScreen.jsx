@@ -10,7 +10,6 @@ export default function RewardScreen() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // IMPORTANT: use the real DB id for this lesson (you said Lesson 1 is id=5)
   const lessonId = Number(location.state?.lessonId ?? 1);
 
   const startedAtRef = useRef(Date.now());

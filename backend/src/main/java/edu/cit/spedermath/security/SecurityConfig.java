@@ -49,13 +49,14 @@ public class SecurityConfig {
                                 "/api/lessons/**",
                                 "/api/lesson-stats",
                                 "/api/students/*/qr-token",
+                                "/api/summarize",
                                 "/public/**",
                                 "/error",
                                 "/api/debug/echo-auth"
                         ).permitAll()
 
                         // Protected endpoints
-                        .requestMatchers("/api/student-progress/**", "/api/students/**").authenticated()
+                        .requestMatchers("/api/student-progress/**", "/api/students/**", "/api/attempts/**").authenticated()
 
                         // Anything else requires auth
                         .anyRequest().authenticated()

@@ -4,7 +4,8 @@ import axios from "axios";
 import StudentList from "../reusable/StudentList";
 import TeacherHeader from "../reusable/TeacherHeader";
 import StudentProgress from "../reusable/StudentProgress";
-import Sidebar from "../reusable/Sidebar";
+import StudentCard from "../modals/StudentCard";
+import StudentProgressDetails from "../reusable/StudentProgressDetails";
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -12,6 +13,9 @@ function Dashboard() {
   const [lessonStats, setLessonStats] = useState([]);
   const [isStudentLoading, setIsStudentLoading] = useState(true);
   const [isLessonStatsLoading, setIsLessonStatsLoading] = useState(true);
+
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [showStudentModal, setShowStudentModal] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -23,16 +27,14 @@ function Dashboard() {
       setIsStudentLoading(true);
       try {
         const token = localStorage.getItem("token");
-        if (!token) {
-          navigate("/teacher-login");
-          return;
-        }
+        if (!token) { navigate("/teacher-login"); return; }
 
         const response = await axios.get("http://localhost:8080/api/students/all", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        setStudents(response.data.map((student) => ({ ...student, showPassword: false })));
+        const hydrated = (response.data || []).map((s) => ({ ...s, showPassword: false }));
+        setStudents(hydrated);
       } catch (error) {
         console.error("Error fetching students:", error);
       } finally {
@@ -44,10 +46,7 @@ function Dashboard() {
       setIsLessonStatsLoading(true);
       try {
         const token = localStorage.getItem("token");
-        if (!token) {
-          navigate("/teacher-login");
-          return;
-        }
+        if (!token) { navigate("/teacher-login"); return; }
 
         const response = await axios.get("http://localhost:8080/api/lesson-stats", {
           headers: { Authorization: `Bearer ${token}` },
@@ -65,15 +64,31 @@ function Dashboard() {
     fetchLessonStats();
   }, [navigate]);
 
+  const handleSelectStudent = (s) => {
+    setSelectedStudent(s);
+    setShowStudentModal(true);
+  };
+
   return (
     <div>
       <main className="flex-1 p-6 flex flex-col">
         <TeacherHeader />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5 flex-1">
           <StudentProgress lessonStats={lessonStats} isLoading={isLessonStatsLoading} />
-          <StudentList students={students} isLoading={isStudentLoading} />
+          <StudentList students={students} isLoading={isStudentLoading} onSelect={handleSelectStudent} />
         </div>
       </main>
+
+      {/* Modal with progress details */}
+      <StudentCard
+        open={showStudentModal}
+        student={selectedStudent}
+        onClose={() => setShowStudentModal(false)}
+      >
+        {selectedStudent && (
+          <StudentProgressDetails studentId={selectedStudent.studentID} />
+        )}
+      </StudentCard>
     </div>
   );
 }

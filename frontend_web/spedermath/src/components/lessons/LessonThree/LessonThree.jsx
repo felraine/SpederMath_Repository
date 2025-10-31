@@ -39,8 +39,6 @@ const LessonThree = () => {
     "/photos/lesson3/forest9.jpg",
     "/photos/lesson3/forest8.jpg",
     "/photos/lesson3/forest7.jpg",
-
-
   ]);
 
   const handleBack = () => {

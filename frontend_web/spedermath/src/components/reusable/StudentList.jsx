@@ -1,16 +1,17 @@
 import React from "react";
 
-function StudentList({ students = [], isLoading = false }) {
-  //skeleton loading state to show while fetching students
+function StudentList({
+  students = [],
+  isLoading = false,
+  onSelect = () => {},
+}) {
   const skeletonArray = Array.from({ length: 6 });
 
   return (
     <section className="bg-white p-4 shadow-md rounded-md h-[485px] flex flex-col">
       <h3 className="font-bold px-6">
         Students{" "}
-        {!isLoading && (
-          <span className="text-gray-500"> {students.length}</span>
-        )}
+        {!isLoading && <span className="text-gray-500"> {students.length}</span>}
       </h3>
 
       <div
@@ -33,15 +34,17 @@ function StudentList({ students = [], isLoading = false }) {
           students.map((student) => (
             <button
               key={student.studentID}
-              className="flex flex-col items-center justify-center p-2 rounded-md w-full hover:scale-105 space-y-2 border-2 border-gray-500 transition duration-200 ease-in-out shadow-md"
+              onClick={() => onSelect(student)} // opens modal via parent
+              className="flex flex-col items-center justify-center p-2 rounded-md w-full hover:scale-105 space-y-2 transition duration-200 ease-in-out shadow-md border-2 border-gray-500"
+              title={`${student.fname ?? ""} ${student.lname ?? ""}`}
             >
               <img
                 src="/display-pic.png"
-                alt={`${student.fname} ${student.lname}`}
+                alt={`${student.fname ?? ""} ${student.lname ?? ""}`}
                 className="w-16 h-16 rounded-full object-cover"
               />
               <span className="font-semibold text-center">
-                {student.fname} {student.lname}
+                {(student.fname ?? "") + " " + (student.lname ?? "")}
               </span>
             </button>
           ))
