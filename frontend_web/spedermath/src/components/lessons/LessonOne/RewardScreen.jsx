@@ -4,12 +4,12 @@ import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import { postOnce } from "../../../utils/requestDedupe";
 import { currentStudentId } from "../../../utils/auth";
+import { motion } from "framer-motion";
 
 export default function RewardScreen() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // IMPORTANT: use the real DB id for this lesson (you said Lesson 1 is id=5)
   const lessonId = Number(location.state?.lessonId ?? 1);
 
   const startedAtRef = useRef(Date.now());
@@ -86,40 +86,79 @@ export default function RewardScreen() {
 
   useEffect(() => { submit(); /* eslint-disable-next-line */ }, []);
 
-  return (
-    <div className="screen" style={{ textAlign: "center", marginTop: 50, color: "#fff" }}>
-      <h1 className="text-4xl font-bold">You did it!</h1>
+ return (
+  <div className="flex flex-col items-center justify-center min-h-screen text-center text-white px-4 py-8">
+    {/* Title */}
+    <motion.h1
+      className="text-5xl sm:text-6xl font-extrabold mb-6 drop-shadow-lg"
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+    >
+      You did it!
+    </motion.h1>
 
-      <div style={{
-        width: 150, height: 150, backgroundColor: "#FFD700", margin: "12px auto",
-        borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 60
-      }}>⭐</div>
+    {/* Star Trophy */}
+    <motion.div
+      initial={{ scale: 0, rotate: -45 }}
+      animate={{ scale: 1, rotate: 0 }}
+      transition={{ type: "spring", stiffness: 120, damping: 10 }}
+      className="flex items-center justify-center w-36 h-36 sm:w-40 sm:h-40 bg-yellow-400 rounded-3xl shadow-[0_0_30px_rgba(255,215,0,0.7)] mb-6"
+    >
+      <span className="text-7xl sm:text-8xl">⭐</span>
+    </motion.div>
 
-      <p style={{ fontSize: 20 }}>You learned the numbers <strong>1, 2, and 3</strong>!</p>
+    {/* Text */}
+    <motion.p
+      className="text-lg sm:text-xl mb-4 leading-relaxed"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.4 }}
+    >
+      You learned the numbers <strong>1, 2, and 3</strong>!
+    </motion.p>
 
-      <div style={{ marginTop: 10, fontSize: 14, opacity: 0.95 }}>
-        {submitting && `Saving your progress (lessonId = ${lessonId})…`}
-        {!submitting && !submitError && "Progress saved!"}
-        {submitError && <span style={{ color: "#fde68a" }}>{submitError}</span>}
-      </div>
-
-      <div style={{ marginTop: 16, display: "flex", gap: 10, justifyContent: "center" }}>
-        {submitError && (
-          <button
-            onClick={submit}
-            className="px-4 py-2 rounded-lg bg-amber-500 text-[#0b2344] font-bold cursor-pointer hover:bg-amber-600 disabled:opacity-60"
-          >
-            Retry Submit
-          </button>
-        )}
-        <button
-          onClick={() => navigate("/student-dashboard")}
-          className="px-4 py-2 rounded-lg bg-green-600 text-white font-bold disabled:opacity-60 hover:bg-green-700 cursor-pointer"
-          disabled={submitting}
-        >
-          Return to Dashboard
-        </button>
-      </div>
+    {/* Status Message */}
+    <div className="text-sm sm:text-base opacity-90 mb-6">
+      {submitting && (
+        <p className="italic">Saving your progress (lessonId = {lessonId})…</p>
+      )}
+      {!submitting && !submitError && (
+        <p className="text-green-300">Progress saved successfully!</p>
+      )}
+      {submitError && (
+        <p className="text-yellow-300">{submitError}</p>
+      )}
     </div>
-  );
+
+    {/* Buttons */}
+    <motion.div
+      className="flex flex-wrap justify-center gap-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.6 }}
+    >
+      {submitError && (
+        <button
+          onClick={submit}
+          className="px-5 py-3 rounded-xl bg-yellow-400 text-[#0b2344] font-bold hover:bg-yellow-500 transition-all shadow-md"
+        >
+          Retry Submit
+        </button>
+      )}
+      <button
+        onClick={() => navigate("/student-dashboard")}
+        className={`px-5 py-3 rounded-xl font-bold transition-all shadow-md ${
+          submitting
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-green-600 hover:bg-green-700 text-white"
+        }`}
+        disabled={submitting}
+      >
+        Return to Dashboard
+      </button>
+    </motion.div>
+  </div>
+);
+
 }

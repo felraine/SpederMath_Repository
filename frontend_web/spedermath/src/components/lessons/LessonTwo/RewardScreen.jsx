@@ -1,6 +1,7 @@
 // src/lessons/lesson2/RewardScreen.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import { currentStudentId } from "../../../utils/auth";
 import { postOnce } from "../../../utils/requestDedupe";
 
@@ -8,7 +9,7 @@ export default function RewardScreen({ meta }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Prefer meta.lessonId, then router state, then fallback to 3 (Lesson 1–5)
+  // Prefer meta.lessonId, then router state, then fallback to 6 (Lesson 2)
   const resolvedLessonId =
     Number(meta?.lessonId) ||
     Number(location.state?.lessonId) ||
@@ -16,7 +17,6 @@ export default function RewardScreen({ meta }) {
 
   const startedAtRef = useRef(Date.now());
   const submittedRef = useRef(false);
-
   const [submitting, setSubmitting] = useState(true);
   const [submitError, setSubmitError] = useState("");
 
@@ -39,7 +39,7 @@ export default function RewardScreen({ meta }) {
   };
 
   const makeIdempotencyKey = () => {
-    const sid = currentStudentId(); // from utils/auth
+    const sid = currentStudentId();
     const ymd = new Date().toISOString().slice(0, 10);
     return `spm:${sid}:${resolvedLessonId}:${ymd}`;
   };
@@ -51,7 +51,6 @@ export default function RewardScreen({ meta }) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    // postOnce dedupes identical, rapid calls
     return postOnce(`submit:${payload.idempotencyKey}`, () =>
       fetch("http://localhost:8080/api/student-progress/submit", {
         method: "POST",
@@ -68,13 +67,13 @@ export default function RewardScreen({ meta }) {
   };
 
   const submit = async () => {
-    if (submittedRef.current) return; // hard guard
+    if (submittedRef.current) return;
     submittedRef.current = true;
 
     setSubmitting(true);
     setSubmitError("");
 
-    // Optimistic local unlock
+    // Optimistic local save first
     upsertLocalProgress(resolvedLessonId, {
       status: "COMPLETED",
       score: 0,
@@ -84,7 +83,7 @@ export default function RewardScreen({ meta }) {
     try {
       await submitBackend({
         lessonId: resolvedLessonId,
-        score: 10, // completion score for lesson
+        score: 10,
         status: "COMPLETED",
         timeSpentInSeconds: timeSpent(),
         idempotencyKey: makeIdempotencyKey(),
@@ -94,7 +93,7 @@ export default function RewardScreen({ meta }) {
       console.warn("Backend submit failed; local unlock only.", e?.message);
       setSubmitError("Saved locally. Will sync next time.");
       setSubmitting(false);
-      submittedRef.current = false; // allow Retry
+      submittedRef.current = false;
     }
   };
 
@@ -104,40 +103,77 @@ export default function RewardScreen({ meta }) {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start pt-12 text-white">
-      <h1 className="text-4xl font-extrabold">You did it! 🎉</h1>
+    <div className="flex flex-col items-center justify-center min-h-screen text-center text-white px-4 py-8">
+      {/* Title */}
+      <motion.h1
+        className="text-5xl sm:text-6xl font-extrabold mb-6 drop-shadow-lg"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        You did it!
+      </motion.h1>
 
-      <div className="w-[150px] h-[150px] bg-yellow-400 mt-3 rounded-2xl flex items-center justify-center text-6xl shadow-lg">
-        ⭐
-      </div>
+      {/* Star Trophy */}
+      <motion.div
+        initial={{ scale: 0, rotate: -45 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: "spring", stiffness: 120, damping: 10 }}
+        className="flex items-center justify-center w-36 h-36 sm:w-40 sm:h-40 bg-yellow-400 rounded-3xl shadow-[0_0_30px_rgba(255,215,0,0.7)] mb-6"
+      >
+        <span className="text-7xl sm:text-8xl">⭐</span>
+      </motion.div>
 
-      <p className="text-lg mt-2">
+      {/* Text */}
+      <motion.p
+        className="text-lg sm:text-xl mb-4 leading-relaxed"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+      >
         You learned the numbers <strong>1, 2, 3, 4, and 5</strong>!
-      </p>
+      </motion.p>
 
-      <div className="mt-2 text-sm opacity-95">
-        {submitting && `Saving your progress (lessonId = ${resolvedLessonId})…`}
-        {!submitting && !submitError && "Progress saved! ✅"}
-        {submitError && <span className="text-yellow-200">{submitError}</span>}
+      {/* Status */}
+      <div className="text-sm sm:text-base opacity-90 mb-6">
+        {submitting && (
+          <p className="italic">
+            Saving your progress (lessonId = {resolvedLessonId})…
+          </p>
+        )}
+        {!submitting && !submitError && (
+          <p className="text-green-300">Progress saved successfully!</p>
+        )}
+        {submitError && <p className="text-yellow-300">{submitError}</p>}
       </div>
 
-      <div className="mt-4 flex gap-2">
+      {/* Buttons */}
+      <motion.div
+        className="flex flex-wrap justify-center gap-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.6 }}
+      >
         {submitError && (
           <button
             onClick={submit}
-            className="px-4 py-2 rounded-lg bg-amber-500 text-slate-900 font-bold shadow"
+            className="px-5 py-3 rounded-xl bg-yellow-400 text-[#0b2344] font-bold hover:bg-yellow-500 transition-all shadow-md"
           >
             Retry Submit
           </button>
         )}
         <button
           onClick={() => navigate("/student-dashboard")}
-          className="px-4 py-2 rounded-lg bg-green-600 text-white font-bold shadow disabled:opacity-60"
+          className={`px-5 py-3 rounded-xl font-bold transition-all shadow-md ${
+            submitting
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-green-600 hover:bg-green-700 text-white"
+          }`}
           disabled={submitting}
         >
           Return to Dashboard
         </button>
-      </div>
+      </motion.div>
     </div>
   );
 }
