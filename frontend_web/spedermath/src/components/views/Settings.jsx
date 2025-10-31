@@ -6,24 +6,21 @@ import ResponseModal from "../modals/ResponseModal";
 
 function Settings() {
   const [activeTab, setActiveTab] = useState("profile");
-  const [teacher, setTeacher] = useState({ name: "", email: "" });
+  const [teacher, setTeacher] = useState({ name: "", email: "", fname: "", lname: "" });
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate(); 
-  const [oldPassword, setOldPassword] = useState("");
-const [newPassword, setNewPassword] = useState("");
-const [confirmPassword, setConfirmPassword] = useState("");
+  const navigate = useNavigate();
+
   const [passwordData, setPasswordData] = useState({
-  oldPassword: "",
-  newPassword: "",
-  confirmPassword: ""
-});
+    oldPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [isError, setIsError] = useState(false);
-  
 
-  // Fetch teacher info on load
+  // Fetch teacher info
   useEffect(() => {
     const fetchTeacherInfo = async () => {
       try {
@@ -40,6 +37,8 @@ const [confirmPassword, setConfirmPassword] = useState("");
         setTeacher({
           name: res.data.name || "",
           email: res.data.email || "",
+          fname: res.data.fname || "",
+          lname: res.data.lname || "",
         });
       } catch (error) {
         console.error("Error fetching teacher info:", error);
@@ -54,116 +53,100 @@ const [confirmPassword, setConfirmPassword] = useState("");
   }, [navigate]);
 
   // Save updated info to DB
-const handleSave = async () => {
-  try {
-    setIsLoading(true);
-    const token = localStorage.getItem("token");
+  const handleSave = async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("token");
 
-    if (!token) {
-      navigate("/teacher-login");
-      return;
-    }
-
-    const res = await axios.put(
-      "http://localhost:8080/api/teachers/me",
-      {
-        name: teacher.name,
-        email: teacher.email,
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` },
+      if (!token) {
+        navigate("/teacher-login");
+        return;
       }
-    );
 
-    // Use response status to determine success
-    if (res.status === 200) {
-      setModalMessage("Profile updated successfully!");
-      setIsError(false);
-    } else {
-      setModalMessage("Failed to update profile!");
+      const res = await axios.put(
+        "http://localhost:8080/api/teachers/me",
+        {
+          name: teacher.name,
+          email: teacher.email,
+          fname: teacher.fname,
+          lname: teacher.lname,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (res.status === 200) {
+        setModalMessage("Profile updated successfully!");
+        setIsError(false);
+      } else {
+        setModalMessage("Failed to update profile!");
+        setIsError(true);
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      setModalMessage("An error occurred while updating your profile.");
       setIsError(true);
+    } finally {
+      setIsLoading(false);
+      setShowModal(true);
     }
-  } catch (error) {
-    console.error("Error updating profile:", error);
-    setModalMessage("An error occurred while updating your profile.");
-    setIsError(true);
-  } finally {
-    setIsLoading(false);
-    setShowModal(true); 
-  }
-};
+  };
 
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
 
-const handleChangePassword = async (e) => {
-  e.preventDefault();
-
-  // Validation checks
-  if (!oldPassword || !newPassword || !confirmPassword) {
-    setModalMessage("Please fill out all fields.");
-    setIsError(true);
-    setShowModal(true);
-    return;
-  }
-
-  if (newPassword !== confirmPassword) {
-    setModalMessage("New password and confirm password do not match.");
-    setIsError(true);
-    setShowModal(true);
-    return;
-  }
-
-  try {
-    setIsLoading(true);
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/teacher-login");
+    if (!passwordData.oldPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      setModalMessage("Please fill out all fields.");
+      setIsError(true);
+      setShowModal(true);
       return;
     }
 
-    // Send the update request
-    const response = await axios.put(
-      "http://localhost:8080/api/teachers/change-password",
-      {
-        oldPassword,
-        newPassword,
-        confirmPassword,
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setModalMessage("New password and confirm password do not match.");
+      setIsError(true);
+      setShowModal(true);
+      return;
+    }
 
-    // Success
-    setModalMessage(response.data || "Password changed successfully!");
-    setIsError(false);
-    setShowModal(true);
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/teacher-login");
+        return;
+      }
 
-    // Clear input fields
-    setOldPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-  } catch (error) {
-    console.error("Error changing password:", error);
-    setModalMessage(
-      error.response?.data || "Error changing password. Please try again."
-    );
-    setIsError(true);
-    setShowModal(true);
-  } finally {
-    setIsLoading(false);
-  }
-};
+      const response = await axios.put(
+        "http://localhost:8080/api/teachers/change-password",
+        passwordData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
+      setModalMessage(response.data || "Password changed successfully!");
+      setIsError(false);
+      setShowModal(true);
 
+      setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      setModalMessage(error.response?.data || "Error changing password. Please try again.");
+      setIsError(true);
+      setShowModal(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex h-screen">
       {/* Main Content */}
       <main className="flex-1 p-6 flex flex-col">
-        {/* Header */}
         <TeacherHeader />
 
-        {/* Page Content */}
         <section
-          className="bg-white p-6 shadow-md rounded-md mt-6 overflow-y-auto"
+          className="bg-white p-6 shadow-md rounded-md mt-6 overflow-y-auto scrollbar-hide"
           style={{ height: "500px", maxHeight: "1000px" }}
         >
           <div className="flex justify-between items-center mb-2">
@@ -198,12 +181,7 @@ const handleChangePassword = async (e) => {
           {/* ====================== PROFILE CONTENT ====================== */}
           {activeTab === "profile" && (
             <div className="flex flex-col items-center">
-              <div
-                className="relative mb-5"
-                style={{
-                  marginTop: "-120px",
-                }}
-              >
+              <div className="relative mb-5" style={{ marginTop: "-120px" }}>
                 <div className="w-25 h-25 rounded-full bg-gray-300 flex items-center justify-center shadow-md relative">
                   <span className="absolute -bottom-1 -right-1 bg-gray-300 text-white rounded-full w-7 h-7 flex items-center justify-center text-lg font-light shadow-sm cursor-pointer border border-white">
                     +
@@ -215,16 +193,12 @@ const handleChangePassword = async (e) => {
               <div className="w-full max-w-3xl ml-30 space-y-10">
                 {/* Personal Information Section */}
                 <div>
-                  <h4 className="font-bold text-lg mb-5">
-                    Personal Information
-                  </h4>
+                  <h4 className="font-bold text-lg mb-5">Personal Information</h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-5 items-end">
                     {/* Username */}
                     <div>
-                      <label className="block text-sm font-bold mb-1">
-                        Username
-                      </label>
+                      <label className="block text-sm font-bold mb-1">Username</label>
                       <input
                         type="text"
                         value={teacher.name}
@@ -236,11 +210,9 @@ const handleChangePassword = async (e) => {
                       />
                     </div>
 
-                    {/* Email Address */}
+                    {/* Email */}
                     <div>
-                      <label className="block text-sm font-bold mb-1">
-                        Email Address
-                      </label>
+                      <label className="block text-sm font-bold mb-1">Email Address</label>
                       <input
                         type="text"
                         value={teacher.email}
@@ -252,25 +224,52 @@ const handleChangePassword = async (e) => {
                       />
                     </div>
 
-                    {/* Empty placeholder to balance layout */}
+                    {/* First Name - now editable */}
+                    <div>
+                      <label className="block text-sm font-bold mb-1">First Name</label>
+                      <input
+                        type="text"
+                        value={teacher.fname}
+                        onChange={(e) =>
+                          setTeacher({ ...teacher, fname: e.target.value })
+                        }
+                        placeholder="Enter first name"
+                        className="w-72 border border-gray-300 rounded-md px-2.5 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      />
+                    </div>
+
+                    {/* Last Name - now editable */}
+                    <div>
+                      <label className="block text-sm font-bold mb-1">Last Name</label>
+                      <input
+                        type="text"
+                        value={teacher.lname}
+                        onChange={(e) =>
+                          setTeacher({ ...teacher, lname: e.target.value })
+                        }
+                        placeholder="Enter last name"
+                        className="w-72 border border-gray-300 rounded-md px-2.5 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      />
+                    </div>
+
                     <div></div>
 
-                    {/* Save Changes button */}
+                    {/* Save Changes */}
                     <div className="flex justify-end md:justify-start mt-2">
-                       <button
+                      <button
                         onClick={handleSave}
-                        className="w-72 bg-blue-600 text-white px-5 py-1.5 rounded-full hover:bg-blue-700 transition"
+                        className="w-72 bg-[#1C90F3] text-white px-5 py-1.5 rounded-full hover:bg-[#137de5] transition"
                       >
-                      Save Changes
-                    </button>
+                        Save Changes
+                      </button>
 
-                    {showModal && (
-                      <ResponseModal
-                        message={modalMessage}
-                        isError={isError}
-                        onClose={() => setShowModal(false)}
-                      />
-                    )}
+                      {showModal && (
+                        <ResponseModal
+                          message={modalMessage}
+                          isError={isError}
+                          onClose={() => setShowModal(false)}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -286,7 +285,12 @@ const handleChangePassword = async (e) => {
                       <input
                         type="password"
                         value={passwordData.oldPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
+                        onChange={(e) =>
+                          setPasswordData({
+                            ...passwordData,
+                            oldPassword: e.target.value,
+                          })
+                        }
                         className="w-72 border border-gray-300 rounded-md px-2.5 py-1.5"
                       />
                     </div>
@@ -298,7 +302,12 @@ const handleChangePassword = async (e) => {
                       <input
                         type="password"
                         value={passwordData.newPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                        onChange={(e) =>
+                          setPasswordData({
+                            ...passwordData,
+                            newPassword: e.target.value,
+                          })
+                        }
                         className="w-72 border border-gray-300 rounded-md px-2.5 py-1.5"
                       />
                     </div>
@@ -310,26 +319,31 @@ const handleChangePassword = async (e) => {
                       <input
                         type="password"
                         value={passwordData.confirmPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                        onChange={(e) =>
+                          setPasswordData({
+                            ...passwordData,
+                            confirmPassword: e.target.value,
+                          })
+                        }
                         className="w-72 border border-gray-300 rounded-md px-2.5 py-1.5"
                       />
                     </div>
 
                     <div className="flex justify-end md:justify-start mt-2">
                       <button
-                          onClick={handleChangePassword}
-                          className="w-72 bg-[#1C90F3] text-white px-5 py-1.5 rounded-full hover:bg-[#137de5] transition"
-                        >
-                          {isLoading ? "Saving..." : "Save Changes"}
-                        </button>
+                        onClick={handleChangePassword}
+                        className="w-72 bg-[#1C90F3] text-white px-5 py-1.5 rounded-full hover:bg-[#137de5] transition"
+                      >
+                        {isLoading ? "Saving..." : "Save Changes"}
+                      </button>
 
-                        {showModal && (
-                          <ResponseModal
-                            message={modalMessage}
-                            isError={isError}
-                            onClose={() => setShowModal(false)}
-                          />
-                        )}
+                      {showModal && (
+                        <ResponseModal
+                          message={modalMessage}
+                          isError={isError}
+                          onClose={() => setShowModal(false)}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -344,8 +358,7 @@ const handleChangePassword = async (e) => {
                 Subscription Settings
               </h4>
               <p>
-                Here you can manage your subscription plan and billing
-                information.
+                Here you can manage your subscription plan and billing information.
               </p>
             </div>
           )}

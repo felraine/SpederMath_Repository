@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 function Register() {
   const navigate = useNavigate();
 
-  const [name, setName] = useState("");
+  const [fname, setFname] = useState("");
+  const [lname, setLname] = useState("");
+  const [name, setName] = useState(""); // username
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -18,6 +20,8 @@ function Register() {
 
   const validate = () => {
     const newErrors = {};
+    if (!fname.trim()) newErrors.fname = "Please enter your first name.";
+    if (!lname.trim()) newErrors.lname = "Please enter your last name.";
     if (!name.trim()) newErrors.name = "Please enter your username.";
     if (!email.trim()) {
       newErrors.email = "Email is required.";
@@ -46,7 +50,7 @@ function Register() {
       const response = await fetch("http://localhost:8080/api/teachers/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ fname, lname, name, email, password }),
       });
 
       const result = await response.text();
@@ -70,9 +74,9 @@ function Register() {
   return (
     <div className="min-h-screen bg-white flex flex-col relative font-sans">
       {/* Header */}
-      <div className="flex items-start justify-start p-5 text-2xl font-bold text-black">
+      <a href="/" className="p-5 text-3xl md:text-4xl font-bold text-black">
         SpederMath
-      </div>
+      </a>
 
       {/* Main */}
       <div className="flex justify-center items-center flex-1 relative z-10">
@@ -100,6 +104,34 @@ function Register() {
             )}
 
             <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+              {/* First Name */}
+              <div>
+                <input
+                  type="text"
+                  placeholder="First Name"
+                  value={fname}
+                  onChange={(e) => setFname(e.target.value)}
+                  className={`border px-4 py-3 w-full rounded-xl focus:outline-none focus:ring-2 ${
+                    errors.fname ? "border-red-400 ring-red-300" : "focus:ring-blue-400"
+                  }`}
+                />
+                {errors.fname && <p className="text-xs text-red-500 mt-1">{errors.fname}</p>}
+              </div>
+
+              {/* Last Name */}
+              <div>
+                <input
+                  type="text"
+                  placeholder="Last Name"
+                  value={lname}
+                  onChange={(e) => setLname(e.target.value)}
+                  className={`border px-4 py-3 w-full rounded-xl focus:outline-none focus:ring-2 ${
+                    errors.lname ? "border-red-400 ring-red-300" : "focus:ring-blue-400"
+                  }`}
+                />
+                {errors.lname && <p className="text-xs text-red-500 mt-1">{errors.lname}</p>}
+              </div>
+
               {/* Username */}
               <div>
                 <input
