@@ -123,4 +123,86 @@ public class TeacherController {
                 )))
                 .orElseGet(() -> ResponseEntity.status(404).body(Map.of("message", "Teacher not found")));
     }
+
+    @PutMapping("/me")
+public ResponseEntity<?> updateTeacherProfile(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+    String token = jwtUtil.extractToken(httpRequest);
+    if (token == null || !jwtUtil.validateToken(token)) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid or missing token"));
+    }
+
+    Long teacherId = jwtUtil.extractTeacherId(token);
+    if (teacherId == null) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid token"));
+    }
+
+    Optional<Teacher> teacherOptional = teacherRepository.findById(teacherId);
+    if (teacherOptional.isEmpty()) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Teacher not found"));
+    }
+
+    Teacher teacher = teacherOptional.get();
+
+    // Get updated fields from request
+    String newName = request.get("name");
+    String newEmail = request.get("email");
+
+    if (newName != null && !newName.trim().isEmpty()) {
+        teacher.setName(newName.trim());
+    }
+    if (newEmail != null && !newEmail.trim().isEmpty()) {
+        teacher.setEmail(newEmail.trim());
+    }
+
+    teacherRepository.save(teacher);
+
+    return ResponseEntity.ok(Map.of(
+            "id", String.valueOf(teacher.getId()),
+            "name", teacher.getName(),
+            "email", teacher.getEmail(),
+            "message", "Profile updated successfully!"
+    ));
+}
+
+@PutMapping("/change-password")
+public ResponseEntity<String> changePassword(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+    String token = jwtUtil.extractToken(httpRequest);
+    if (token == null || !jwtUtil.validateToken(token)) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or missing token");
+    }
+
+    Long teacherId = jwtUtil.extractTeacherId(token);
+    if (teacherId == null) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+    }
+
+    Optional<Teacher> teacherOptional = teacherRepository.findById(teacherId);
+    if (teacherOptional.isEmpty()) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Teacher not found");
+    }
+
+    Teacher teacher = teacherOptional.get();
+
+    String oldPassword = request.get("oldPassword");
+    String newPassword = request.get("newPassword");
+    String confirmPassword = request.get("confirmPassword");
+
+    if (!teacher.getPassword().equals(oldPassword)) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Old password is incorrect");
+    }
+
+    if (!newPassword.equals(confirmPassword)) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("New passwords do not match");
+    }
+
+    if (oldPassword.equals(newPassword)) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("New password cannot be same as old");
+    }
+
+    teacher.setPassword(newPassword);
+    teacherRepository.save(teacher);
+
+    return ResponseEntity.ok("Password changed successfully");
+}
+
 }
