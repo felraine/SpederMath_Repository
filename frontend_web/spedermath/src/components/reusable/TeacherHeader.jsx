@@ -31,7 +31,7 @@ function TeacherHeader() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        setTeacherName(res.data?.name || "");
+        setTeacherName(res.data?.fname + " " + res.data?.lname || "");
       } catch (error) {
         console.error("Error fetching teacher info:", error);
         // if unauthorized, force re-login

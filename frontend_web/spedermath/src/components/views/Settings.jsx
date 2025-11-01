@@ -146,9 +146,14 @@ function Settings() {
         <TeacherHeader />
 
         <section
-          className="bg-white p-6 shadow-md rounded-md mt-6 overflow-y-auto scrollbar-hide"
-          style={{ height: "500px", maxHeight: "1000px" }}
-        >
+            className="bg-white p-6 shadow-md rounded-md mt-6 overflow-y-auto scrollbar-hide"
+            style={{
+              height: "500px",
+              maxHeight: "1000px",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+          >
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-lg font-semibold text-left flex-1">Settings</h3>
           </div>

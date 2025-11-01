@@ -5,6 +5,7 @@ import edu.cit.spedermath.service.TeacherService;
 import edu.cit.spedermath.util.JwtUtil;
 import edu.cit.spedermath.repository.TeacherRepository;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,9 @@ public class TeacherController {
 
     @Autowired
     private TeacherRepository teacherRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     
     @PostMapping("/register")
@@ -203,7 +207,7 @@ public class TeacherController {
         String newPassword = request.get("newPassword");
         String confirmPassword = request.get("confirmPassword");
 
-        if (!teacher.getPassword().equals(oldPassword)) {
+        if (!passwordEncoder.matches(oldPassword, teacher.getPassword())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Old password is incorrect");
         }
 
@@ -211,11 +215,11 @@ public class TeacherController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("New passwords do not match");
         }
 
-        if (oldPassword.equals(newPassword)) {
+        if (passwordEncoder.matches(newPassword, teacher.getPassword())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("New password cannot be same as old");
         }
 
-        teacher.setPassword(newPassword);
+        teacher.setPassword(passwordEncoder.encode(newPassword));
         teacherRepository.save(teacher);
 
         return ResponseEntity.ok("Password changed successfully");
