@@ -63,10 +63,10 @@ const TeachScreen = ({ onNext }) => {
     });
 
   const FISH_IMAGES = [
-    "/photos/lesson1/fish1.png",
-    "/photos/lesson1/fish2.png",
-    "/photos/lesson1/fish3.png",
-    "/photos/lesson1/fish4.png",
+    "/photos/lesson4/bird1.png",
+    "/photos/lesson4/bird2.png",
+    "/photos/lesson4/bird3.png",
+    "/photos/lesson4/bird4.png",
   ];
 
   // Challenge audios (provide 4/5 when ready; we’ll fallback gracefully)
@@ -480,7 +480,7 @@ const TeachScreen = ({ onNext }) => {
             {challengeActive && (
               <div className="flex flex-col items-center gap-6">
                 <h3 className="text-2xl sm:text-3xl font-bold">
-                  Click on <span className="underline">fish number {targetIndex}</span>.
+                  Click on <span className="underline">bird number {targetIndex}</span>.
                 </h3>
 
                 <div className="flex flex-row gap-6 sm:gap-8 flex-wrap justify-center">
