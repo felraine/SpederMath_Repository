@@ -159,6 +159,7 @@ function ManageStudent() {
       await axios.delete(`http://localhost:8080/api/students/${studentID}`, { headers });
 
       setStudents(students.filter((student) => student.studentID !== studentID));
+      console.log(`Student deleted successfully.`);
     } catch (error) {
       console.error("Error deleting student:", error);
     }
