@@ -149,7 +149,7 @@ function StudentDashboard() {
 
       {/* Greeting */}
       <div className="text-center my-12">
-        <h1 className="text-4xl font-bold">
+        <h1 className="text-5xl font-bold-monospace">
           HELLO {student ? `${student.fname.toUpperCase()} ${student.lname.toUpperCase()}` : "..."}
         </h1>
         <p className="text-lg mt-2">WELCOME BACK!</p>
@@ -168,7 +168,8 @@ function StudentDashboard() {
                 onClick={() => {
                   if (isUnlocked) navigate(`/lessons/${lesson.lessonID}`);
                 }}
-                className={`w-full h-40 rounded-xl border-2 text-center flex flex-col justify-center items-center transition ${
+                className={`w-full h-40 rounded-xl border-4 border-[#333333] text-center flex flex-col justify-center items-center transition
+ ${
                   isUnlocked
                     ? "bg-white border-black cursor-pointer hover:shadow-xl"
                     : "bg-red-400 border-red-600 cursor-not-allowed"
@@ -176,17 +177,85 @@ function StudentDashboard() {
               >
                 {/* LESSON ONE NUMBERS 1-3*/}
                 {lesson.lessonID === 1 && (
-                  <>                 
+                  <>   
+                   <img
+                    src="/LessonTitles/LessonOne.png"
+                    alt="Lesson 1: Learning Numbers 1-3"
+                    className="absolute inset-0 w-full h-full object-cover z-0 rounded-xl"
+                  /> 
+                           
                   </>      
                 )}
                 {/* LESSON ONE NUMBER MAZE*/}
                 {lesson.lessonID === 2 && isUnlocked && (
                   <>
+                    <img
+                    src="/LessonTitles/NumberMaze.png"
+                    alt="Lesson 1: Learning Numbers 1-3"
+                    className="absolute inset-0 w-full h-full object-cover z-0 rounded-xl"
+                  /> 
                   </>
                 )}
                 {/* LESSON TWO NUMBERS 1-5*/}
                 {lesson.lessonID === 3 && isUnlocked && (
                   <>
+                   <img
+                    src="/LessonTitles/LessonTwo.png"
+                    alt="Lesson 1: Learning Numbers 1-5"
+                    className="absolute inset-0 w-full h-full object-cover z-0 rounded-xl"
+                  /> 
+                  </>
+                )}
+                {/* LESSON TWO NUMBER DROP*/}
+                {lesson.lessonID === 4 && isUnlocked && (
+                  <>
+                  <img
+                    src="/LessonTitles/NumberDrop.png"
+                    alt="Lesson 2: Number Drop"
+                    className="absolute inset-0 w-full h-full object-cover z-0 rounded-xl"
+                  /> 
+                  
+                  </>
+                )}
+                {/* LESSON THREE NUMBERS 1-7*/}
+                {lesson.lessonID === 5 && isUnlocked && (
+                  <>
+                  <img
+                    src="/LessonTitles/LessonThree.png"
+                    alt="Lesson 3: Learning Numbers 1-7"
+                    className="absolute inset-0 w-full h-full object-cover z-0 rounded-xl"
+                  /> 
+                  
+                  </>
+                )}
+                {/* LESSON THREE FEED MUNCHIE*/}
+                {lesson.lessonID === 6 && isUnlocked && (
+                  <>
+                  <img
+                    src="/LessonTitles/FeedMunchie.png"
+                    alt="Lesson 3:Feed Munchie"
+                    className="absolute inset-0 w-full h-full object-cover z-0 rounded-xl"
+                  /> 
+                  </>
+                )}
+                 {/* LESSON FOUR NUMBERS 1-10*/}
+                {lesson.lessonID === 7 && isUnlocked && (
+                  <>
+                  <img
+                    src="/LessonTitles/LessonFour.png"
+                    alt="Lesson 4: Learning Numbers 1-10"
+                    className="absolute inset-0 w-full h-full object-cover z-0 rounded-xl"
+                  /> 
+                  </>
+                )}
+                 {/* LESSON FOUR NUMBER STEPS*/}
+                {lesson.lessonID === 8 && isUnlocked && (
+                  <>
+                  <img
+                    src="/LessonTitles/NumberSteps.png"
+                    alt="Lesson 4:Number Steps"
+                    className="absolute inset-0 w-full h-full object-cover z-0 rounded-xl"
+                  /> 
                   </>
                 )}
                 {isUnlocked ? (
@@ -213,7 +282,7 @@ function StudentDashboard() {
             .map((_, i) => (
               <div
                 key={i}
-                className="w-full h-40 rounded-xl bg-red-400 border-2 border-red-600 flex items-center justify-center text-4xl text-white"
+                className="w-full h-40 rounded-xl bg-red-400 border-4 border-red-700 flex items-center justify-center text-4xl text-white"
               >
                 ?
               </div>
