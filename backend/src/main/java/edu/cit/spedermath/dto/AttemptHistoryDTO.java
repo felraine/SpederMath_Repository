@@ -15,12 +15,13 @@ public class AttemptHistoryDTO {
     private LessonType lessonType;
     private Integer lessonOrder;
     private Integer maxScore;
+    private Integer unlockThreshold;
 
     public AttemptHistoryDTO() {}
 
     public AttemptHistoryDTO(Long attemptId, Long lessonId, String lessonTitle,
                              Integer score, String status, Integer timeSpentSeconds,
-                             LocalDateTime attemptedAt, LessonType lessonType, Integer lessonOrder, Integer maxScore) {
+                             LocalDateTime attemptedAt, LessonType lessonType, Integer lessonOrder, Integer maxScore, Integer unlockThreshold) {
         this.attemptId = attemptId;
         this.lessonId = lessonId;
         this.lessonTitle = lessonTitle;
@@ -31,6 +32,7 @@ public class AttemptHistoryDTO {
         this.lessonType = lessonType;
         this.lessonOrder = lessonOrder;
         this.maxScore = maxScore;
+        this.unlockThreshold = unlockThreshold;
     }
 
     public Long getAttemptId() { return attemptId; }
@@ -53,4 +55,6 @@ public class AttemptHistoryDTO {
     public void setLessonOrder(Integer lessonOrder) { this.lessonOrder = lessonOrder; }
     public Integer getMaxScore() { return maxScore;}
     public void setMaxScore(Integer maxScore) { this.maxScore = maxScore; }
+    public Integer getUnlockThreshold() { return unlockThreshold; }
+    public void setUnlockThreshold(Integer unlockThreshold) { this.unlockThreshold = unlockThreshold; }
 }

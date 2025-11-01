@@ -37,7 +37,6 @@ const PLAYER_SKINS = [
   "/photos/lesson1/assessment/GREEN_FISH.gif",
   "/photos/lesson1/assessment/PINK_FISH.gif",
   "/photos/lesson1/assessment/STARFISH.gif",
-  "/photos/lesson1/assessment/TADPOLE.gif",
 ];
 
 const VOICES_MODE_CHANGE = {
@@ -71,7 +70,7 @@ const VOICES_FIND = {
   2: "/audio/lesson1/find_two.mp3",
   3: "/audio/lesson1/find_three.mp3",
 };
-/* Counting sequence nudges (optional) */
+/* Counting sequence nudges (optional; still used for recognition fallback) */
 const VOICES_COUNTING_SEQ = {
   2: "/audio/lesson1/now_two.mp3",
   3: "/audio/lesson1/lastly_three.mp3",
@@ -211,7 +210,7 @@ function graphDistance(grid, a, b) {
       if (seen[n.r][n.c]) continue;
       if (n.r === b.r && n.c === b.c) return d + 1;
       seen[n.r][n.c] = true;
-      q.push({ r: n.r, c: n.c, d: d + 1 });
+      q.push({ r: n.r, c: n.c, d });
     }
   }
   return Infinity;
@@ -419,7 +418,7 @@ const ArrowBtn = ({ label, onPointerDown, onPointerUp }) => (
   </button>
 );
 
-export default function NumberMaze({ onExit, lessonId }) {
+export default function NumberMaze({ onExit, lessonId, onFinish }) {
   const [seed, setSeed] = useState(0);
   const [cellPx, setCellPx] = useState(48);
   const HARDCODED_LESSON_ID = 2;          // <- change this anytime
@@ -485,18 +484,16 @@ export default function NumberMaze({ onExit, lessonId }) {
   const playerRef = useRef(player);
   useEffect(()=>{ playerRef.current = player; }, [player]);
 
-    // Prevent repeated triggers while staying on the same tile
-    const lastTouchKeyRef = useRef(null);
+  // Prevent repeated triggers while staying on the same tile
+  const lastTouchKeyRef = useRef(null);
 
-    // Clear the per-tile lock when you move off that tile
-    useEffect(() => {
-      const key = `${player.r},${player.c}`;
-      if (lastTouchKeyRef.current && lastTouchKeyRef.current !== key) {
-        lastTouchKeyRef.current = null;
-      }
-    }, [player]);
-
-
+  // Clear the per-tile lock when you move off that tile
+  useEffect(() => {
+    const key = `${player.r},${player.c}`;
+    if (lastTouchKeyRef.current && lastTouchKeyRef.current !== key) {
+      lastTouchKeyRef.current = null;
+    }
+  }, [player]);
 
   /** Assessment/collection state */
   const [collected, setCollected] = useState({});
@@ -504,7 +501,7 @@ export default function NumberMaze({ onExit, lessonId }) {
   const [correct, setCorrect] = useState(0);
   const [wrong, setWrong] = useState(0);
 
-  // One-score-per-round controls for COUNTING
+  // One-score-per-round controls for COUNTING (legacy, will be idle but kept)
   const [mistakesThisRound, setMistakesThisRound] = useState(0);
 
   // Optional: belt-and-suspenders fix for “starts at round 2”
@@ -518,18 +515,24 @@ export default function NumberMaze({ onExit, lessonId }) {
     setRoundLocked(false);
   }, []);
 
-
   /** Adaptive state */
   const [mode, setMode] = useState(DEFAULT_MODE); // "count" | "recognize"
   const [correctStreak, setCorrectStreak] = useState(0);
   const [wrongStreak, setWrongStreak] = useState(0);
 
-  /** Counting progress (sequence within the same round) */
+  /** Counting progress (legacy sequence within the same round; we keep for compat) */
   const [countingProgress, setCountingProgress] = useState(1);
+
+  /** NEW — After-X counting style state */
+  const [afterBase, setAfterBase] = useState(1);           // X in “what comes after X?”
+  const [countWrongStreak, setCountWrongStreak] = useState(0); // consecutive wrongs while in counting
 
   /** Objectives */
   const [targetN, setTargetN] = useState(1);
   const [objectiveOrder, setObjectiveOrder] = useState([1,2,3]);
+
+  /** NEW — Track last asked target to avoid consecutive repeats */
+  const lastTargetRef = useRef(null);
 
   /** ===== Audio: unlock + core player ===== */
   const [soundReady, setSoundReady] = useState(false);
@@ -616,22 +619,20 @@ export default function NumberMaze({ onExit, lessonId }) {
     };
   }, [soundReady, round, targetN, mode]);
 
-  
   // === Mode-change transition line (fires only when mode actually changes) ===
-const prevModeRef = useRef(mode);
+  const prevModeRef = useRef(mode);
 
-useEffect(() => {
-  if (!soundReady) return;               // wait until audio is unlocked
-  if (prevModeRef.current !== mode) {
-    playAudio(
-      mode === "count"
-        ? VOICES_MODE_CHANGE.toCounting      // "Let's practice counting now."
-        : VOICES_MODE_CHANGE.toRecognition   // "Let's practice recognition now."
-    );
-    prevModeRef.current = mode;              // update AFTER playing
-  }
-}, [mode, soundReady, playAudio]);
-
+  useEffect(() => {
+    if (!soundReady) return;               // wait until audio is unlocked
+    if (prevModeRef.current !== mode) {
+      playAudio(
+        mode === "count"
+          ? VOICES_MODE_CHANGE.toCounting      // "Let's practice counting now."
+          : VOICES_MODE_CHANGE.toRecognition   // "Let's practice recognition now."
+      );
+      prevModeRef.current = mode;              // update AFTER playing
+    }
+  }, [mode, soundReady, playAudio]);
 
   /* Small helper: pick a random line from an array */
   const playRandom = useCallback((arr) => {
@@ -675,18 +676,18 @@ useEffect(() => {
     scoredThisRoundRef.current = false;
   }, [start, seed]);
 
-  /** Build objective for the round (fixed) */
+  /** Build objective for the round (with no-repeat target) */
   const lastModeRef = useRef(mode);
   const lastRoundRef = useRef(round);
 
   useEffect(() => {
     const numbersOnBoard = [1,2,3].filter(n => items.some(it => it?.n === n));
 
-      if (ADAPTIVE) {
-        // Only promote into Counting here; demotion handled in counting logic after 2 mistakes in the same round.
-        const toCounting = (mode === "recognize") && (correctStreak >= 3 && wrongStreak === 0);
-        if (toCounting) setMode("count");
-      }
+    if (ADAPTIVE) {
+      // Only promote into Counting here; demotion happens in counting logic
+      const toCounting = (mode === "recognize") && (correctStreak >= 3 && wrongStreak === 0);
+      if (toCounting) setMode("count");
+    }
 
     const modeChanged = lastModeRef.current !== mode;
     const roundChanged = lastRoundRef.current !== round;
@@ -694,19 +695,35 @@ useEffect(() => {
     lastRoundRef.current = round;
 
     if (mode === "recognize") {
-      const order = SHUFFLE_OBJECTIVES ? shuffle(numbersOnBoard) : shuffle(numbersOnBoard);
-      const idx = (round - 1) % Math.max(order.length, 1);
-      setObjectiveOrder(order);
-      setTargetN(order[idx] ?? numbersOnBoard[0] ?? null);
-    } else {
-      const order = numbersOnBoard.slice().sort((a,b)=>a-b);
-      setObjectiveOrder(order);
-      if (modeChanged || roundChanged) {
-        setCountingProgress(1);
-        setTargetN(1);
-      } else {
-        setTargetN(countingProgress);
+      // Pick random target from numbersOnBoard, avoiding last target if possible
+      let pool = numbersOnBoard.slice();
+      if (pool.length > 1 && lastTargetRef.current != null) {
+        pool = pool.filter(n => n !== lastTargetRef.current);
+        if (pool.length === 0) pool = numbersOnBoard.slice();
       }
+      const chosen = pool.length ? pool[(Math.random() * pool.length) | 0] : numbersOnBoard[0] ?? null;
+
+      setObjectiveOrder(numbersOnBoard);
+      setTargetN(chosen);
+      lastTargetRef.current = chosen;
+    } else {
+      // COUNTING MODE → “What comes after X?” (X ∈ {1,2} that exist on the board)
+      const bases = [1, 2].filter(n => numbersOnBoard.includes(n));
+      // Avoid choosing a base that would yield the same target as the previous round (target = base + 1)
+      let basePool = bases.slice();
+      if (lastTargetRef.current != null && basePool.length > 1) {
+        basePool = basePool.filter(b => (b + 1) !== lastTargetRef.current);
+        if (basePool.length === 0) basePool = bases.slice();
+      }
+      const base = basePool.length ? basePool[(Math.random() * basePool.length) | 0] : (bases[0] ?? 1);
+      const nextTarget = Math.min(base + 1, 3);
+
+      setAfterBase(base);
+      setTargetN(nextTarget);
+      lastTargetRef.current = nextTarget;
+
+      // reset legacy counting sequence state to keep other parts stable
+      setCountingProgress(1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, round, mode, correctStreak, wrongStreak, countingProgress]);
@@ -718,10 +735,18 @@ useEffect(() => {
     if (mode === "recognize") {
       playAudio(VOICES_FIND[targetN]);
     } else {
-      // Counting mode: use sequence nudges if available, else fall back to "find #"
-      playAudio(VOICES_COUNTING_SEQ[targetN] || VOICES_FIND[targetN]);
+      // Counting mode: reuse "Find #" cue; no new assets required
+      playAudio(VOICES_FIND[targetN]);
     }
   }, [round, mode, targetN, playAudio, soundReady]);
+
+  const finishedRef = useRef(false);
+  useEffect(() => {
+    if (round > TOTAL_ROUNDS && !finishedRef.current) {
+      finishedRef.current = true;
+      if (typeof onFinish === "function") onFinish(correct);
+    }
+  }, [round, correct, onFinish]);
 
   /** Keyboard input */
   useEffect(() => {
@@ -761,7 +786,7 @@ useEffect(() => {
     window.addEventListener("keyup", onUp, { passive: false });
     return () => {
       window.removeEventListener("keydown", onDown);
-      window.removeEventListener("keyup", onUp);
+      window.removeEventListener("keydown", onUp);
     };
   }, [heldDir, canMove]);
 
@@ -887,55 +912,53 @@ useEffect(() => {
     }
   }, [round]);
 
-const submitProgressToBackend = useCallback(async () => {
-  const effectiveLessonId = lessonId ?? 2; // hardcoded fallback
+  const submitProgressToBackend = useCallback(async () => {
+    const effectiveLessonId = lessonId ?? 2; // hardcoded fallback
 
-  const token = localStorage.getItem("token");
-  if (!token) {
-    console.warn("NumberMaze: no auth token found; cannot submit progress.");
-    return;
-  }
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.warn("NumberMaze: no auth token found; cannot submit progress.");
+      return;
+    }
 
-  const payload = {
-    lessonId: effectiveLessonId,
-    score: correct,
-    status: correct >= PASSING_SCORE ? "COMPLETED" : "FAILED",
-    retakes_count: 0,
-    timeSpentInSeconds: assessStartRef.current
-      ? Math.max(0, Math.floor((Date.now() - assessStartRef.current) / 1000))
-      : 0,
-  };
+    const payload = {
+      lessonId: effectiveLessonId,
+      score: correct,
+      status: correct >= PASSING_SCORE ? "COMPLETED" : "FAILED",
+      retakes_count: 0,
+      timeSpentInSeconds: assessStartRef.current
+        ? Math.max(0, Math.floor((Date.now() - assessStartRef.current) / 1000))
+        : 0,
+    };
 
-  // Optional: peek at JWT; keep your existing console too if you like
-  try {
-    const [, b64] = token.split(".");
-    console.log("[JWT payload]", JSON.parse(atob(b64)));
-  } catch {}
+    // Optional: peek at JWT
+    try {
+      const [, b64] = token.split(".");
+      console.log("[JWT payload]", JSON.parse(atob(b64)));
+    } catch {}
 
-  const baseHeaders = {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-    // future-friendly if you later add backend idempotency;
-    // rotate ~4s via bitshift to avoid being "once per day"
-    "Idempotency-Key": `nm-${currentStudentId()}-${effectiveLessonId}-${Date.now() >> 12}`,
-  };
+    const baseHeaders = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": `nm-${currentStudentId()}-${effectiveLessonId}-${Date.now() >> 12}`,
+    };
 
-  try {
-    const key = `submit:${currentStudentId()}:${effectiveLessonId}`;
-    const res = await postOnce(key, () =>
-      axios.post(
-        "http://localhost:8080/api/student-progress/submit",
-        payload,
-        { headers: baseHeaders }
-      )
-    );
+    try {
+      const key = `submit:${currentStudentId()}:${effectiveLessonId}`;
+      const res = await postOnce(key, () =>
+        axios.post(
+          "http://localhost:8080/api/student-progress/submit",
+          payload,
+          { headers: baseHeaders }
+        )
+      );
 
-    console.log("Submit OK", res.status);
-    postedRef.current = true;
-  } catch (err) {
-    console.error("Failed to submit student progress:", err?.response?.status, err?.response?.data);
-  }
-}, [correct, lessonId]);
+      console.log("Submit OK", res.status);
+      postedRef.current = true;
+    } catch (err) {
+      console.error("Failed to submit student progress:", err?.response?.status, err?.response?.data);
+    }
+  }, [correct, lessonId]);
 
   // When assessment ends, submit once
   useEffect(() => {
@@ -964,119 +987,96 @@ const submitProgressToBackend = useCallback(async () => {
     progressRef.current = 0;
   }, []);
 
-
   /** Round logic (fixed) */
   useEffect(() => {
-  if (justAdvancedRef.current) return;
-  if (round > TOTAL_ROUNDS) return;
+    if (justAdvancedRef.current) return;
+    if (round > TOTAL_ROUNDS) return;
 
-  // Only block touches when recognition round is locked
-  if (mode === "recognize" && roundLocked) return;
+    // Only block touches when recognition round is locked
+    if (mode === "recognize" && roundLocked) return;
 
-  // Prevent repeating while held on the same tile
-  const hereKey = `${player.r},${player.c}`;
-  if (lastTouchKeyRef.current === hereKey) return;
+    // Prevent repeating while held on the same tile
+    const hereKey = `${player.r},${player.c}`;
+    if (lastTouchKeyRef.current === hereKey) return;
 
-  for (const it of items) {
-    if (!it) continue;
-    if (collected[it.n]) continue;
+    for (const it of items) {
+      if (!it) continue;
+      if (collected[it.n]) continue;
 
-    if (it.r === player.r && it.c === player.c) {
-      // Mark this tile as handled until player leaves
-      lastTouchKeyRef.current = hereKey;
+      if (it.r === player.r && it.c === player.c) {
+        // Mark this tile as handled until player leaves
+        lastTouchKeyRef.current = hereKey;
 
-      if (mode === "recognize") {
-        // Lock the whole round after a touch (prevents multi-score)
-        setRoundLocked(true);
+        if (mode === "recognize") {
+          // Lock the whole round after a touch (prevents multi-score)
+          setRoundLocked(true);
 
-        if (it.n === targetN) {
-          setCorrect(v => v + 1);
-          setCorrectStreak(s => s + 1);
-          setWrongStreak(0);
-          playRandom(VOICES_CORRECT);
-        } else {
-          setWrong(v => v + 1);
-          setWrongStreak(s => s + 1);
-          setCorrectStreak(0);
-          playRandom(VOICES_WRONG);
-        }
-
-        // Advance to next round/new maze
-        setRound(r => r + 1);
-        setSeed(s => s + 1);
-      } else {
-        // COUNTING MODE — single score per round
-        const maxNumber = 3;
-
-        if (it.n === countingProgress) {
-          // Correct next number in sequence
-          if (countingProgress < maxNumber) {
-            // Progress to the next target; DO NOT score yet
-            setCollected(prev => ({ ...prev, [it.n]: true }));
+          if (it.n === targetN) {
+            setCorrect(v => v + 1);
             setCorrectStreak(s => s + 1);
             setWrongStreak(0);
             playRandom(VOICES_CORRECT);
-
-            setCountingProgress(p => {
-              const next = p + 1;
-              setTargetN(next);
-              return next;
-            });
           } else {
-            // Finished the full 1..3 sequence → award ONE correct, advance round
-            setCollected(prev => ({ ...prev, [it.n]: true }));
-            if (!scoredThisRoundRef.current) {
-              setCorrect(v => v + 1);
-              scoredThisRoundRef.current = true;
-            }
+            setWrong(v => v + 1);
+            setWrongStreak(s => s + 1);
+            setCorrectStreak(0);
+            playRandom(VOICES_WRONG);
+          }
+
+          // Advance to next round/new maze
+          setRound(r => r + 1);
+          setSeed(s => s + 1);
+        } else {
+          // =========================
+          // COUNTING MODE (After-X)
+          // =========================
+          // Single decision: "What comes after afterBase?" → targetN = afterBase + 1
+          const isCorrect = it.n === targetN;
+
+          if (isCorrect) {
+            setCorrect(v => v + 1);
             setCorrectStreak(s => s + 1);
             setWrongStreak(0);
+            setCountWrongStreak(0);
             playRandom(VOICES_CORRECT);
 
+            // advance (soft-gating)
             advanceRound(true);
-          }
-        } else {
-          // Wrong touch (not the expected next number)
-          playRandom(VOICES_WRONG);
+          } else {
+            playRandom(VOICES_WRONG);
 
-          setMistakesThisRound(m => {
-            const next = m + 1;
-
-            // After 2 mistakes → count ONE wrong and move to next round
-              if (next >= 2) {
-                if (!scoredThisRoundRef.current) {
-                  setWrong(w => w + 1);     // ❌ one point for the round, guarded
-                  scoredThisRoundRef.current = true;
-                }
-              setCorrectStreak(0);
-              setWrongStreak(s => s + 1);
-              // Demote AFTER two mistakes in THIS round so next round is recognition:
-              setMode("recognize");
-              advanceRound(false);
-              return 0;
-            }
-
-            // Otherwise, stay in the same round; no score change
+            setWrong(v => v + 1);
             setCorrectStreak(0);
             setWrongStreak(s => s + 1);
-            return next;
-          });
+
+            // Track consecutive wrongs while in counting; demote at 2
+            setCountWrongStreak(s => {
+              const next = s + 1;
+              if (next >= 2) {
+                setMode("recognize"); // quiet demotion next round
+              }
+              return next;
+            });
+
+            // still advance (soft-gating)
+            advanceRound(false);
+          }
         }
+        break;
       }
-      break;
     }
-  }
-}, [
-  player,
-  items,
-  collected,
-  mode,
-  round,
-  countingProgress,
-  targetN,
-  playRandom,
-  roundLocked,
-]);
+  }, [
+    player,
+    items,
+    collected,
+    mode,
+    round,
+    countingProgress,
+    targetN,
+    playRandom,
+    roundLocked,
+    advanceRound,
+  ]);
 
   const assessmentDone = round > TOTAL_ROUNDS;
 
@@ -1088,13 +1088,13 @@ const submitProgressToBackend = useCallback(async () => {
     ? `Assessment complete!`
     : (mode === "recognize"
         ? `Round ${round}/${TOTAL_ROUNDS} — Find number ${targetN}`
-        : `Round ${round}/${TOTAL_ROUNDS} — Count to ${countingProgress}/3 (collect number ${targetN})`);
+        : `Round ${round}/${TOTAL_ROUNDS} — What comes after ${afterBase}?`);
 
   const narratorLine = assessmentDone
     ? `Great job! You finished all ${TOTAL_ROUNDS} rounds.`
     : (mode === "recognize"
         ? `Find number ${targetN}!`
-        : `Let’s count from 1 to 3. Next, find number ${targetN}!`);
+        : `What comes after ${afterBase}? Find number ${targetN}!`);
 
   /** HUD values */
   const mazeWidth = MAZE_COLS * cellPx;

@@ -167,10 +167,9 @@ function ManageStudent() {
 
   return (
     <div className="flex h-screen">
-      <main className="flex-1 p-6 flex flex-col">
-        <TeacherHeader />
+      <main className="flex-1 flex flex-col">
         <section
-          className="bg-white p-4 shadow-md rounded-md mt-6 overflow-x-auto"
+          className="bg-white p-4 shadow-md rounded-md overflow-x-auto"
           style={{ height: "500px", maxHeight: "1000px" }}
         >
           <div className="flex justify-between items-center mb-4 flex-wrap gap-3">

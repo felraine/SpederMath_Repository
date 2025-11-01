@@ -1,0 +1,16 @@
+@keyframes star-pop {
+  0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+  60%  { transform: scale(1.2) rotate(3deg);  opacity: 1; }
+  100% { transform: scale(1) rotate(0deg);   opacity: 1; }
+}
+
+/* optional subtle glow pulse after the pop (applies due to filter in the component) */
+@keyframes star-glow {
+  0%,100% { filter: drop-shadow(0 6px 0 rgba(255,215,0,0.0)); }
+  50%     { filter: drop-shadow(0 6px 16px rgba(255,215,0,0.55)); }
+}
+
+/* Tailwind utility hook: use with className="animate-star-pop" */
+.animate-star-pop {
+  animation: star-pop 420ms cubic-bezier(.18,.89,.32,1.28);
+}
