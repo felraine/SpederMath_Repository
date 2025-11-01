@@ -237,12 +237,12 @@ const TeachScreen = ({ onNext }) => {
     <section className="lesson-screen fixed inset-0 w-screen h-screen flex flex-col items-center justify-start overflow-hidden m-0 p-0">
       {step === 4 && (
         <div className="flex items-center justify-center mb-2">
-          <h1 className="text-4xl font-extrabold tracking-tight drop-shadow-md">Let’s Review!</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight drop-shadow-md">Let's Review!</h1>
         </div>
       )}
       {step === 5 && (
         <div className="flex items-center justify-center mb-2">
-          <h1 className="text-3xl font-bold drop-shadow-sm">Now let’s count with our fish friends!</h1>
+          <h1 className="text-3xl font-bold drop-shadow-sm">Now let's count with our fish friends!</h1>
         </div>
       )}
 

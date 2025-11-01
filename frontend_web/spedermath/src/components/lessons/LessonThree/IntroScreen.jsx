@@ -1,4 +1,3 @@
-// src/lessons/lesson3/IntroScreen.jsx
 import React, { useEffect, useRef, useState } from "react";
 
 export default function IntroScreen({ onNext }) {
@@ -8,9 +7,6 @@ export default function IntroScreen({ onNext }) {
   const initRef = useRef(false);
 
   const urlFor = (p) => `${import.meta.env.BASE_URL}${p.replace(/^\/+/, "")}`;
-  const PRIMARY = urlFor("audio/lesson3/intro.mp3");
-  const FALLBACK = urlFor("audio/lesson1/intro.mp3");
-
   const unlock = () => setClicked(false);
 
   const wire = (a) => {
@@ -95,7 +91,7 @@ export default function IntroScreen({ onNext }) {
     <section
       className="intro-screen"
       style={{
-        position: "fixed", // make sure it fills viewport
+        position: "fixed", 
         top: 0,
         left: 0,
         right: 0,

@@ -136,13 +136,11 @@ const TeachScreen = ({ onNext, meta }) => {
     });
   };
 
-  // Intro numbers (steps 1..MAX_N): speak each number (try lesson3, fallback lesson1)
   useEffect(() => {
     if (step < INTRO_START || step > INTRO_END) return;
     const data = stepData[step];
     if (!data) return;
     playWithFallback(data.audio3, data.audio1 || data.audio3);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   const pickRandomFish = (n) =>
@@ -178,7 +176,7 @@ const TeachScreen = ({ onNext, meta }) => {
     }
   };
 
-  // Review: play “Let’s review!” THEN 1→MAX_N sequence (with fallbacks)
+  // Review: play “Let’s review!” 
   useEffect(() => {
     if (step !== REVIEW_STEP) return;
     let cancelled = false;
@@ -299,22 +297,21 @@ const TeachScreen = ({ onNext, meta }) => {
 
   // ======= UI =======
   return (
-    <section className="lesson-screen relative w-full h-full flex flex-col items-center justify-start">
+    <section className="lesson-screen fixed inset-0 w-screen h-screen flex flex-col items-center justify-start overflow-hidden m-0 p-0">
       {/* Headers */}
       {step === REVIEW_STEP && (
         <div className="flex items-center justify-center mb-2">
-          <h1 className="text-4xl font-extrabold tracking-tight drop-shadow-md">Let’s Review!</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight drop-shadow-md">Let's Review!</h1>
         </div>
       )}
       {step === COUNT_START && (
         <div className="flex items-center justify-center mb-2">
-          <h1 className="text-3xl font-bold drop-shadow-sm">Now let’s count with our fish friends!</h1>
+          <h1 className="text-3xl font-bold drop-shadow-sm">Now let's count the monkies!</h1>
         </div>
       )}
 
       {/* Content */}
       <div className="flex-grow flex flex-col items-center justify-center text-center w-full">
-        {/* Intro numbers (1–MAX_N) */}
         {step >= INTRO_START && step <= INTRO_END && (
           <div className="flex flex-col items-center -mt-2 gap-6">
             <h2 className="text-4xl sm:text-5xl font-bold">{stepData[step].title}</h2>
@@ -347,58 +344,64 @@ const TeachScreen = ({ onNext, meta }) => {
           </div>
         )}
 
-        {/* Counting OR Challenge */}
-        {step >= COUNT_START && step <= COUNT_END && (
-          <>
-            {!challengeActive && (
-              <div className="flex flex-row items-center justify-between w-full px-6 sm:px-10 -mt-1">
-                <div className="flex flex-row gap-6 sm:gap-8 flex-wrap">
-                  <AnimatePresence>
-                    {fishSet.slice(0, currentCount).map((src, idx) => (
-                      <motion.img
-                        key={`${src}-${idx}`}
-                        src={src}
-                        alt="Fish"
-                        className="w-[100px] sm:w-[120px] md:w-[140px]"
-                        initial={{ opacity: 0, scale: 0.6, y: 12 }}
-                        animate={{ opacity: 1, scale: highlightIndex === idx + 1 ? 1.3 : 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.6 }}
-                        transition={{ duration: 0.5 }}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </div>
+       {step >= COUNT_START && step <= COUNT_END && (
+  <>
+    {!challengeActive && (
+      <div className="flex justify-center items-center w-full px-4 md:px-10 mt-4 gap-6">
+        <div className="flex items-center justify-center gap-10 w-full max-w-[800px] mx-auto">
+          <div className="flex flex-wrap justify-start gap-4 md:gap-6 flex-1">
+            <AnimatePresence>
+              {fishSet.slice(0, currentCount).map((src, idx) => (
+                <motion.img
+                  key={`${src}-${idx}`}
+                  src={src}
+                  alt="Fish"
+                  className="w-[80px] sm:w-[100px] md:w-[120px] lg:w-[140px]"
+                  initial={{ opacity: 0, scale: 0.6, y: 12 }}
+                  animate={{
+                    opacity: 1,
+                    scale: highlightIndex === idx + 1 ? 1.3 : 1,
+                    y: 0,
+                  }}
+                  exit={{ opacity: 0, scale: 0.6 }}
+                  transition={{ duration: 0.5 }}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
 
-                <div className="flex flex-col items-center mr-2 sm:mr-8">
-                  {currentCount > 0 && (
-                    <>
-                      <motion.img
-                        key={`num-${currentCount}-fish`}
-                        src={stepData[currentCount]?.img}
-                        alt={stepData[currentCount]?.alt}
-                        className="w-[170px] sm:w-[200px] md:w-[220px]"
-                        style={{ filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.35)) drop-shadow(0 0 8px rgba(255,255,255,0.65))" }}
-                        initial={{ opacity: 0, scale: 0.85 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
-                      />
-                      <motion.span
-                        className="text-3xl sm:text-4xl font-bold capitalize mt-1"
-                        animate={{ opacity: [0, 1], y: [8, 0] }}
-                        transition={{ duration: 0.35 }}
-                      >
-                        {numberWordsTitle[currentCount]}
-                      </motion.span>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
+          {currentCount > 0 && (
+            <div className="flex flex-col items-center gap-2 flex-shrink-0">
+              <motion.img
+                key={`num-${currentCount}-fish`}
+                src={stepData[currentCount]?.img}
+                alt={stepData[currentCount]?.alt}
+                className="w-[120px] sm:w-[140px] md:w-[160px] lg:w-[220px]"
+                style={{
+                  filter:
+                    "drop-shadow(0 10px 22px rgba(0,0,0,0.35)) drop-shadow(0 0 8px rgba(255,255,255,0.65))",
+                }}
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+              />
+              <motion.span
+                className="text-2xl sm:text-3xl md:text-4xl font-bold capitalize"
+                animate={{ opacity: [0, 1], y: [8, 0] }}
+                transition={{ duration: 0.35 }}
+              >
+                {numberWordsTitle[currentCount]}
+              </motion.span>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
 
             {challengeActive && (
               <div className="flex flex-col items-center gap-6">
                 <h3 className="text-2xl sm:text-3xl font-bold">
-                  Click on <span className="underline">fish number {targetIndex}</span>.
+                  Click on monkey number {targetIndex}.
                 </h3>
 
                 <div className="flex flex-row gap-6 sm:gap-8 flex-wrap justify-center">
