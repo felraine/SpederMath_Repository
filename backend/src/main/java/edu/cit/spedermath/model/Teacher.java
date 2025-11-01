@@ -5,6 +5,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Table(name = "teacher")
 public class Teacher {
@@ -30,6 +33,11 @@ public class Teacher {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Lob
+    @JdbcTypeCode(SqlTypes.VARBINARY)
+    @Column(name = "photo_blob", columnDefinition = "LONGBLOB")
+    private byte[] photoBlob;
 
     @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Student> students = new ArrayList<>();
@@ -110,6 +118,9 @@ public class Teacher {
     public void setStudents(List<Student> students) {
         this.students = students;
     }
+
+    public byte[] getPhotoBlob() { return photoBlob; }
+    public void setPhotoBlob(byte[] photoBlob) { this.photoBlob = photoBlob; }
 
 
     //functions
