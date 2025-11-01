@@ -418,7 +418,7 @@ const ArrowBtn = ({ label, onPointerDown, onPointerUp }) => (
   </button>
 );
 
-export default function NumberMaze({ onExit, lessonId }) {
+export default function NumberMaze({ onExit, lessonId, onFinish }) {
   const [seed, setSeed] = useState(0);
   const [cellPx, setCellPx] = useState(48);
   const HARDCODED_LESSON_ID = 2;          // <- change this anytime
@@ -739,6 +739,14 @@ export default function NumberMaze({ onExit, lessonId }) {
       playAudio(VOICES_FIND[targetN]);
     }
   }, [round, mode, targetN, playAudio, soundReady]);
+
+  const finishedRef = useRef(false);
+  useEffect(() => {
+    if (round > TOTAL_ROUNDS && !finishedRef.current) {
+      finishedRef.current = true;
+      if (typeof onFinish === "function") onFinish(correct);
+    }
+  }, [round, correct, onFinish]);
 
   /** Keyboard input */
   useEffect(() => {
