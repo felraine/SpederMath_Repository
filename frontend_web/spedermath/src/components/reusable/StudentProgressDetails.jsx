@@ -16,6 +16,19 @@ const NavBtn = ({ disabled, onClick, children, ariaLabel }) => (
   </button>
 );
 
+/** Safe number helpers */
+const toNum = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+const firstNum = (...vals) => {
+  for (const v of vals) {
+    const n = toNum(v);
+    if (n !== null && n >= 0) return n;
+  }
+  return null;
+};
+
 export default function StudentAttemptDetails({ studentId }) {
   const [attempts, setAttempts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -48,7 +61,7 @@ export default function StudentAttemptDetails({ studentId }) {
           Array.isArray(data.content) ? data.content :
           [];
 
-        // newest → oldest; we’ll reverse per-lesson for chart
+        // newest → oldest (we’ll reverse per-lesson for the chart)
         list.sort((a, b) => new Date(b.attemptedAt) - new Date(a.attemptedAt));
 
         if (!ignore) setAttempts(list);
@@ -68,20 +81,23 @@ export default function StudentAttemptDetails({ studentId }) {
     return () => { ignore = true; };
   }, [studentId]);
 
-  // Helper to extract sort key per lesson (only lessonOrder or earliest time)
+  // Sort key per lesson: prefer lessonOrder, else earliest attempt time
   const getLessonSortKey = (list) => {
     const first = list?.[0] || {};
-    const order = Number(first.lessonOrder);
-    if (Number.isFinite(order)) return order;
+    const order = toNum(first.lessonOrder);
+    if (order !== null) return order;
 
-    // fallback: earliest attempt time
     const times = list
       .map(a => new Date(a.attemptedAt || a.createdAt || a.timestamp || 0).getTime())
       .filter(t => Number.isFinite(t));
     return times.length ? Math.min(...times) : Number.MAX_SAFE_INTEGER;
   };
 
-  // Group attempts by lesson, ordered by lessonOrder asc (then fallback time)
+  /** Build lessons[] with:
+   * - maxScore (robustly derived)
+   * - unlockThreshold (for the current lesson)
+   * - nextUnlockThreshold (target to unlock the next lesson)
+   */
   const lessons = useMemo(() => {
     const m = new Map();
     for (const a of attempts) {
@@ -90,44 +106,80 @@ export default function StudentAttemptDetails({ studentId }) {
       m.get(id).push(a);
     }
 
+    // Derive per-lesson info
     const arr = [...m.entries()].map(([lessonId, list]) => {
       const first = list[0];
 
-      // --- derive a reliable maxScore per lesson (logic-only, no UI change) ---
-      const attemptMaxes = list
-        .map(a => Number(a.maxScore || 0))
-        .filter(n => Number.isFinite(n) && n > 0);
-      const scorePeaks = list
-        .map(a => Number(a.score || 0))
-        .filter(n => Number.isFinite(n) && n >= 0);
-
+      // --- derive maxScore robustly ---
+      const attemptMaxes = list.map(a => toNum(a.maxScore)).filter(v => v !== null && v > 0);
+      const scorePeaks  = list.map(a => toNum(a.score)).filter(v => v !== null && v >= 0);
       const derivedMax =
+        (attemptMaxes.length ? Math.max(...attemptMaxes) : 0) ??
+        0;
+
+      const maxScore =
         (attemptMaxes.length ? Math.max(...attemptMaxes) : 0) ||
-        Number(first?.maxScore || 0) ||
+        toNum(first?.maxScore) ||
         (scorePeaks.length ? Math.max(10, Math.max(...scorePeaks)) : 10);
+
+      // --- derive this lesson's unlockThreshold (current lesson) ---
+      const perAttemptThresholds = list
+        .map(a => firstNum(
+          a.unlockThreshold, a.unlock_threshold,
+          a.unlockTarget,    a.unlock_target,
+          a.passThreshold,   a.passingScore,
+          a.targetScore
+        ))
+        .filter(v => v !== null && v >= 0);
+
+      const unlockThreshold =
+        (perAttemptThresholds.length ? perAttemptThresholds.at(-1) : null) ||
+        firstNum(
+          first?.unlockThreshold, first?.unlock_threshold,
+          first?.unlockTarget,    first?.unlock_target,
+          first?.passThreshold,   first?.passingScore,
+          first?.targetScore
+        ) ||
+        Math.round(maxScore * 0.8); // default if nothing provided
 
       return {
         lessonId,
         title: first?.lessonTitle || `Lesson ${lessonId}`,
-        maxScore: derivedMax, // <- this is what we’ll send to the modal/AI
+        maxScore,
+        unlockThreshold,
         list,
         sortKey: getLessonSortKey(list),
       };
     });
 
-    // Sort ascending by lessonOrder or fallback time
+    // Order by lessonOrder/time
     arr.sort((A, B) => (A.sortKey ?? 0) - (B.sortKey ?? 0));
+
+    // Compute nextUnlockThreshold for each lesson
+    for (let i = 0; i < arr.length; i++) {
+      const next = arr[i + 1];
+      arr[i].nextUnlockThreshold =
+        toNum(next?.unlockThreshold) ??
+        toNum(arr[i].unlockThreshold) ??
+        toNum(arr[i].maxScore) ??
+        10;
+    }
+
     return arr;
   }, [attempts]);
 
-  // Build compact per-lesson summary for the AI (now includes maxScore)
+  /** AI summary that includes:
+   *  - last/best/avgScore/avgTime
+   *  - this lesson's unlockThreshold & maxScore
+   *  - next lesson's unlock threshold (nextUnlockThreshold)
+   */
   const buildSummary = useCallback(() => {
     if (!lessons.length) return "No assessment attempts.";
     const mean = (arr)=> arr.length ? (arr.reduce((s,v)=>s+v,0)/arr.length) : 0;
 
     const parts = lessons.map((L, i) => {
       const list = [...L.list].sort((a,b)=>new Date(a.attemptedAt)-new Date(b.attemptedAt));
-      const n = list.length;
+      const nAttempts = list.length;
       const scores = list.map(x => Number(x.score||0));
       const times  = list.map(x => Number(x.timeSpentSeconds||0));
       const last = scores.at(-1) ?? 0;
@@ -136,24 +188,36 @@ export default function StudentAttemptDetails({ studentId }) {
       const best = Math.max(...scores, 0);
       const avgS = Math.round(mean(scores));
       const avgT = Math.round(mean(times));
-      // <<< only change here: add maxScore to the string >>>
-      return `Assessment ${i+1} "${L.title}": attempts=${n}, last=${last}, best=${best}, avgScore=${avgS}, avgTimeSec=${avgT}, maxScore=${L.maxScore}, trend=${trend}`;
+
+      return [
+        `Assessment ${i+1} "${L.title}"`,
+        `attempts=${nAttempts}`,
+        `last=${last}`,
+        `best=${best}`,
+        `avgScore=${avgS}`,
+        `avgTimeSec=${avgT}`,
+        `maxScore=${L.maxScore}`,                   // ← include maxScore
+        `unlockThreshold=${L.unlockThreshold}`,     // ← include current lesson threshold (context)
+        `nextUnlockThreshold=${L.nextUnlockThreshold}`, // ← include NEXT lesson target
+        `trend=${trend}`
+      ].join(", ");
     });
 
-    return parts.join(" | ") + " | Overall: highlight low last scores, down trends, and high times.";
+    return parts.join(" | ") + " | Overall: compare last/avg against NEXT lesson’s unlock threshold; use maxScore for ceiling context.";
   }, [lessons]);
 
-  // Expose to window for the StudentCard button / Assessment modal
+  // Expose to window for your StudentCard button / Assessment modal
   useEffect(() => {
     window.spederBuildSummary = buildSummary;
     return () => { delete window.spederBuildSummary; };
   }, [buildSummary]);
 
-  // Current lesson index + keyboard nav
+  // UI state & keyboard nav
   const [idx, setIdx] = useState(0);
   useEffect(() => {
     if (idx >= lessons.length) setIdx(Math.max(0, lessons.length - 1));
   }, [lessons.length, idx]);
+
   const onKey = useCallback((e) => {
     if (!lessons.length) return;
     if (e.key === "ArrowLeft") setIdx(i => Math.max(0, i - 1));
@@ -173,6 +237,9 @@ export default function StudentAttemptDetails({ studentId }) {
   const canNext = idx < lessons.length - 1;
   const current = lessons[idx];
 
+  // Use the precomputed NEXT lesson threshold
+  const goalFromNext = current.nextUnlockThreshold;
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -188,11 +255,15 @@ export default function StudentAttemptDetails({ studentId }) {
       </div>
 
       <LessonAttemptsChart
-        key={`${current.lessonId}-${current.list.length}-${current.list[0]?.attemptedAt || ""}`}
+        key={`${current.lessonId}-${current.list.length}-${goalFromNext}`} // force remount when goal changes
         title={current.title}
         list={current.list}
-        goalScore={current.maxScore}
+        goalScore={goalFromNext}
       />
+      <div className="text-[11px] text-gray-500">
+        Goal line uses the <span className="font-medium">next lesson’s</span> unlock threshold.
+        {!lessons[idx + 1] && " (This is the last lesson—fallback used.)"}
+      </div>
     </div>
   );
 }
@@ -200,24 +271,17 @@ export default function StudentAttemptDetails({ studentId }) {
 /* ====================== Per-Lesson Apex Chart ====================== */
 
 function LessonAttemptsChart({ title, list, goalScore = 10 }) {
-  const statusColor = (s) =>
-    s === "COMPLETED" ? "#16a34a" :
-    s === "FAILED" ? "#dc2626" :
-    s === "IN_PROGRESS" ? "#eab308" :
-    "#64748b";
+  const [showTime, setShowTime] = React.useState(false);
 
-  const prepared = useMemo(() => {
-    const copy = [...list].reverse().slice(-10);
-    return copy.map((a, i) => {
+  const prepared = React.useMemo(() => {
+    return [...list].reverse().slice(-10).map((a, i) => {
       const d = new Date(a.attemptedAt);
       return {
         label: isNaN(d.getTime())
           ? `#${i + 1}`
           : d.toLocaleString([], { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
-        score: a.score ?? 0,
-        seconds: a.timeSpentSeconds ?? 0,
-        status: a.status ?? "-",
-        ts: a.attemptedAt ?? null,
+        score: Number(a.score ?? 0),
+        seconds: Number(a.timeSpentSeconds ?? 0),
       };
     });
   }, [list]);
@@ -225,91 +289,99 @@ function LessonAttemptsChart({ title, list, goalScore = 10 }) {
   const categories = prepared.map(d => d.label);
   const scoreData  = prepared.map(d => d.score);
   const timeData   = prepared.map(d => d.seconds);
+  const timeNulls  = React.useMemo(() => new Array(timeData.length).fill(null), [timeData.length]);
 
-  const maxScore  = Math.max(goalScore, ...scoreData, 0);
-  const maxTime   = Math.max(...timeData, 0);
-  const pad = (n) => (n <= 0 ? 0 : Math.ceil(n * 0.1));
-  const yLeftMax  = Math.max(maxScore, goalScore) + pad(maxScore);
-  const yRightMax = maxTime + pad(maxTime);
+  if (!scoreData.length) {
+    return (
+      <div className="border rounded-xl p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <div className="font-semibold">{title}</div>
+            <div className="text-[11px] text-gray-500">Score over recent attempts</div>
+          </div>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={showTime} onChange={(e)=>setShowTime(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+            Show time
+          </label>
+        </div>
+        <div className="h-[300px] grid place-items-center text-sm text-gray-500">No attempts yet.</div>
+      </div>
+    );
+  }
 
-  const discreteMarkers = prepared.map((d, i) => ({
-    seriesIndex: 0,
-    dataPointIndex: i,
-    fillColor: statusColor(d.status),
-    strokeColor: statusColor(d.status),
-    size: 5,
-    shape: "circle",
-  }));
-
-  const InlineLegend = () => (
-    <div className="flex items-center gap-3 text-xs">
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5">
-        <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
-        Score (points)
-      </span>
-      <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5">
-        <span
-          className="inline-block h-2.5 w-2.5 rounded"
-          style={{ background: "linear-gradient(180deg, rgba(99,102,241,1) 0%, rgba(139,92,246,1) 100%)" }}
-        />
-        Time (seconds)
-      </span>
-    </div>
-  );
+  const lastScore = scoreData.at(-1) ?? 0;
+  const maxScoreForAxis = Math.max(goalScore, ...scoreData, 10);
 
   const options = {
-    chart: { type: "line", toolbar: { show: false }, animations: { easing: "easeinout", speed: 300 } },
-    colors: ["#10b981", "#6366f1"],
+    chart: { type: "line", toolbar: { show: false }, animations: { easing: "easeinout", speed: 250 } },
+    colors: ["#0ea5e9", "#94a3b8"], // score line, time bars
     stroke: { width: [3, 0], curve: "smooth" },
-    dataLabels: { enabled: false },
-    markers: { size: 0, discrete: discreteMarkers },
-    grid: { borderColor: "#e5e7eb", strokeDashArray: 3, xaxis: { lines: { show: false } } },
-    xaxis: { categories, labels: { style: { fontSize: "12px" }, rotate: -10 }, axisBorder: { show: false }, axisTicks: { show: false } },
-    yaxis: [
-      { title: { text: "Score" }, min: 0, max: yLeftMax, decimalsInFloat: 0 },
-      { opposite: true, title: { text: "Seconds" }, min: 0, max: yRightMax, decimalsInFloat: 0 },
-    ],
-    plotOptions: { bar: { borderRadius: 7, columnWidth: "45%" } },
-    fill: {
-      type: ["solid", "gradient"],
-      gradient: { shade: "light", type: "vertical", gradientToColors: ["#60a5fa", "#8b5cf6"], stops: [0, 100], opacityFrom: 0.9, opacityTo: 0.9 },
+
+    // 👉 dots at each attempt
+    markers: {
+      size: 4,
+      strokeWidth: 2,
+      hover: { size: 7 },
+      colors: ["#0ea5e9"],
+      strokeColors: "#ffffff",
+      discrete: [], // keep default markers on every point
     },
+
+    dataLabels: { enabled: false },
+    grid: { borderColor: "#e5e7eb", strokeDashArray: 3, xaxis: { lines: { show: false } } },
+    xaxis: {
+      categories,
+      labels: { style: { fontSize: "12px" }, rotate: -10 },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    yaxis: [
+      { title: { text: "Score" }, min: 0, max: Math.ceil(maxScoreForAxis * 1.15), decimalsInFloat: 0 },
+      { opposite: true, show: showTime, title: { text: "Seconds" }, min: 0, max: Math.ceil((Math.max(0, ...timeData) || 10) * 1.15), decimalsInFloat: 0 },
+    ],
+    plotOptions: { bar: { columnWidth: "42%", borderRadius: 6 } },
+    legend: { show: false },
     tooltip: {
       theme: "dark",
       shared: true,
-      custom: ({ dataPointIndex }) => {
-        const d = prepared[dataPointIndex];
-        if (!d) return "";
-        return `
-          <div class="px-3 py-2 text-xs">
-            <div class="font-semibold mb-1">${d.label}</div>
-            <div>Status: ${d.status}</div>
-            <div>Score: ${d.score}</div>
-            <div>Time: ${d.seconds}s</div>
-            <div class="text-[10px] text-gray-300 mt-1">${new Date(d.ts).toLocaleString()}</div>
-          </div>`;
-      },
+      y: { formatter: (val, ctx) => ctx.seriesIndex === 0 ? `${val} pts` : `${val}s` },
     },
-    legend: { show: false },
+
     annotations: {
-      yaxis: [
-        {
-          y: goalScore,
+      // 👉 goal line with label nudged left/down to avoid overlapping the last dot
+      yaxis: [{
+        y: goalScore,
+        borderColor: "#16a34a",
+        strokeDashArray: 4,
+        label: {
+          text: `Goal: ${goalScore}`,
           borderColor: "#16a34a",
-          strokeDashArray: 4,
-          label: {
-            borderColor: "#16a34a",
-            style: { color: "#065f46", background: "#a7f3d0", fontSize: "10px", fontWeight: 600 },
-            text: `Goal ${goalScore}`,
-          },
+          position: "left",       // move to left side
+          offsetX: -8,            // slight left nudge
+          offsetY: 6,             // slight down nudge
+          style: { background: "#a7f3d0", color: "#065f46", fontSize: "11px", fontWeight: 700 },
         },
-      ],
+      }],
+
+      // 👉 last point callout nudged up/right so it doesn't collide with goal label
+      points: [{
+        x: categories[categories.length - 1],
+        y: scoreData[scoreData.length - 1],
+        marker: { size: 6, fillColor: "#0ea5e9", strokeColor: "#0ea5e9" },
+        label: {
+          text: `Last: ${lastScore}`,
+          offsetX: 12,            // right nudge
+          offsetY: -16,           // up nudge
+          style: { background: "#e0f2fe", color: "#075985", fontWeight: 700 },
+        },
+      }],
     },
   };
 
+  // Always two series; hide bars by feeding nulls when toggle is off
   const series = [
-    { name: "Score", type: "line", data: scoreData },
-    { name: "Time (s)", type: "column", data: timeData },
+    { name: "Score", type: "line",   data: scoreData },
+    { name: "Time (s)", type: "column", data: showTime ? timeData : timeNulls },
   ];
 
   return (
@@ -317,17 +389,40 @@ function LessonAttemptsChart({ title, list, goalScore = 10 }) {
       <div className="flex items-center justify-between mb-2">
         <div>
           <div className="font-semibold">{title}</div>
-          <div className="text-[11px] text-gray-400 font-medium mt-0.5">Score = line • Time = bars</div>
+          <div className="text-[11px] text-gray-500">
+            {showTime ? "Score = line • Time = bars" : "Score over recent attempts"}
+          </div>
         </div>
-        <div className="text-xs text-gray-500 flex items-center gap-3">
-          <span>ASSESSMENT • Recent attempts</span>
-          <InlineLegend />
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={showTime}
+            onChange={(e)=>setShowTime(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          Show time
+        </label>
+      </div>
+
+      <div className="w-full" style={{ height: 300 }}>
+        <ReactApexChart options={options} series={series} height={300} />
+      </div>
+
+      <div className="flex items-center justify-between mt-2 text-[11px] text-gray-500">
+        <span>Showing last 10 attempts (oldest → newest).</span>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1 text-xs">
+            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#0ea5e9" }} />
+            Score
+          </span>
+          {showTime && (
+            <span className="inline-flex items-center gap-1 text-xs">
+              <span className="inline-block h-2.5 w-2.5 rounded" style={{ background: "#94a3b8" }} />
+              Seconds
+            </span>
+          )}
         </div>
       </div>
-      <div className="w-full" style={{ height: 320 }}>
-        <ReactApexChart options={options} series={series} height={320} />
-      </div>
-      <div className="text-[11px] text-gray-500 mt-2">Showing up to the last 10 attempts (oldest → newest).</div>
     </div>
   );
 }
