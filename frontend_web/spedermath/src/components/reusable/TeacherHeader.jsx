@@ -1,54 +1,60 @@
+// TeacherHeader.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const FALLBACK = "/photos/profile_pictures/profile_man.png";
+
 function TeacherHeader() {
   const [teacherName, setTeacherName] = useState("");
-  const [plan, setPlan] = useState("Free Plan");
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [plan] = useState("Free Plan");
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchTeacher = async () => {
+    (async () => {
       try {
         const token = localStorage.getItem("token");
-        if (!token) {
-          navigate("/teacher-login");
-          return;
-        }
+        if (!token) return navigate("/teacher-login");
 
-        // sanity: validate token shape (optional)
-        try {
-          jwtDecode(token);
-        } catch {
-          localStorage.removeItem("token");
-          navigate("/teacher-login");
-          return;
-        }
+        try { jwtDecode(token); } catch { localStorage.removeItem("token"); return navigate("/teacher-login"); }
 
-        // ✅ call /me so we never rely on numeric IDs
-        const res = await axios.get("http://localhost:8080/api/teachers/me", {
+        const res = await axios.get(`${API_BASE}/api/teachers/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        setTeacherName(res.data?.fname + " " + res.data?.lname || "");
-      } catch (error) {
-        console.error("Error fetching teacher info:", error);
-        // if unauthorized, force re-login
-        if (error?.response?.status === 401) {
+        const data = res.data || {};
+        setTeacherName(data.name || "");
+
+        // data.photoUrl is relative from backend; make it absolute + cache-buster
+        if (data.photoUrl) {
+          setPhotoUrl(`${API_BASE}${data.photoUrl}?t=${Date.now()}`);
+        } else {
+          setPhotoUrl(FALLBACK);
+        }
+      } catch (e) {
+        console.error("Header fetch error:", e);
+        if (e?.response?.status === 401) {
           localStorage.removeItem("token");
           navigate("/teacher-login");
         }
       }
-    };
-
-    fetchTeacher();
+    })();
   }, [navigate]);
 
   return (
     <header className="flex justify-between items-center bg-white p-4 shadow-md rounded-md">
       <div className="flex items-center space-x-3">
-        <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
+        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 border border-gray-300">
+          <img
+            src={photoUrl || FALLBACK}
+            alt="Teacher Avatar"
+            className="w-full h-full object-cover"
+            onError={() => setPhotoUrl(FALLBACK)}   // ← fallback if 404/401/wrong MIME
+          />
+        </div>
         <div>
           <h3 className="font-semibold">Teacher {teacherName}</h3>
           <p className="text-sm text-gray-500">Hello! Welcome back!</p>

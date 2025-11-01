@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.List;
 
 @Service
 public class TeacherService {
@@ -25,7 +26,30 @@ public class TeacherService {
     @Autowired
     private JwtUtil jwtUtil;
 
-    public String registerTeacher(String fname, String lname, String email, String name, String password) {
+    private static final List<String> DEFAULT_AVATARS = List.of(
+        "avatars/profile_man.png",
+        "avatars/profile_man2.png",
+        "avatars/profile_man3.png",
+        "avatars/profile_woman.png",
+        "avatars/profile_woman2.png",
+        "avatars/profile_woman3.png"
+    );
+
+    private byte[] loadResourceBytes(String path) {
+        try (var is = new org.springframework.core.io.ClassPathResource(path).getInputStream()) {
+            return is.readAllBytes();
+        } catch (Exception e) {
+            return new byte[0];
+        }
+    }
+
+    private byte[] randomDefaultAvatarBytes() {
+        var p = DEFAULT_AVATARS.get(new java.util.Random().nextInt(DEFAULT_AVATARS.size()));
+        return loadResourceBytes(p);
+    }
+
+    public String registerTeacher(String fname, String lname, String email, String name,
+                                  String password, String photoBase64) {
         String normalizedEmail = email.toLowerCase().trim();
 
         if (teacherRepository.findByEmail(normalizedEmail).isPresent()) {
@@ -34,11 +58,32 @@ public class TeacherService {
 
         String hashedPassword = passwordEncoder.encode(password);
 
-        Teacher teacher = new Teacher(fname, lname, name, normalizedEmail, hashedPassword, LocalDateTime.now());
-        teacherRepository.save(teacher);
+        byte[] photoBytes;
+        if (photoBase64 != null && !photoBase64.isBlank()) {
+            // support plain base64 or data URL
+            String b64 = photoBase64.contains(",") ? photoBase64.substring(photoBase64.indexOf(',') + 1) : photoBase64;
+            photoBytes = java.util.Base64.getDecoder().decode(b64);
+        } else {
+            photoBytes = randomDefaultAvatarBytes();
+        }
 
+        Teacher teacher = new Teacher(fname, lname, name, normalizedEmail, hashedPassword, LocalDateTime.now());
+        teacher.setPhotoBlob(photoBytes);
+
+        teacherRepository.save(teacher);
         return "Registration successful!";
     }
+
+    @Transactional
+    public void updateTeacherPhoto(Teacher t, String photoBase64) {
+        if (photoBase64 == null || photoBase64.isBlank()) return;
+        String b64 = photoBase64.contains(",")
+            ? photoBase64.substring(photoBase64.indexOf(',') + 1)
+            : photoBase64;
+        byte[] bytes = java.util.Base64.getDecoder().decode(b64);
+        t.setPhotoBlob(bytes);
+        }
+
 
     public Map<String, String> loginTeacher(String email, String password) {
         String normalizedEmail = email.toLowerCase().trim();

@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.MediaType;
+import org.springframework.http.CacheControl;
 
 import java.util.Map;
 import java.util.Optional;
@@ -40,8 +42,9 @@ public class TeacherController {
         String email = request.get("email");
         String name = request.get("name"); // username
         String password = request.get("password");
+        String photoBase64 = request.get("photoBase64");
 
-        String response = teacherService.registerTeacher(fname, lname, email, name, password);
+        String response = teacherService.registerTeacher(fname, lname, email, name, password, photoBase64);
         return response.equals("Registration successful!") ?
                 new ResponseEntity<>(response, HttpStatus.CREATED) :
                 new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
@@ -71,19 +74,16 @@ public class TeacherController {
    
     @GetMapping("/{email}")
     public ResponseEntity<?> getTeacherInfo(@PathVariable String email) {
-        Optional<Teacher> teacherOptional = teacherService.getTeacherByEmail(email);
-        if (teacherOptional.isPresent()) {
-            Teacher teacher = teacherOptional.get();
-            Map<String, String> response = Map.of(
-                    "fname", teacher.getFname(),
-                    "lname", teacher.getLname(),
-                    "email", teacher.getEmail(),
-                    "name", teacher.getName() // include username
-            );
-            return new ResponseEntity<>(response, HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>("Teacher not found!", HttpStatus.NOT_FOUND);
-        }
+        return teacherService.getTeacherByEmail(email)
+                .<ResponseEntity<?>>map(teacher -> ResponseEntity.ok(Map.of(
+                        "fname", teacher.getFname(),
+                        "lname", teacher.getLname(),
+                        "email", teacher.getEmail(),
+                        "name", teacher.getName(),
+                        "id", String.valueOf(teacher.getId()),
+                        "photoUrl", "/api/teachers/" + teacher.getId() + "/photo"
+                )))
+                .orElseGet(() -> new ResponseEntity<>("Teacher not found!", HttpStatus.NOT_FOUND));
     }
 
     
@@ -101,20 +101,16 @@ public class TeacherController {
    
     @GetMapping("/id/{id}")
     public ResponseEntity<?> getTeacherById(@PathVariable Long id) {
-        Optional<Teacher> teacherOptional = teacherService.getTeacherById(id);
-        if (teacherOptional.isPresent()) {
-            Teacher teacher = teacherOptional.get();
-            Map<String, String> response = Map.of(
-                    "id", String.valueOf(teacher.getId()),
-                    "fname", teacher.getFname(),
-                    "lname", teacher.getLname(),
-                    "email", teacher.getEmail(),
-                    "name", teacher.getName()
-            );
-            return new ResponseEntity<>(response, HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>("Teacher not found!", HttpStatus.NOT_FOUND);
-        }
+        return teacherRepository.findById(id)
+                .<ResponseEntity<?>>map(teacher -> ResponseEntity.ok(Map.of(
+                        "id", String.valueOf(teacher.getId()),
+                        "fname", teacher.getFname(),
+                        "lname", teacher.getLname(),
+                        "email", teacher.getEmail(),
+                        "name", teacher.getName(),
+                        "photoUrl", "/api/teachers/" + teacher.getId() + "/photo"
+                )))
+                .orElseGet(() -> new ResponseEntity<>("Teacher not found!", HttpStatus.NOT_FOUND));
     }
 
     
@@ -136,7 +132,8 @@ public class TeacherController {
                         "fname", t.getFname(),
                         "lname", t.getLname(),
                         "email", t.getEmail(),
-                        "name", t.getName()
+                        "name", t.getName(),
+                        "photoUrl", "/api/teachers/" + t.getId() + "/photo"
                 )))
                 .orElseGet(() -> ResponseEntity.status(404).body(Map.of("message", "Teacher not found")));
     }
@@ -154,22 +151,24 @@ public class TeacherController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid token"));
         }
 
-        Optional<Teacher> teacherOptional = teacherRepository.findById(teacherId);
-        if (teacherOptional.isEmpty()) {
+        var teacherOpt = teacherRepository.findById(teacherId);
+        if (teacherOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Teacher not found"));
         }
 
-        Teacher teacher = teacherOptional.get();
+        Teacher teacher = teacherOpt.get();
 
         String newFname = request.get("fname");
         String newLname = request.get("lname");
         String newEmail = request.get("email");
         String newName = request.get("name");
+        String photoBase64 = request.get("photoBase64"); // <--- NEW
 
         if (newFname != null && !newFname.trim().isEmpty()) teacher.setFname(newFname.trim());
         if (newLname != null && !newLname.trim().isEmpty()) teacher.setLname(newLname.trim());
         if (newEmail != null && !newEmail.trim().isEmpty()) teacher.setEmail(newEmail.trim());
         if (newName != null && !newName.trim().isEmpty()) teacher.setName(newName.trim());
+        teacherService.updateTeacherPhoto(teacher, photoBase64);
 
         teacherRepository.save(teacher);
 
@@ -179,6 +178,7 @@ public class TeacherController {
                 "lname", teacher.getLname(),
                 "email", teacher.getEmail(),
                 "name", teacher.getName(),
+                "photoUrl", "/api/teachers/" + teacher.getId() + "/photo",
                 "message", "Profile updated successfully!"
         ));
     }
@@ -223,5 +223,41 @@ public class TeacherController {
         teacherRepository.save(teacher);
 
         return ResponseEntity.ok("Password changed successfully");
+    }
+
+    @GetMapping(value = "/{id}/photo")
+    public ResponseEntity<byte[]> getTeacherPhoto(@PathVariable Long id) {
+        var teacherOpt = teacherRepository.findById(id);
+        if (teacherOpt.isEmpty() || teacherOpt.get().getPhotoBlob() == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        byte[] bytes = teacherOpt.get().getPhotoBlob();
+        MediaType type = detectImageType(bytes); // <-- detect, don't assume PNG
+
+        return ResponseEntity.ok()
+                .contentType(type)
+                .cacheControl(CacheControl.noCache())
+                .body(bytes);
+    }
+
+    private MediaType detectImageType(byte[] b) {
+        if (b != null && b.length >= 8 &&
+            (b[0] & 0xFF) == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47) {
+            return MediaType.IMAGE_PNG; // PNG
+        }
+        if (b != null && b.length >= 3 &&
+            (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8) {
+            return MediaType.IMAGE_JPEG; // JPEG
+        }
+        if (b != null && b.length >= 12 &&
+            b[0] == 'R' && b[1] == 'I' && b[2] == 'F' &&
+            b[8] == 'W' && b[9] == 'E' && b[10] == 'B' && b[11] == 'P') {
+            return MediaType.parseMediaType("image/webp"); // WEBP
+        }
+        if (b != null && b.length >= 6 &&
+            b[0] == 'G' && b[1] == 'I' && b[2] == 'F') {
+            return MediaType.IMAGE_GIF;
+        }
+        return MediaType.APPLICATION_OCTET_STREAM;
     }
 }
