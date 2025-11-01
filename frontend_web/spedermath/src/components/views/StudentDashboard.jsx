@@ -136,12 +136,12 @@ function StudentDashboard() {
   };
 
   return (
-    <div className="bg-white min-h-screen p-8 font-[Comic Sans MS]">
+    <div className="min-h-screen bg-gradient-to-b from-blue-500 via-blue-200 to-white p-8 font-[Comic Sans MS] relative overflow-hidden">
       {/* Exit Button */}
-      <div className="absolute top-6 right-6">
+      <div className="absolute top-6 right-6 mr-10">
         <button
            onClick={() => setShowLogoutModal(true)}
-          className="border border-black px-3 py-1 rounded hover:bg-gray-200"
+          className="border border-black px-3 py-1 rounded hover:bg-gray-300 bg-white"
         >
           ➤ EXIT
         </button>
@@ -157,10 +157,11 @@ function StudentDashboard() {
 
       {/* Lesson Grid */}
       <div>
-        <h2 className="text-xl mb-4">YOUR LESSONS</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+        <h2 className="text-xl mb-4 m-10">YOUR LESSONS</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 m-10">
           {lessons.map((lesson, idx) => {
             const isUnlocked = checkLessonUnlock(lesson);
+
             return (
               <div
                 key={lesson.lessonID}
@@ -173,72 +174,21 @@ function StudentDashboard() {
                     : "bg-red-400 border-red-600 cursor-not-allowed"
                 } relative`} 
               >
-                {/* For the Missing Number Quest lesson*/}
+                {/* LESSON ONE NUMBERS 1-3*/}
                 {lesson.lessonID === 1 && (
-                  <>
-                  
-                    <div className="absolute top-8 right-2 flex gap-10">
-                      <img src="/moon.png" alt="Moon Icon" className="w-8 h-8" />
-                    </div>
-
-                   
-                    <div className="absolute top-2 right-8">
-                      <img src="/moon.png" alt="Moon Icon" className="w-5 h-5" />
-                    </div>
-
-                    
-                    <div className="absolute bottom-2 right-2">
-                      <img src="/map.png" alt="Map Icon" className="w-8 h-8" />
-                    </div>
-
-                    {/* Numbers 1, 2, 3 in the lower-left corner with scattered layout */}
-                    <div className="absolute bottom-2 left-2 flex flex-col text-xl font-bold text-black" style={{ fontFamily: 'Comic Sans MS, sans-serif' }}>
-                      <div className="mb-0 transform translate-x-2 translate-y-2 rotate-25">1</div>
-                      <div className="mb-1 transform translate-x-5 translate-y-3 rotate-20">2</div>
-                      <div className="mb-0 transform translate-x-1 translate-y-2px -rotate-12">3</div>
-                      <div className="mb-5 transform translate-x-6 translate-y-3 rotate-20">?</div>
-                    </div>
-                  </>
-
-                  
+                  <>                 
+                  </>      
                 )}
-
+                {/* LESSON ONE NUMBER MAZE*/}
                 {lesson.lessonID === 2 && isUnlocked && (
                   <>
-                    <div className="absolute top-2 left-7 transform -translate-x-2 -translate-y-1/2">
-                      <img src="/turtle.png" alt="Large Turtle" className="w-12 h-12" />
-                    </div>
-
-                    <div className="absolute top-10 left-6 transform -translate-x-1/2">
-                      <img src="/turtle.png" alt="Small Turtle 1" className="w-6 h-6" />
-                    </div>
-
-                    <div className="absolute top-14 left-10 transform -translate-x-1/2">
-                      <img src="/turtle.png" alt="Small Turtle 2" className="w-6 h-6" />
-                    </div>
-
-                    <div className="absolute bottom-2 left-2">
-                      <img src="/bat.png" alt="Bat Icon" className="w-8 h-8" />
-                    </div>
-
-                    <div className="absolute bottom-2 left-10">
-                      <img src="/bat.png" alt="Bigger Bat Icon" className="w-15 h-15" />
-                    </div>
-
-                    <div className="absolute top-2 right-2">
-                      <img src="/flamingo.png" alt="Flamingo Icon" className="w-20 h-15" />
-                    </div>
-
-                    <div className="absolute bottom-2 right-10">
-                      <img src="/cow.png" alt="Cow Icon" className="w-25 h-19" />
-                    </div>
                   </>
                 )}
+                {/* LESSON TWO NUMBERS 1-5*/}
                 {lesson.lessonID === 3 && isUnlocked && (
                   <>
                   </>
                 )}
-
                 {isUnlocked ? (
                   <>
                     <div className="flex gap-2">{getCardIcon(lesson.lessonID)}</div>
