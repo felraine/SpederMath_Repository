@@ -49,7 +49,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3, meta }) => {
     "/photos/lesson3/monkey.png",
   ];
 
-  const labelPlural = "fishes";
+  const labelPlural = "monkies";
 
   const shuffleArray = (array) =>
     array
@@ -86,11 +86,11 @@ const PracticeScreenUnified = ({ onNext, rounds = 3, meta }) => {
         activeAudio.current.currentTime = 0;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   }, [roundIndex]);
 
   const startNewRound = () => {
-    // pick 1–7 fishes
+    // pick 1–7 monk
     const randomCount = Math.floor(Math.random() * 7) + 1;
 
     const roundFish = Array.from({ length: randomCount }, () => {

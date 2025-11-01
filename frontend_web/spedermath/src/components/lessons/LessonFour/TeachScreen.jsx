@@ -314,7 +314,7 @@ const TeachScreen = ({ onNext }) => {
       )}
       {step === COUNT_START && (
         <div className="flex items-center justify-center mb-2">
-          <h1 className="text-3xl font-bold drop-shadow-sm">Now let’s count with our fish friends!</h1>
+          <h1 className="text-3xl font-bold drop-shadow-[0_4px_3px_rgba(0,0,0,0.6)]">Now let’s count the birds!</h1>
         </div>
       )}
 
@@ -405,7 +405,7 @@ const TeachScreen = ({ onNext }) => {
         {step >= COUNT_START && step <= COUNT_END && (
           <>
             {!challengeActive && (
-              /* ====== CHANGED LAYOUT: prevent overlap by reserving a fixed number panel on the right ====== */
+        
               <div className="flex w-full px-6 sm:px-10 -mt-1 items-center">
                 {/* LEFT: fish area uses remaining width and wraps */}
                 <div className="flex-1 min-w-0 flex flex-row gap-6 sm:gap-8 flex-wrap">
