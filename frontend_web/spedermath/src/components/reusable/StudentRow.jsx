@@ -2,22 +2,22 @@ import React, { useState } from "react";
 import { Eye, EyeOff, Pencil, Trash2, X } from "lucide-react";
 import ReactQRCode from "react-qr-code";
 import axios from "axios";
+import DeleteStudentModal from "../modals/DeleteStudentModal"; 
 
 function StudentRow({ student, togglePassword, onEdit, onDelete }) {
   const [showQRCode, setShowQRCode] = useState(false);
   const [qrUrl, setQrUrl] = useState("");
-  const [loadingQR, setLoadingQR] = useState(false); // <-- added
+  const [loadingQR, setLoadingQR] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false); 
 
-  const handleDelete = () => {
-    if (window.confirm(`Delete ${student.fname} ${student.lname}?`)) {
-      onDelete(student.studentID);
-    }
+  const handleDeleteConfirm = () => {
+    onDelete(student.studentID);
+    setShowDeleteModal(false);
   };
 
   const handleGenerateQR = async () => {
     try {
       setLoadingQR(true);
-      // Backend builds full qrUrl using app.publicApiBaseUrl; FE just uses it
       const res = await axios.post(
         `http://localhost:8080/api/students/${student.studentID}/qr-token`
       );
@@ -38,7 +38,14 @@ function StudentRow({ student, togglePassword, onEdit, onDelete }) {
         <td className="p-3">{`${student.fname} ${student.lname}`}</td>
         <td className="p-3">{student.username}</td>
         <td className="p-3 flex items-center space-x-2">
-          <span style={{ minWidth: "80px", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden" }}>
+          <span
+            style={{
+              minWidth: "80px",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+            }}
+          >
             {student.showPassword ? student.password : "********"}
           </span>
           <button onClick={() => togglePassword(student.studentID)}>
@@ -56,17 +63,35 @@ function StudentRow({ student, togglePassword, onEdit, onDelete }) {
           <button onClick={() => onEdit(student)}>
             <Pencil className="text-blue-600 hover:text-blue-800" />
           </button>
-          <button onClick={handleDelete} className="ml-2 text-red-600 hover:text-red-800">
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="ml-2 text-red-600 hover:text-red-800"
+          >
             <Trash2 />
           </button>
-          <button onClick={handleGenerateQR} className="ml-2 text-green-600 hover:text-green-800">
+          <button
+            onClick={handleGenerateQR}
+            className="ml-2 text-green-600 hover:text-green-800"
+          >
             {loadingQR ? "..." : "QR"}
           </button>
         </td>
       </tr>
 
+      {showDeleteModal && (
+        <DeleteStudentModal
+          studentName={`${student.fname} ${student.lname}`}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDeleteConfirm}
+        />
+      )}
+
+      {/* Existing QR Modal */}
       {showQRCode && (
-        <div className="fixed inset-0 bg-black flex justify-center items-center z-50" style={{ background: "rgba(0,0,0,0.3)" }}>
+        <div
+          className="fixed inset-0 bg-black flex justify-center items-center z-50"
+          style={{ background: "rgba(0,0,0,0.3)" }}
+        >
           <div className="relative bg-white p-6 rounded-lg shadow-lg text-center">
             <button
               onClick={() => setShowQRCode(false)}
