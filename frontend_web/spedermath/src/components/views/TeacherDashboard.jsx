@@ -71,9 +71,8 @@ function Dashboard() {
 
   return (
     <div>
-      <main className="flex-1 p-6 flex flex-col">
-        <TeacherHeader />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5 flex-1">
+      <main className="flex-1 flex flex-col">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 flex-1">
           <StudentProgress lessonStats={lessonStats} isLoading={isLessonStatsLoading} />
           <StudentList students={students} isLoading={isStudentLoading} onSelect={handleSelectStudent} />
         </div>

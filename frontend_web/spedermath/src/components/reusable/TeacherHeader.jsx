@@ -14,7 +14,7 @@ function TeacherHeader() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    (async () => {
+    const load = async () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) return navigate("/teacher-login");
@@ -41,7 +41,22 @@ function TeacherHeader() {
           navigate("/teacher-login");
         }
       }
-    })();
+    };
+
+    load();
+
+    const onUpdated = () => load();
+    window.addEventListener("teacher:updated", onUpdated)
+
+    const onStorage = (e) => {
+      if (e.key === "teacherUpdatedAt") load();
+    };
+    window.addEventListener("storage", onStorage);
+
+    return () =>{
+      window.removeEventListener("teacher:updated", onUpdated);
+      window.removeEventListener("storage", onStorage);
+    };
   }, [navigate]);
 
   return (
@@ -52,7 +67,7 @@ function TeacherHeader() {
             src={photoUrl || FALLBACK}
             alt="Teacher Avatar"
             className="w-full h-full object-cover"
-            onError={() => setPhotoUrl(FALLBACK)}   // ← fallback if 404/401/wrong MIME
+            onError={() => setPhotoUrl(FALLBACK)}
           />
         </div>
         <div>

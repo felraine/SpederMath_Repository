@@ -140,6 +140,7 @@ function Settings() {
         }
         setAvatarDirty(false);
         setPhotoBase64("");
+        window.dispatchEvent(new CustomEvent("teacher:updated"));
       } else {
         setModalMessage("Failed to update profile!");
         setIsError(true);
@@ -222,11 +223,10 @@ function Settings() {
   return (
     <div className="flex h-screen">
       {/* Main Content */}
-      <main className="flex-1 p-6 flex flex-col">
-        <TeacherHeader />
+      <main className="flex-1 flex flex-col">
 
         <section
-          className="bg-white p-6 shadow-md rounded-md mt-6 overflow-y-auto scrollbar-hide"
+          className="bg-white p-6 shadow-md rounded-md overflow-y-auto scrollbar-hide"
           style={{ height: "500px", maxHeight: "1000px", scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           <div className="flex justify-between items-center mb-2">
