@@ -13,8 +13,14 @@ public class Teacher {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long teacherID;
 
+    @Column(name = "fname", length = 100)
+    private String fname;
+
+    @Column(name = "lname", length = 100)
+    private String lname;
+
     @Column(name = "name", nullable = false, length = 100)
-    private String name;
+    private String name; // username
 
     @Column(name = "email", nullable = false, unique = true, length = 150)
     private String email;
@@ -28,11 +34,12 @@ public class Teacher {
     @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Student> students = new ArrayList<>();
 
-    public Teacher() {
-    }
+    public Teacher() {}
 
     // Constructor without ID
-    public Teacher(String name, String email, String password, LocalDateTime createdAt) {
+    public Teacher(String fname, String lname, String name, String email, String password, LocalDateTime createdAt) {
+        this.fname = fname;
+        this.lname = lname;
         this.name = name;
         this.email = email;
         this.password = password;
@@ -46,6 +53,22 @@ public class Teacher {
 
     public void setId(Long teacherID) {
         this.teacherID = teacherID;
+    }
+
+    public String getFname() {
+        return fname;
+    }
+
+    public void setFname(String fname) {
+        this.fname = fname;
+    }
+
+    public String getLname() {
+        return lname;
+    }
+
+    public void setLname(String lname) {
+        this.lname = lname;
     }
 
     public String getName() {
@@ -87,6 +110,7 @@ public class Teacher {
     public void setStudents(List<Student> students) {
         this.students = students;
     }
+
 
     //functions
   /*  public void addStudent(Student student) {

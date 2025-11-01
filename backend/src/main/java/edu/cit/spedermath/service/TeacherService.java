@@ -25,15 +25,18 @@ public class TeacherService {
     @Autowired
     private JwtUtil jwtUtil;
 
-    public String registerTeacher(String name, String email, String password) {
+    public String registerTeacher(String fname, String lname, String email, String name, String password) {
         String normalizedEmail = email.toLowerCase().trim();
+
         if (teacherRepository.findByEmail(normalizedEmail).isPresent()) {
             return "Email already registered!";
         }
-        // hash before saving
-        String hashed = passwordEncoder.encode(password);
-        Teacher teacher = new Teacher(name, normalizedEmail, hashed, LocalDateTime.now());
+
+        String hashedPassword = passwordEncoder.encode(password);
+
+        Teacher teacher = new Teacher(fname, lname, name, normalizedEmail, hashedPassword, LocalDateTime.now());
         teacherRepository.save(teacher);
+
         return "Registration successful!";
     }
 
@@ -49,7 +52,6 @@ public class TeacherService {
 
         Teacher teacher = teacherOptional.get();
 
-        // Optional: one-time migration if legacy plaintext is still stored and happens to match
         if (teacher.getPassword() != null && teacher.getPassword().equals(password)) {
             teacher.setPassword(passwordEncoder.encode(password));
             teacherRepository.save(teacher);
@@ -62,19 +64,17 @@ public class TeacherService {
         } else {
             response.put("error", "Invalid email or password!");
         }
+
         return response;
     }
 
     public String testConnection() {
-        Teacher t = new Teacher();
-        t.setName("Test Teacher");
-        t.setEmail("admin@example.com");
-        t.setPassword(passwordEncoder.encode("password")); // never store plaintext
-        t.setCreatedAt(LocalDateTime.now());
+        Teacher t = new Teacher("Test", "Teacher", "testuser", "admin@example.com", passwordEncoder.encode("password"), LocalDateTime.now());
         teacherRepository.save(t);
-        return teacherRepository.findById(t.getId()).isPresent()
-                ? "Connection successful!"
-                : "Connection failed!";
+
+        return teacherRepository.findById(t.getId()).isPresent() ?
+                "Connection successful!" :
+                "Connection failed!";
     }
 
     public Optional<Teacher> getTeacherByEmail(String email) {
@@ -86,7 +86,7 @@ public class TeacherService {
         Optional<Teacher> opt = teacherRepository.findByEmail(email.toLowerCase().trim());
         if (opt.isPresent()) {
             Teacher t = opt.get();
-            t.setPassword(passwordEncoder.encode(newPassword)); // hash new password
+            t.setPassword(passwordEncoder.encode(newPassword));
             teacherRepository.save(t);
             return "Password updated successfully!";
         }
