@@ -14,3 +14,31 @@
 .animate-star-pop {
   animation: star-pop 420ms cubic-bezier(.18,.89,.32,1.28);
 }
+
+/* === Sparkle burst for stars === */
+@keyframes particle-pop {
+  0%   { transform: translate(0,0) scale(0.2); opacity: 1; }
+  60%  { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 1; }
+  100% { transform: translate(calc(var(--tx) * 1.1), calc(var(--ty) * 1.1)) scale(0.1); opacity: 0; }
+}
+
+.burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2; /* ensure particles render above the star image */
+}
+
+.particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  /* golden-ish glow */
+  background: radial-gradient(circle, #ffe58a 0%, #facc15 60%, rgba(250, 204, 21, 0.0) 61%);
+  box-shadow: 0 0 8px rgba(250, 204, 21, 0.6);
+  transform: translate(-50%, -50%);
+  animation: particle-pop 600ms ease-out forwards;
+}
