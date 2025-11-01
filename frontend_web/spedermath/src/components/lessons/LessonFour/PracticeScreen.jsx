@@ -26,10 +26,10 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   const wrongAudios   = ["/audio/lesson1/wrong/good_attempt.mp3","/audio/lesson1/wrong/nice_try.mp3"];
 
   const fishImages = [
-    "/photos/lesson1/fish1.png",
-    "/photos/lesson1/fish2.png",
-    "/photos/lesson1/fish3.png",
-    "/photos/lesson1/fish4.png",
+    "/photos/lesson4/bird1.png",
+    "/photos/lesson4/bird2.png",
+    "/photos/lesson4/bird3.png",
+    "/photos/lesson4/bird4.png",
   ];
   const labelPlural = "fishes";
 

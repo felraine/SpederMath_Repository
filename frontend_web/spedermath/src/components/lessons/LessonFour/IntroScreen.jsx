@@ -1,87 +1,151 @@
+// src/lessons/lesson3/IntroScreen.jsx
 import React, { useEffect, useRef, useState } from "react";
-import "../../css/overlays.css";
 
 export default function IntroScreen({ onNext }) {
-  const [ready, setReady] = useState(false);
+  const [fading, setFading] = useState(false);
+  const [clicked, setClicked] = useState(false);
   const audioRef = useRef(null);
-  const initRef = useRef(false); // create Audio once
+  const initRef = useRef(false);
+
+  const urlFor = (p) => `${import.meta.env.BASE_URL}${p.replace(/^\/+/, "")}`;
+  // const PRIMARY = urlFor("audio/lesson4/intro.mp3");
+  // const FALLBACK = urlFor("audio/lesson1/intro.mp3");
+
+  const unlock = () => setClicked(false);
+
+  const wire = (a) => {
+    const onErr = () => {
+      console.warn("Audio error", a.error?.code);
+      unlock();
+    };
+    a.onended = unlock;
+    a.onerror = onErr;
+    a.onloadedmetadata = () => {
+      const pad = setTimeout(unlock, Math.max((a.duration - a.currentTime) * 1000 + 150, 500));
+      a._pad = pad;
+    };
+    a.addEventListener("timeupdate", () => {
+      if (!isFinite(a.duration)) return;
+      if (a.currentTime >= a.duration - 0.2) unlock();
+    });
+    return () => {
+      a.onended = null;
+      a.onerror = null;
+      a.onloadedmetadata = null;
+      if (a._pad) clearTimeout(a._pad);
+      a.removeAttribute("src");
+      a.load?.();
+    };
+  };
+
+  const attemptPlay = async (src) => {
+    try {
+      const r = await fetch(src, { method: "HEAD" });
+      if (!r.ok) return false;
+    } catch {}
+    const a = audioRef.current ?? new Audio();
+    audioRef.current = a;
+    a.preload = "auto";
+    a.src = src;
+    try {
+      await a.play();
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   useEffect(() => {
-    // 1) Create the audio object only once
-    if (!initRef.current) {
-      const a = new Audio("/audio/lesson4/intro.mp3");
-      audioRef.current = a;
-      initRef.current = true;
+    if (initRef.current) return;
+    initRef.current = true;
 
-      // Try autoplay once; if blocked, allow clicking immediately
-      a.play().catch(() => setReady(true));
-    }
+    const a = new Audio();
+    audioRef.current = a;
+    const unwire = wire(a);
 
-    const a = audioRef.current;
+    (async () => {
+      let ok = await attemptPlay(PRIMARY);
+      if (!ok) ok = await attemptPlay(FALLBACK);
+      if (!ok) unlock();
+    })();
 
-    // 2) If it’s already done (e.g., prior mount played it), enable immediately
-    if (!ready && (a.ended || (a.currentTime > 0 && a.paused))) {
-      setReady(true);
-    }
+    const hard = setTimeout(unlock, 15000);
 
-    // 3) Attach listeners on every mount
-    const handleEnded = () => setReady(true);
-    a.addEventListener("ended", handleEnded);
-
-    // 4) Also make sure we start once it’s loadable if needed (in case autoplay blocked then allowed)
-    const handleCanPlay = () => {
-      // Only attempt play if not started yet and still not ready
-      if (!a.ended && a.currentTime === 0) {
-        a.play().catch(() => setReady(true));
-      }
-    };
-    a.addEventListener("canplaythrough", handleCanPlay, { once: true });
-
-    // 5) Cleanup: remove listeners only (don’t pause/reset the audio)
     return () => {
-      a.removeEventListener("ended", handleEnded);
-      // no a.pause()/a.currentTime=0 here — keeps state across StrictMode remounts
+      clearTimeout(hard);
+      unwire();
+      try {
+        a.pause();
+      } catch {}
     };
-  }, [ready]);
+  }, []);
+
+  const handlePlayClick = () => {
+    if (clicked) return;
+    setClicked(true);
+    setFading(true);
+
+    const audio = new Audio("/audio/start_lesson.mp3");
+    audio.onended = () => onNext();
+    audio.onerror = () => onNext();
+    audio.play().catch(() => onNext());
+  };
 
   return (
-    <section className="intro-screen">
-      <div className="intro-wrap">
-        <div className="intro-card intro-centered">
-          <img
-            src="/munchie/eyelessneutral_Munchie.png"
-            alt="Munchie the mascot"
-            className="w-40 h-40 mx-auto mb-6 munchie-bounce"
-          />
+    <section
+      className="intro-screen"
+      style={{
+        position: "fixed", // make sure it fills viewport
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        overflow: "hidden",
+        width: "100%",
+        height: "100%",
+        backgroundImage: `url(${urlFor("photos/lesson4/sky.jpg")})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center center",
+        backgroundRepeat: "no-repeat",
+        margin: 0,
+        padding: 0,
+      }}
+    >
+      <div
+        className="intro-wrap"
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          width: "100%",
+          height: "100%",
+          flexDirection: "column",
+          textAlign: "center",
+        }}
+      >
+        <h1
+          className={`intro-title transition-opacity duration-300 ease-out ${
+            fading ? "opacity-0" : "opacity-100"
+          }`}
+        >
+          Play
+        </h1>
 
-          <h1 className="intro-title">Welcome, Friend!</h1>
-
-          <p className="intro-subtitle">
-            Let’s learn numbers <span className="font-bold">1</span>,{" "}
-            <span className="font-bold">2</span>, 
-            <span className="font-bold"> 3</span>,
-            <span className="font-bold"> 4</span>,
-            <span className="font-bold"> 5</span>,
-            <span className="font-bold"> 6</span>,
-            <span className="font-bold"> 7</span>,
-            <span className="font-bold"> 8</span>,
-            <span className="font-bold"> 9</span>, and{" "}
-            <span className="font-bold">10</span>!
-          </p>
-
-          <div className="intro-actions">
-            <button
-              className={`btn btn-primary ${
-                !ready ? "opacity-60 cursor-not-allowed" : ""
-              }`}
-              onClick={onNext}
-              disabled={!ready}
-              aria-disabled={!ready}
-              title={!ready ? "Please listen first" : "Start Lesson"}
-            >
-              Start Lesson
-            </button>
-          </div>
+        <div className="intro-actions">
+          <button
+            onClick={handlePlayClick}
+            disabled={clicked}
+            className={`w-[220px] h-[220px] md:w-[300px] md:h-[300px] bg-center bg-no-repeat bg-contain mx-auto block
+              transition-opacity duration-300 ease-out
+              ${fading ? "opacity-0" : "opacity-100"}
+              ${clicked ? "cursor-not-allowed" : "cursor-pointer"}
+            `}
+            style={{
+              backgroundImage: "url('/backgrounds/play_button.png')",
+            }}
+          ></button>
         </div>
       </div>
     </section>

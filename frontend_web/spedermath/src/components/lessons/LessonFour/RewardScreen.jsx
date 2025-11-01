@@ -102,7 +102,7 @@ export default function RewardScreen({ meta }) {
       </div>
 
       <p className="text-xl mb-2">
-        You learned the numbers <strong>1, 2, 3, 4, and 5</strong>!
+        You learned the numbers <strong>1, 2, 3, 4, 5, 6, 7, 8, 9, and 10</strong>!
       </p>
 
       <div className="text-sm opacity-90 mb-5">
