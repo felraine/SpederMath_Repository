@@ -518,8 +518,8 @@ export default function NumberDrop({
         {/* Basket */}
         <img
           ref={basketElRef}
-          src="/munchie/eyelessneutral_Munchie.png"
-          alt="Munchie"
+          src="/sprites/ufo.png"
+          alt="ufo"
           className="absolute bottom-3 select-none"
           style={{ left: basketXRef.current, width: BASKET_W, height: BASKET_H }}
           draggable={false}
@@ -548,8 +548,8 @@ export default function NumberDrop({
           <div className="absolute inset-0 flex items-center justify-center bg-white/50 text-[#0b3a66]">
             <div className="text-center">
               <img
-                src="/munchie/eyelessneutral_Munchie.png"
-                alt="Munchie"
+                src="/sprites/ufo.png"
+                alt="ufo"
                 className="w-30 h-30 mx-auto mb-2.5 select-none"
                 draggable={false}
                 style={{ width: 120, height: 120 }}
