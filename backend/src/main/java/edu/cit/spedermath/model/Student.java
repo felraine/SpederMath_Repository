@@ -7,6 +7,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import java.util.List;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Table(name = "student")
 public class Student {
@@ -37,6 +40,7 @@ public class Student {
     private LocalDate createdAt;
 
     @Lob
+    @JdbcTypeCode(SqlTypes.VARBINARY)
     @Column(name = "profile_picture")
     private byte[] profilePicture;
 

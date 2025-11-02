@@ -81,7 +81,7 @@ public class StudentProgressService {
 
         lessonRepo.findFirstByLessonOrderGreaterThanOrderByLessonOrderAsc(lesson.getLessonOrder())
                 .ifPresent(nextLesson -> {
-                    if (incomingProgress.getScore() >= lesson.getUnlockThreshold()) {
+                    if (incomingProgress.getScore() >= nextLesson.getUnlockThreshold()) {
                         Optional<StudentProgress> nextOpt =
                                 progressRepo.findByStudent_StudentIDAndLesson_LessonID(studentId, nextLesson.getLessonID());
                         StudentProgress next = nextOpt.orElseGet(StudentProgress::new);
