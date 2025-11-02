@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDate;
@@ -153,6 +154,7 @@ public class StudentService {
     }
 
     // --- Get all students by teacher ---
+    @Transactional(readOnly = true)
     public List<Student> getStudentsByTeacher(Teacher teacher) {
         List<Student> students = studentRepository.findByTeacher(teacher);
 

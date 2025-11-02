@@ -3,43 +3,32 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { currentStudentId } from "../../../../utils/auth";
 import { postOnce } from "../../../../utils/requestDedupe";
 
-/**
- * NumberDrop (Tailwind version, no external CSS)
- * - 10 rounds total
- * - Lives hit 0 → next round
- * - Score increments only when sequence (1..maxNumber) is completed
- * - Uses guards + idempotency to avoid double submits
- */
 export default function NumberDrop({
   maxNumber = 5,
-  onGameOver,                 // optional
-  lessonId = 4,               // honored
+  onGameOver,                 // parent Assessment will show the result screen
+  lessonId = 4,
   dashboardPath = "/dashboard",
-  passThreshold = null,       // default ceil(0.7 * TOTAL_ROUNDS)
+  passThreshold = null,
 }) {
-  // ---- CONFIG ----
   const BASE_W = 560;
   const BASE_H = 640;
-
   const BASKET_W = 90;
   const BASKET_H = 90;
   const NUM_SIZE = 50;
-
   const INITIAL_LIVES = 3;
-  const TOTAL_ROUNDS = 10;
+
+  // Keep 5 rounds; parent will scale to /10 on its own
+  const TOTAL_ROUNDS = 5;
 
   const TARGET_PROB = 0.65;
-
   const SPEED_MIN = 2;
   const SPEED_STEP = 0.2;
   const SPEED_MAX = 3;
   const ROUND_START_DELAY_MS = 700;
-
   const BASE_DROP_VY = 110;
 
-  const PASS_THRESHOLD = passThreshold ?? Math.ceil(TOTAL_ROUNDS * 0.7);
+  const PASS_THRESHOLD = passThreshold ?? Math.ceil(TOTAL_ROUNDS * 0.7); // 4 of 5
 
-  // ---- UI State ----
   const [started, setStarted] = useState(false);
   const [round, setRound] = useState(1);
   const [currentTarget, setCurrentTarget] = useState(1);
@@ -54,28 +43,27 @@ export default function NumberDrop({
 
   const [finished, setFinished] = useState(null);
 
-  // ---- Refs ----
   const rafRef       = useRef(null);
   const lastTsRef    = useRef(null);
   const wrapRef      = useRef(null);
   const containerRef = useRef(null);
-
-  const hudRef = useRef(null);
-  const hudVHRef = useRef(0);
+  const hudRef       = useRef(null);
+  const hudVHRef     = useRef(0);
 
   const basketXRef   = useRef(BASE_W / 2 - BASKET_W / 2);
   const draggingRef  = useRef(false);
-
   const dropRef      = useRef(null);
   const imgsRef      = useRef({});
-
   const basketElRef  = useRef(null);
   const numberElRef  = useRef(null);
 
   const gameStartRef = useRef(null);
   const submittedRef = useRef(false);
 
-  // ---------- Responsive scaling ----------
+  // 🔐 live mirror of score so we don't submit with stale state
+  const scoreRef = useRef(0);
+  useEffect(() => { scoreRef.current = score; }, [score]);
+
   useEffect(() => {
     const compute = () => {
       const parentW = window.innerWidth;
@@ -84,7 +72,6 @@ export default function NumberDrop({
       setScale(s);
     };
     compute();
-
     const onResize = () => compute();
     window.addEventListener("resize", onResize);
     window.addEventListener("orientationchange", onResize);
@@ -94,7 +81,6 @@ export default function NumberDrop({
     };
   }, []);
 
-  // Recompute HUD height whenever scale changes (or on mount)
   useEffect(() => {
     const updateHudVH = () => {
       if (!hudRef.current || !containerRef.current) return;
@@ -112,7 +98,6 @@ export default function NumberDrop({
     };
   }, [scale]);
 
-  // ---------- Load number images ----------
   useEffect(() => {
     let loaded = 0;
     const need = Math.max(1, Math.min(5, maxNumber));
@@ -130,7 +115,6 @@ export default function NumberDrop({
     }
   }, [maxNumber]);
 
-  // ---------- Helpers ----------
   const pickNextValue = useCallback((target) => {
     if (Math.random() < TARGET_PROB) return { value: target, isTarget: true };
     const choices = Array.from({ length: maxNumber }, (_, i) => i + 1).filter(n => n !== target);
@@ -152,7 +136,6 @@ export default function NumberDrop({
     const x = Math.random() * (maxX - minX) + minX;
 
     const startY = Math.max(hudVHRef.current + 8, 0);
-
     dropRef.current = { x, y: startY, vy: BASE_DROP_VY, value, isTarget };
     setDropValue(value);
 
@@ -172,7 +155,6 @@ export default function NumberDrop({
     return `spm:${sid}:${lessonId}:${ymd}`;
   }, [lessonId]);
 
-  // ---- Backend submit (deduped) ----
   const submitProgress = useCallback(async ({ score, status, durationSec }) => {
     if (!lessonId) {
       console.warn("[NumberDrop] Missing lessonId; skipping backend submit.");
@@ -186,7 +168,7 @@ export default function NumberDrop({
 
     const payload = {
       lessonId,
-      score,
+      score, // 0..5
       status, // "COMPLETED" | "FAILED"
       retakes_count: 0,
       timeSpentInSeconds: durationSec,
@@ -213,28 +195,34 @@ export default function NumberDrop({
     );
   }, [lessonId, makeIdempotencyKey]);
 
-  // ---- Round advancement / finish ----
   const finishGame = useCallback(() => {
     setRunning(false);
+    if (submittedRef.current) return;
 
-    if (submittedRef.current) return; // guard
-    const total = TOTAL_ROUNDS;
-    const passed = score >= PASS_THRESHOLD;
-    const status = passed ? "COMPLETED" : "FAILED";
-    const durationSec = gameStartRef.current
-      ? Math.max(0, Math.round((Date.now() - gameStartRef.current) / 1000))
-      : 0;
-
-    setFinished({ score, total, passed, status, durationSec });
-    dropRef.current = null;
-
+    // Wait a tick for React to flush the last score update,
+    // then compute the final values, then delay submit slightly.
     setTimeout(() => {
-      if (submittedRef.current) return;
-      submittedRef.current = true;
-      submitProgress({ score, status, durationSec });
-      onGameOver?.({ score, total, wrongs, rounds: TOTAL_ROUNDS, status, durationSec });
-    }, 0);
-  }, [PASS_THRESHOLD, TOTAL_ROUNDS, onGameOver, submitProgress, score, wrongs]);
+      const total = TOTAL_ROUNDS;
+      const finalScore = scoreRef.current; // latest score (0..5)
+      const passed = finalScore >= PASS_THRESHOLD;
+      const status = passed ? "COMPLETED" : "FAILED";
+      const durationSec = gameStartRef.current
+        ? Math.max(0, Math.round((Date.now() - gameStartRef.current) / 1000))
+        : 0;
+
+      setFinished({ score: finalScore, total, passed, status, durationSec });
+      dropRef.current = null;
+
+      setTimeout(() => {
+        if (submittedRef.current) return;
+        submittedRef.current = true;
+
+        console.log("[NumberDrop] Submitting final (delayed):", finalScore, "/", total, status);
+        submitProgress({ score: finalScore, status, durationSec });
+        onGameOver?.({ score: finalScore, total, wrongs, rounds: TOTAL_ROUNDS, status, durationSec });
+      }, 400); // slight guard to ensure UI/state are fully settled
+    }, 50); // allow setScore to flush before reading scoreRef
+  }, [PASS_THRESHOLD, TOTAL_ROUNDS, onGameOver, submitProgress, wrongs]);
 
   const advanceRound = useCallback(() => {
     setRound((r) => {
@@ -270,6 +258,7 @@ export default function NumberDrop({
     setRound(1);
     setCurrentTarget(1);
     setScore(0);
+    scoreRef.current = 0; // keep ref in sync
     setWrongs(0);
     setLives(INITIAL_LIVES);
     lastTsRef.current = null;
@@ -287,18 +276,18 @@ export default function NumberDrop({
     setTimeout(() => spawnDrop(1), 300);
   };
 
-  // Debug: force perfect
   const debugSubmitPerfect = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     setRunning(false);
-
     if (submittedRef.current) return;
+
     const total = TOTAL_ROUNDS;
-    const forcedScore = 10;
+    const forcedScore = 5; // perfect for a 0..5 game
     const durationSec = 150;
     const passed = forcedScore >= PASS_THRESHOLD;
     const status = passed ? "COMPLETED" : "FAILED";
 
+    scoreRef.current = forcedScore;
     setFinished({ score: forcedScore, total, passed, status, durationSec });
     dropRef.current = null;
 
@@ -310,7 +299,6 @@ export default function NumberDrop({
     }, 0);
   }, [PASS_THRESHOLD, TOTAL_ROUNDS, onGameOver, submitProgress, wrongs]);
 
-  // ---------- Keyboard controls ----------
   useEffect(() => {
     const onKey = (e) => {
       if (!running) return;
@@ -326,7 +314,6 @@ export default function NumberDrop({
     return () => window.removeEventListener("keydown", onKey);
   }, [running]);
 
-  // ---------- Touch/Mouse drag ----------
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -372,7 +359,6 @@ export default function NumberDrop({
     };
   }, [scale, running]);
 
-  // ---------- Game loop ----------
   useEffect(() => {
     if (!ready || !running) return;
 
@@ -403,9 +389,14 @@ export default function NumberDrop({
             setCurrentTarget(next);
 
             if (next > maxNumber) {
-              setScore((s) => s + 1);
-              advanceRound();
+              // ✅ bump score, sync ref, then slightly delay to advance
+              setScore((s) => {
+                const ns = s + 1;
+                scoreRef.current = ns;
+                return ns;
+              });
               dropRef.current = null;
+              setTimeout(() => advanceRound(), 50); // allow setScore to flush
             } else {
               spawnDrop(next);
             }
@@ -429,7 +420,6 @@ export default function NumberDrop({
     return () => cancelAnimationFrame(rafRef.current);
   }, [ready, running, round, currentTarget, maxNumber, spawnDrop, advanceRound, loseOneLife, speedFactorForRound]);
 
-  // ---- Render ----
   const isFlashing = Date.now() - lastLostFlash < 180;
 
   const HeartRow = ({ lives }) => {
@@ -445,41 +435,34 @@ export default function NumberDrop({
     );
   };
 
-  const restartGame = () => startGame();
-  const goToDashboard = () => { window.location.href = dashboardPath; };
-
   return (
-   
-    <div
-      ref={wrapRef}
-      className="w-screen h-screen flex items-center justify-center overflow-hidden"
-      
-    >
-    {/* Background video */}
-    <video
-      autoPlay
-      loop
-      muted
-      playsInline
-      className="absolute inset-0 w-full h-full object-cover z-0"
-      src="/backgrounds/lesson_two.mp4"
-      type="video/mp4"
-    />
-      {/* DEV-only debug button */}
+    <div ref={wrapRef} className="w-screen h-screen flex items-center justify-center overflow-hidden">
+      {/* Background video */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover z-0"
+        src="/backgrounds/lesson_two.mp4"
+        type="video/mp4"
+      />
+
+      {/* DEV debug */}
       {((typeof process !== "undefined" && process.env.NODE_ENV !== "production") ||
         (typeof window !== "undefined" && window.location.search.includes("?debug=1"))) && (
         <button
           onClick={debugSubmitPerfect}
           className="absolute top-3 right-3 z-50 px-2.5 py-1.5 rounded-lg bg-gray-900 text-white border border-white/30 font-extrabold text-xs shadow opacity-90"
-          title="Force-submit 10/10, 150s"
+          title="Force-submit 5/5, 150s"
         >
-          DEV: Submit 10/10
+          DEV: Submit 5/5
         </button>
       )}
 
       <div
         ref={containerRef}
-        className={`relative`}
+        className="relative"
         style={{
           width: BASE_W,
           height: BASE_H,
@@ -489,59 +472,50 @@ export default function NumberDrop({
         }}
         aria-label="Number Drop Game"
       >
-       {/* HUD */}
-      <div
-        ref={hudRef}
-        className="p-3 flex flex-col gap-3 text-white w-full max-w-5xl mx-auto"
-      >
-        <div
-          className="
-            grid grid-cols-1 sm:grid-cols-[180px_1fr_220px]
-            items-center gap-3 sm:gap-2 text-center sm:text-left
-          "
-        >
-          {/* Left: Round */}
-          <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-            <span className="text-sm sm:text-base opacity-90">Round:</span>
-            <span className="font-extrabold text-base sm:text-lg">
-              {round}/{TOTAL_ROUNDS}
-            </span>
-          </div>
+        {/* HUD */}
+        <div ref={hudRef} className="p-3 flex flex-col gap-3 text-white w-full max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr_220px] items-center gap-3 sm:gap-2 text-center sm:text-left">
+            {/* Left: Round */}
+            <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+              <span className="text-sm sm:text-base opacity-90">Round:</span>
+              <span className="font-extrabold text-base sm:text-lg">
+                {round}/{TOTAL_ROUNDS}
+              </span>
+            </div>
 
-          {/* Center: Sequence */}
-          <div className="flex items-center justify-center flex-wrap gap-1.5">
-            <span className="flex gap-1.5 flex-wrap justify-center">
-              {Array.from({ length: maxNumber }, (_, i) => i + 1).map((n) => (
-                <span
-                  key={n}
-                  className={[
-                    "min-w-7 h-7 sm:min-w-8 sm:h-8 leading-7 sm:leading-8 text-center rounded-md px-1.5 text-xs sm:text-sm",
-                    n < currentTarget
-                      ? "bg-green-500 text-white font-bold"
-                      : n === currentTarget
-                      ? "bg-yellow-300 text-slate-900 font-bold"
-                      : "bg-white/40 text-white font-semibold",
-                  ].join(" ")}
-                >
-                  {n}
-                </span>
-              ))}
-            </span>
-          </div>
+            {/* Center: Sequence */}
+            <div className="flex items-center justify-center flex-wrap gap-1.5">
+              <span className="flex gap-1.5 flex-wrap justify-center">
+                {Array.from({ length: maxNumber }, (_, i) => i + 1).map((n) => (
+                  <span
+                    key={n}
+                    className={[
+                      "min-w-7 h-7 sm:min-w-8 sm:h-8 leading-7 sm:leading-8 text-center rounded-md px-1.5 text-xs sm:text-sm",
+                      n < currentTarget
+                        ? "bg-green-500 text-white font-bold"
+                        : n === currentTarget
+                        ? "bg-yellow-300 text-slate-900 font-bold"
+                        : "bg-white/40 text-white font-semibold",
+                    ].join(" ")}
+                  >
+                    {n}
+                  </span>
+                ))}
+              </span>
+            </div>
 
-          {/* Right: Lives + Score */}
-          <div className="flex items-center justify-center sm:justify-end gap-3 flex-wrap">
-            <span className="text-sm sm:text-base opacity-90">Lives:</span>
-            <HeartRow lives={lives} />
-            <div className="hidden sm:block w-px h-[18px] bg-white/30" />
-            <span className="text-sm sm:text-base opacity-90">Score:</span>
-            <span className="font-extrabold text-base sm:text-lg">{score}</span>
+            {/* Right: Lives + Score */}
+            <div className="flex items-center justify-center sm:justify-end gap-3 flex-wrap">
+              <span className="text-sm sm:text-base opacity-90">Lives:</span>
+              <HeartRow lives={lives} />
+              <div className="hidden sm:block w-px h-[18px] bg-white/30" />
+              <span className="text-sm sm:text-base opacity-90">Score:</span>
+              <span className="font-extrabold text-base sm:text-lg">{score}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-
-        {/* Basket = Munchie */}
+        {/* Basket */}
         <img
           ref={basketElRef}
           src="/munchie/eyelessneutral_Munchie.png"
@@ -569,7 +543,7 @@ export default function NumberDrop({
           </div>
         )}
 
-        {/* Start overlay */}
+        {/* Start overlay (kept) */}
         {!started && !finished && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/50 text-[#0b3a66]">
             <div className="text-center">
@@ -580,9 +554,7 @@ export default function NumberDrop({
                 draggable={false}
                 style={{ width: 120, height: 120 }}
               />
-              <div className="text-2xl font-black mb-2.5">
-                Catch the numbers in order! (10 rounds)
-              </div>
+              <div className="text-2xl font-black mb-2.5">Catch the numbers in order!</div>
               <button
                 onClick={startGame}
                 className="px-6 py-3 rounded-lg bg-green-500 text-white font-extrabold shadow"
@@ -593,36 +565,7 @@ export default function NumberDrop({
           </div>
         )}
 
-        {/* Finish overlay */}
-        {finished && (
-          <div className="absolute inset-0 flex items-center justify-center text-white text-center p-6 bg-black/45">
-            <div className="bg-white/15 rounded-xl p-5 min-w-80 shadow-2xl backdrop-blur-md">
-              <div className="text-[30px] font-black mb-2.5">
-                {finished.passed ? "🎉 You Passed!" : "Keep Trying!"}
-              </div>
-              <div className="opacity-90 mb-3">
-                Rounds cleared: <b>{finished.score}</b> / {finished.total}
-              </div>
-              <div className="opacity-80 mb-4">
-                Time: {finished.durationSec}s
-              </div>
-              <div className="flex gap-2 justify-center">
-                <button
-                  onClick={restartGame}
-                  className="px-6 py-3 rounded-lg bg-green-500 text-white font-extrabold shadow min-w-[140px]"
-                >
-                  Restart
-                </button>
-                <button
-                  onClick={goToDashboard}
-                  className="px-6 py-3 rounded-lg bg-transparent text-white border border-white/50 font-extrabold min-w-[180px]"
-                >
-                  Return to Dashboard
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* No finish overlay here — parent Assessment handles it */}
       </div>
     </div>
   );
