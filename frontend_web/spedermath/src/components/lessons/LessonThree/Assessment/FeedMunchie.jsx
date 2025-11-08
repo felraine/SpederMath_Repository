@@ -1,11 +1,10 @@
 // src/lessons/lesson3/FeedMunchie.jsx
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import LessonLayout from "../../../reusable/LessonLayout";
 import Confetti from "react-confetti";
 import MunchieTutorial from "../../tutorial/MunchieTutorial";
-import { postOnce } from "../../../../utils/requestDedupe";    
-import { currentStudentId } from "../../../../utils/auth";      
+import { postOnce } from "../../../../utils/requestDedupe";
+import { currentStudentId } from "../../../../utils/auth";
+import { useNavigate } from "react-router-dom";
 
 /** NEW: counting rounds instead of addition */
 const generateCountingRounds = (total = 10, maxCount = 10) => {
@@ -22,7 +21,6 @@ const allFruits = [
   "/munchie/fruit_grape.png",
   "/munchie/fruit_mango.png",
   "/munchie/fruit_orange.png",
-
 ];
 
 const correctClickSound = () => new Audio("/correct-sound.mp3").play();
@@ -32,29 +30,29 @@ const failedSound = () => new Audio("/failed-sound.mp3").play();
 const eatSound = () => new Audio("/munchie/munchie-eat.mp3").play();
 
 /**
- * Feed Munchie (Counting Version)
+ * Feed Munchie (Counting Version) — standalone (no LessonLayout)
  * Props:
  * - lessonId: number (backend submit)
  * - title:   string
  * - totalRounds?: number (default 10)
- * - maxCountPerRound?: number (default 10; capped by 10 because tray has 10 slots)
+ * - maxCountPerRound?: number (default 7)
  * - passRate?: number (0..1, default 0.7)
  * - retakes_count?: number (default 0)
  */
-const FeedMunchieCounting = ({
+export default function FeedMunchieCounting({
   lessonId = 6,
-  title,
+  title = "Feed Munchie!",
   totalRounds = 10,
   maxCountPerRound = 7,
   passRate = 0.7,
   retakes_count = 0,
-}) => {
-  const SAFE_MAX = Math.max(1, Math.min(7, maxCountPerRound)); // tray has 10 slots
+}) {
+  const SAFE_MAX = Math.max(1, Math.min(7, maxCountPerRound));
   const [rounds] = useState(() => generateCountingRounds(totalRounds, SAFE_MAX));
 
   const [currentStep, setCurrentStep] = useState(0);
   const [addedFruit, setAddedFruit] = useState(0);
-  const [trayFruits, setTrayFruits] = useState(Array.from({ length: 4}, () => true));
+  const [trayFruits, setTrayFruits] = useState(Array.from({ length: 4 }, () => true));
   const [score, setScore] = useState(0);
   const [status, setStatus] = useState("IN_PROGRESS");
 
@@ -81,7 +79,7 @@ const FeedMunchieCounting = ({
   const current = rounds[currentStep];
   const passThreshold = Math.ceil(passRate * rounds.length);
 
-  // lock a set of fruit images per round (still 10 tray slots)
+  // lock a set of fruit images per round
   const fruitPerStep = useMemo(() => {
     return rounds.map(() => allFruits.slice(0, 7));
   }, [rounds]);
@@ -124,7 +122,6 @@ const FeedMunchieCounting = ({
     setIsDraggingOver(false);
     wasDroppedRef.current = true;
 
-    // Don’t exceed tray capacity of 10
     if (addedFruit < 7) {
       setAddedFruit((prev) => prev + 1);
       setMunchieFace("/munchie/muching_Munchie.png");
@@ -175,7 +172,6 @@ const FeedMunchieCounting = ({
     }
   };
 
-  // “Munchie is full!” button
   const handleFeedMunchie = () => {
     const target = current.target;
     const isCorrect = addedFruit === target;
@@ -269,14 +265,52 @@ const FeedMunchieCounting = ({
     setMunchieFace("/munchie/neutral_Munchie.png");
   };
 
-  // --- Screens ---
+  /* ===================== RENDER ===================== */
+
+  // 1) Tutorial
   if (showTutorial) {
-    return <MunchieTutorial onNext={onTutorialFinish} />;
+    return (
+      <div
+        className="min-h-screen"
+        style={{
+          backgroundImage: "url('/photos/lesson3/forest7.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        {/* Header bar (keeps consistent shell even during tutorial) */}
+        <TopHeader
+          title={title}
+          progressLabel="Tutorial"
+          onBack={() => navigate(-1)}
+          timeLabel={formatTime(timeSpent)}
+          showTimer={false}
+        />
+        <div className="p-4">
+          <MunchieTutorial onNext={onTutorialFinish} />
+        </div>
+      </div>
+    );
   }
 
+  // 2) Ready modal
   if (showReadyModal) {
     return (
-      <LessonLayout lesson={{ lessonid: lessonId, title: title || "Feed Munchie!" }} progress="Tutorial">
+      <div
+        className="min-h-screen"
+        style={{
+          backgroundImage: "url('/photos/lesson3/forest7.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <TopHeader
+          title={title}
+          progressLabel="Ready?"
+          onBack={() => navigate(-1)}
+          timeLabel={formatTime(timeSpent)}
+          showTimer={false}
+        />
         <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50 px-6">
           <div className="bg-white p-10 rounded-xl shadow-md border border-black max-w-md w-full text-center">
             <img
@@ -295,27 +329,34 @@ const FeedMunchieCounting = ({
             </button>
           </div>
         </div>
-      </LessonLayout>
+      </div>
     );
   }
 
+  // 3) Main screen
   return (
-    <LessonLayout
-      lesson={{ lessonid: lessonId, title: title || "Feed Munchie!" }}
-      progress={`${currentStep + 1}/${rounds.length}`}
-      showWrong={showWrong}
-      showConfetti={showConfetti}
+    <div
+      className="min-h-screen"
+      style={{
+        backgroundImage: "url('/photos/lesson3/forest7.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
     >
-      {/* Timer */}
-      <div className="absolute top-4 right-6 bg-white rounded-full px-4 py-1 text-gray-700 font-neucha text-lg shadow-md border z-50">
-        Time: {formatTime(timeSpent)}
-      </div>
+      {/* Top header like NumberMaze: back + title + progress + timer */}
+      <TopHeader
+        title={title}
+        progressLabel={`${currentStep + 1}/${rounds.length}`}
+        onBack={() => navigate(-1)}
+        timeLabel={formatTime(timeSpent)}
+        showTimer={true}
+      />
 
       {/* Confetti */}
       {showConfetti && (
         <Confetti
-          width={1150}
-          height={500}
+          width={window.innerWidth}
+          height={window.innerHeight}
           recycle={true}
           numberOfPieces={100}
           gravity={0.1}
@@ -323,10 +364,11 @@ const FeedMunchieCounting = ({
           initialVelocityX={{ min: -2, max: 2 }}
           initialVelocityY={{ min: 5, max: 10 }}
           wind={0.01}
-          style={{ pointerEvents: "none", position: "absolute", top: 0, left: 0, zIndex: 20 }}
+          style={{ pointerEvents: "none", position: "fixed", top: 0, left: 0, zIndex: 20 }}
         />
       )}
 
+      {/* Result overlay */}
       {status !== "IN_PROGRESS" ? (
         <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50">
           <div className="bg-[#fffaf0] rounded-3xl p-10 max-w-xl w-full text-center shadow-2xl border-4 border-[#f1f2f6]">
@@ -346,13 +388,13 @@ const FeedMunchieCounting = ({
           </div>
         </div>
       ) : (
-        <>
-          {/* Prompt */}
-          <div className="flex justify-between items-start px-4 sm:px-6 mt-0 mb-4">
-            <h2 className="text-[20px] sm:text-[22px] font-neucha">
+        <div className="px-4 pb-10">
+          {/* Prompt + Counter pill row */}
+          <div className="flex justify-between items-start mt-2 mb-4 max-w-5xl mx-auto">
+            <h2 className="text-[20px] sm:text-[22px] font-neucha bg-white/85 px-4 py-2 rounded-xl shadow border mt-20">
               Feed Munchie <b>{current.target}</b> {current.target === 1 ? "fruit" : "fruits"}!
             </h2>
-            <div className="bg-white rounded-full px-4 py-1 text-gray-700 font-neucha text-lg shadow-md border">
+            <div className="bg-white rounded-full px-4 py-1 text-gray-700 font-neucha text-lg shadow-md border mt-20">
               Fruits added:{" "}
               <span className={`font-bold ${addedFruit > current.target ? "text-red-600" : "text-green-700"}`}>
                 {addedFruit}
@@ -363,7 +405,7 @@ const FeedMunchieCounting = ({
           {/* Fruit Tray */}
           <div className="overflow-x-auto px-4 mb-4 mt-2">
             <div className="flex justify-center">
-              <div className="inline-flex gap-4">
+              <div className="inline-flex gap-4 bg-white/70 p-3 rounded-2xl border shadow">
                 {trayFruits.map(
                   (hasFruit, i) =>
                     hasFruit && (
@@ -401,19 +443,7 @@ const FeedMunchieCounting = ({
                               document.body.removeChild(dragImg);
                             }, 1000);
                           }}
-                          onDragEnd={(e) => {
-                            const index = parseInt(e.dataTransfer.getData("text/plain"), 10);
-                            if (!wasDroppedRef.current) {
-                              requestAnimationFrame(() => {
-                                setTrayFruits((prev) => {
-                                  const updated = [...prev];
-                                  updated[index] = true;
-                                  return updated;
-                                });
-                              });
-                            }
-                            setMunchieFace("/munchie/neutral_Munchie.png");
-                          }}
+                          onDragEnd={handleDragEnd}
                           className="h-14 w-14 object-contain cursor-grab z-10"
                           alt="fruit"
                         />
@@ -436,21 +466,59 @@ const FeedMunchieCounting = ({
               <img
                 src={isDraggingOver ? "/munchie/openmouth_Munchie.png" : munchieFace}
                 alt="Munchie"
-                className="h-full transition-all pointer-events-none"
+                className="h-full transition-all pointer-events-none drop-shadow-lg"
               />
             </div>
 
             <button
               onClick={handleFeedMunchie}
-              className="mt-3 bg-green-500 hover:bg-green-600 text-white px-8 py-2 rounded-full text-lg font-comic shadow-md"
+              className="mt-3 bg-green-500 hover:bg-green-600 text-white px-8 py-2 rounded-full text-lg font-comic shadow-md border"
             >
               Munchie is full!
             </button>
-          </div>
-        </>
-      )}
-    </LessonLayout>
-  );
-};
 
-export default FeedMunchieCounting;
+            {/* Score chip to mirror NM left panel info */}
+            <div className="mt-4 bg-white/85 rounded-full px-4 py-1 text-gray-800 font-neucha text-base shadow border">
+              Score: <b>{score}</b> / {rounds.length}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ================= Header (matches NumberMaze’s simple shell) ================= */
+function TopHeader({ title, progressLabel, onBack /* timeLabel, showTimer */ }) {
+  return (
+    <div
+      className="absolute top-0 left-0 w-full flex items-center justify-between p-3 sm:p-4 bg-black/40 backdrop-blur-sm z-40 text-white"
+      style={{ "--header-h": "72px" }}
+    >
+      {/* Back button (large hit area) */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 active:bg-white/30 transition focus:outline-none focus:ring-2 focus:ring-white/60"
+        aria-label="Go back"
+      >
+        <img
+          src="/Back Button.png"
+          alt=""
+          className="w-7 h-7 object-contain drop-shadow"
+          draggable="false"
+        />
+        <span className="hidden sm:inline font-semibold">Back</span>
+      </button>
+
+      {/* Centered title */}
+      <div className="flex-1 flex items-center justify-center text-center pointer-events-none">
+        <div className="font-bold text-base sm:text-lg drop-shadow">
+          {title}
+        </div>
+      </div>
+
+      {/* Right: progress (no timer to match Lesson 1) */}
+      <div className="font-semibold drop-shadow">{progressLabel}</div>
+    </div>
+  );
+}

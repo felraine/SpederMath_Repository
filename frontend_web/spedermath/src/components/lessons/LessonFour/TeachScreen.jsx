@@ -363,43 +363,46 @@ const TeachScreen = ({ onNext }) => {
           </div>
         )}
 
-        {/* Review row */}
-        {step === REVIEW_STEP && (
-          <div className="flex flex-row gap-6 sm:gap-10 justify-center items-center flex-wrap">
+      {/* Review row */}
+      {step === REVIEW_STEP && (
+        <div className="w-full flex justify-center">
+          <div className="grid grid-cols-5 gap-x-8 gap-y-10 px-4 sm:px-8 pb-36 md:pb-40 max-w-[1200px] place-items-center">
             {Array.from({ length: MAX_N }, (_, i) => i + 1).map((num) => (
-              num === 10 ? (
-                <motion.div
-                  key="review-10"
-                  className="inline-flex items-center gap-2 sm:gap-3"
-                  animate={{ scale: highlightIndex === 10 ? 1.35 : 1 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  <img
-                    src="/photos/number_pngs/number_1.png"
-                    alt="Number 1"
-                    className="h-[120px] sm:h-[140px] object-contain"
+              <div key={num} className="flex items-center justify-center">
+                {num === 10 ? (
+                  <motion.div
+                    className="flex items-center justify-center w-[140px] sm:w-[160px] md:w-[180px]"
+                    animate={{ scale: highlightIndex === 10 ? 1.35 : 1 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <img
+                      src="/photos/number_pngs/number_1.png"
+                      alt="Number 1"
+                      className="h-[120px] sm:h-[140px] md:h-[160px] object-contain"
+                      draggable={false}
+                    />
+                    <img
+                      src="/photos/number_pngs/number_0.png"
+                      alt="Number 0"
+                      className="h-[120px] sm:h-[140px] md:h-[160px] object-contain"
+                      draggable={false}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.img
+                    src={stepData[num].img}
+                    alt={stepData[num].alt}
+                    className="w-[120px] sm:w-[140px] md:w-[160px]"
+                    animate={{ scale: highlightIndex === num ? 1.35 : 1 }}
+                    transition={{ duration: 0.4 }}
                     draggable={false}
                   />
-                  <img
-                    src="/photos/number_pngs/number_0.png"
-                    alt="Number 0"
-                    className="h-[120px] sm:h-[140px] object-contain"
-                    draggable={false}
-                  />
-                </motion.div>
-              ) : (
-                <motion.img
-                  key={num}
-                  src={stepData[num].img}
-                  alt={stepData[num].alt}
-                  className="max-w-[120px] sm:max-w-[140px] w-full"
-                  animate={{ scale: highlightIndex === num ? 1.35 : 1 }}
-                  transition={{ duration: 0.4 }}
-                />
-              )
+                )}
+              </div>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
         {/* Counting OR Challenge */}
         {step >= COUNT_START && step <= COUNT_END && (
@@ -407,22 +410,59 @@ const TeachScreen = ({ onNext }) => {
             {!challengeActive && (
         
               <div className="flex w-full px-6 sm:px-10 -mt-1 items-center">
-                {/* LEFT: fish area uses remaining width and wraps */}
-                <div className="flex-1 min-w-0 flex flex-row gap-6 sm:gap-8 flex-wrap">
-                  <AnimatePresence>
-                    {fishSet.slice(0, currentCount).map((src, idx) => (
-                      <motion.img
-                        key={`${src}-${idx}`}
-                        src={src}
-                        alt="Fish"
-                        className="w-[100px] sm:w-[120px] md:w-[140px]"
-                        initial={{ opacity: 0, scale: 0.6, y: 12 }}
-                        animate={{ opacity: 1, scale: highlightIndex === idx + 1 ? 1.3 : 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.6 }}
-                        transition={{ duration: 0.5 }}
-                      />
-                    ))}
-                  </AnimatePresence>
+                {/* LEFT: bird area */}
+                <div className="flex-1 min-w-0">
+                  {currentCount === 10 ? (
+                    // --- Special layout for 10: 4-4-2 centered and shifted left ---
+                    <div className="grid grid-cols-4 gap-6 sm:gap-8 place-items-center mr-10 sm:mr-16 md:mr-20">
+                      {[
+                        0, 1, 2, 3,        // row 1 (4)
+                        4, 5, 6, 7,        // row 2 (4)
+                        null, 8, 9, null,  // row 3 (centered 2 → cols 2 & 3)
+                      ].map((birdIdx, slot) =>
+                        birdIdx === null ? (
+                          <div key={`spacer-${slot}`} className="w-[100px] sm:w-[120px] md:w-[140px]" />
+                        ) : (
+                          <motion.img
+                            key={`bird-${birdIdx}`}
+                            src={fishSet[birdIdx]}
+                            alt="Bird"
+                            className="w-[100px] sm:w-[120px] md:w-[140px]"
+                            initial={{ opacity: 0, scale: 0.6, y: 12 }}
+                            animate={{
+                              opacity: 1,
+                              scale: highlightIndex === birdIdx + 1 ? 1.3 : 1,
+                              y: 0,
+                            }}
+                            exit={{ opacity: 0, scale: 0.6 }}
+                            transition={{ duration: 0.5 }}
+                          />
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    // default flow for counts other than 10
+                    <div className="flex flex-row gap-6 sm:gap-8 flex-wrap mr-10 sm:mr-16 md:mr-20">
+                      <AnimatePresence>
+                        {fishSet.slice(0, currentCount).map((src, idx) => (
+                          <motion.img
+                            key={`${src}-${idx}`}
+                            src={src}
+                            alt="Bird"
+                            className="w-[100px] sm:w-[120px] md:w-[140px]"
+                            initial={{ opacity: 0, scale: 0.6, y: 12 }}
+                            animate={{
+                              opacity: 1,
+                              scale: highlightIndex === idx + 1 ? 1.3 : 1,
+                              y: 0,
+                            }}
+                            exit={{ opacity: 0, scale: 0.6 }}
+                            transition={{ duration: 0.5 }}
+                          />
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  )}
                 </div>
 
                 {/* RIGHT: fixed-width number panel — cannot overlap */}
@@ -483,7 +523,7 @@ const TeachScreen = ({ onNext }) => {
                   Click on <span className="underline">bird number {targetIndex}</span>.
                 </h3>
 
-                <div className="flex flex-row gap-6 sm:gap-8 flex-wrap justify-center">
+                <div className="grid grid-cols-5 gap-6 sm:gap-8 flex-wrap justify-center">
                   {challengeFish.map((src, i) => (
                     <motion.div
                       key={`${src}-challenge-${i}`}
@@ -516,7 +556,7 @@ const TeachScreen = ({ onNext }) => {
       </div>
 
       {/* Buttons */}
-      <div className="absolute bottom-6 right-6">
+      <div className="absolute bottom-2 right-6">
         {/* Intro buttons */}
         {step >= INTRO_START && step <= INTRO_END && (
           <button

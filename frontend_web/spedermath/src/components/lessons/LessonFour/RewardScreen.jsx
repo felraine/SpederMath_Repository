@@ -8,11 +8,11 @@ export default function RewardScreen({ meta }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Prefer meta.lessonId (passed by LessonOne), then router state, then fallback to DB id 3
+  // Prefer meta.lessonId (passed by LessonOne), then router state, then fallback to DB id 7
   const resolvedLessonId =
     Number(meta?.lessonId) ||
     Number(location.state?.lessonId) ||
-    3; // DB id for "Learn how to count from 1–5"
+    7; 
 
   const startedAtRef = useRef(Date.now());
   const [submitting, setSubmitting] = useState(true);

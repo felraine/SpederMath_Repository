@@ -32,7 +32,7 @@ const TeachScreen = ({ onNext, meta }) => {
   const [roundComplete, setRoundComplete] = useState(false);
 
   // Preface before first counting step
-  const [prefacePlayed, setPrefacePlayed] = useState(false);
+  const prefacePlayedRef = useRef(false);
 
   const audioRef = useRef(null);
   const playVersion = useRef(0); // cancels stale sequences
@@ -62,8 +62,16 @@ const TeachScreen = ({ onNext, meta }) => {
 
   const FISH_IMAGES = [
     "/photos/lesson3/monkey.png",
-
   ];
+
+  const stopAudio = () => {
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    } catch {}
+  };
 
   const challengePromptAudio = (n) => ({
     primary: `/audio/lesson3/click_${numberWord[n]}_fish.mp3`,
@@ -78,32 +86,75 @@ const TeachScreen = ({ onNext, meta }) => {
   const COUNT_WITH_FISH_PREFACE = { primary: "/audio/lesson3/count_with_fish.mp3", fallback: "/audio/lesson1/count_with_fish.mp3" };
   const LETS_REVIEW_AUDIO       = { primary: "/audio/lesson3/lets_review.mp3",      fallback: "/audio/lesson1/lets_review.mp3" };
 
-  /** Promise-based audio play (single) with fallback */
+  /** Promise-based audio play (single) with robust fallback (no accidental double-plays) */
   const playWithFallback = (primary, fallback) =>
     new Promise((resolve) => {
-      const a = new Audio(primary);
-      audioRef.current = a;
+      const myVersion = ++playVersion.current;     // invalidate older plays
+      stopAudio();                                 // stop anything currently playing
       setIsAudioPlaying(true);
 
-      const end = () => {
+      let started = false;                         // becomes true if the primary actually starts
+      let finished = false;
+
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        if (myVersion !== playVersion.current) return; // superseded by newer play
         setIsAudioPlaying(false);
         resolve();
       };
 
-      a.onended = end;
-      a.onerror = () => {
+      const tryFallback = () => {
+        if (myVersion !== playVersion.current || finished) return;
+        // Ensure primary is fully stopped before fallback
+        try { audioRef.current?.pause?.(); } catch {}
         const b = new Audio(fallback);
         audioRef.current = b;
-        b.onended = end;
-        b.onerror = end;
-        b.play().catch(end);
+
+        const onEnd = () => { cleanupB(); finish(); };
+        const onErr = () => { cleanupB(); finish(); };
+
+        const cleanupB = () => {
+          b.removeEventListener("ended", onEnd);
+          b.removeEventListener("error", onErr);
+        };
+
+        b.addEventListener("ended", onEnd, { once: true });
+        b.addEventListener("error", onErr, { once: true });
+        b.play().catch(onErr);
       };
+
+      const a = new Audio(primary);
+      audioRef.current = a;
+
+      const onPlay = () => { started = true; };
+      const onEnd = () => { cleanupA(); finish(); };
+      const onErr = () => {
+        // Only fallback if the primary truly failed before playing
+        cleanupA();
+        if (!started) tryFallback();
+        else finish();
+      };
+
+      const cleanupA = () => {
+        a.removeEventListener("playing", onPlay);
+        a.removeEventListener("ended", onEnd);
+        a.removeEventListener("error", onErr);
+      };
+
+      a.addEventListener("playing", onPlay, { once: true });
+      a.addEventListener("ended", onEnd, { once: true });
+      a.addEventListener("error", onErr, { once: true });
+
       a.play().catch(() => {
-        const b = new Audio(fallback);
-        audioRef.current = b;
-        b.onended = end;
-        b.onerror = end;
-        b.play().catch(end);
+        // Some browsers reject play() even when audio will eventually play.
+        // Use a micro-delay to see if 'playing' fires; otherwise, fallback.
+        setTimeout(() => {
+          if (!started) {
+            cleanupA();
+            tryFallback();
+          }
+        }, 60);
       });
     });
 
@@ -138,9 +189,24 @@ const TeachScreen = ({ onNext, meta }) => {
 
   useEffect(() => {
     if (step < INTRO_START || step > INTRO_END) return;
-    const data = stepData[step];
-    if (!data) return;
-    playWithFallback(data.audio3, data.audio1 || data.audio3);
+
+    let cancelled = false;
+    const myVersion = ++playVersion.current;
+
+    const run = async () => {
+      stopAudio();
+      const data = stepData[step];
+      if (!data) return;
+      await playWithFallback(data.audio3, data.audio1 || data.audio3);
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+      playVersion.current++;
+      stopAudio();
+    };
   }, [step]);
 
   const pickRandomFish = (n) =>
@@ -183,6 +249,10 @@ const TeachScreen = ({ onNext, meta }) => {
     setReviewFinished(false);
 
     const run = async () => {
+      // Make sure nothing from previous step is playing
+      playVersion.current++;
+      stopAudio();
+
       await playWithFallback(LETS_REVIEW_AUDIO.primary, LETS_REVIEW_AUDIO.fallback);
       if (cancelled) return;
 
@@ -221,10 +291,12 @@ const TeachScreen = ({ onNext, meta }) => {
     const audios = countingAudiosFor(count);
 
     const run = async () => {
+      playVersion.current++;
+      stopAudio();
       setFishSet(pickRandomFish(count));
 
-      if (step === COUNT_START && !prefacePlayed) {
-        setPrefacePlayed(true);
+      if (step === COUNT_START && !prefacePlayedRef.current) {
+        prefacePlayedRef.current = true;
         await playWithFallback(COUNT_WITH_FISH_PREFACE.primary, COUNT_WITH_FISH_PREFACE.fallback);
         if (cancelled) return;
         await new Promise((r) => setTimeout(r, 500));
@@ -244,10 +316,8 @@ const TeachScreen = ({ onNext, meta }) => {
         const fallback1 = primary.endsWith("_fish.mp3")
           ? `/audio/lesson1/${baseWord}_fish.mp3`
           : `/audio/numbers/${baseWord}.mp3`;
-        const fallback2 = `/audio/numbers/${baseWord}.mp3`;
 
         await playWithFallback(primary, fallback1);
-        // If the first fallback was a terminal that’s also missing, it already tried; we keep it simple.
 
         setHighlightIndex(null);
         if (i < audios.length - 1) await new Promise((r) => setTimeout(r, 800));
@@ -268,7 +338,7 @@ const TeachScreen = ({ onNext, meta }) => {
       setHighlightIndex(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, prefacePlayed]);
+  }, [step]);
 
   const handleChallengeClick = async (clickedIndex) => {
     if (!challengeActive || isAudioPlaying || roundComplete) return;

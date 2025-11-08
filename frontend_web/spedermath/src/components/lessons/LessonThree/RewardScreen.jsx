@@ -1,25 +1,26 @@
 // src/lessons/lesson3/RewardScreen.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { postOnce } from "../../../utils/requestDedupe";   // ← uses your util
-import { currentStudentId } from "../../../utils/auth";     // ← uses your util
+import { motion } from "framer-motion";
+import { postOnce } from "../../../utils/requestDedupe";
+import { currentStudentId } from "../../../utils/auth";
 
 export default function RewardScreen({ meta }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Prefer meta.lessonId (passed by LessonThree), then router state, else fallback to 7
-  const resolvedLessonId =
+  // Keep Lesson 3 behavior: prefer meta, then router state, else fallback to DB id 7
+  const lessonId =
     Number(meta?.lessonId) ||
     Number(location.state?.lessonId) ||
-    7; // DB id for "Learn how to count from 1–7"
+    5;
 
   const startedAtRef = useRef(Date.now());
   const [submitting, setSubmitting] = useState(true);
   const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
-    // Play lesson 3 reward with fallback
+    // Keep Lesson 3 audio behavior with fallback
     const a = new Audio("/audio/lesson3/reward.mp3");
     a.play().catch(() => new Audio("/audio/reward.mp3").play().catch(() => {}));
   }, []);
@@ -27,24 +28,23 @@ export default function RewardScreen({ meta }) {
   const timeSpent = () =>
     Math.max(0, Math.round((Date.now() - startedAtRef.current) / 1000));
 
-  // Local progress upsert so unlocks proceed even if backend fails
-  const upsertLocalProgress = (lessonId, patch) => {
+  // Same local upsert strategy used in both lessons
+  const upsertLocalProgress = (id, patch) => {
     let store = {};
-    try {
-      store = JSON.parse(localStorage.getItem("lessonProgress") || "{}");
-    } catch {}
-    const prev = store[String(lessonId)] || {};
-    store[String(lessonId)] = { ...prev, ...patch, lastSubmitted: Date.now() };
+    try { store = JSON.parse(localStorage.getItem("lessonProgress") || "{}"); } catch {}
+    const prev = store[String(id)] || {};
+    store[String(id)] = { ...prev, ...patch, lastSubmitted: Date.now() };
     localStorage.setItem("lessonProgress", JSON.stringify(store));
-    return store[String(lessonId)];
+    return store[String(id)];
   };
 
+  // Keep Lesson 3 submit flow (guarded, uses postOnce key, shows "Saved locally..." on failure)
   const submit = async () => {
     setSubmitting(true);
     setSubmitError("");
 
-    // Always mark local completion
-    upsertLocalProgress(resolvedLessonId, {
+    // 1) Always upsert locally first so UI unlocks
+    upsertLocalProgress(lessonId, {
       status: "COMPLETED",
       score: 0,
       timeSpentInSeconds: timeSpent(),
@@ -55,7 +55,7 @@ export default function RewardScreen({ meta }) {
       if (!token) throw new Error("Missing auth token");
 
       const sid = currentStudentId();
-      const key = `submit:${sid}:${resolvedLessonId}`;
+      const key = `submit:${sid}:${lessonId}`;
 
       await postOnce(key, async () => {
         const res = await fetch("http://localhost:8080/api/student-progress/submit", {
@@ -68,7 +68,7 @@ export default function RewardScreen({ meta }) {
             score: 10, // completion score
             status: "COMPLETED",
             timeSpentInSeconds: timeSpent(),
-            lessonId: resolvedLessonId,
+            lessonId,
           }),
         });
 
@@ -86,46 +86,81 @@ export default function RewardScreen({ meta }) {
     }
   };
 
-  useEffect(() => {
-    submit();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { submit(); /* eslint-disable-next-line */ }, []);
 
+  // ===== UI cloned from Lesson 1 (with Lesson 3 text) =====
   return (
-    <div className="flex flex-col items-center justify-center text-center text-white mt-12">
-      <h1 className="text-4xl font-bold mb-4 drop-shadow">You did it! 🎉</h1>
+    <div className="flex flex-col items-center justify-center min-h-screen text-center text-white px-4 py-8">
+      {/* Title */}
+      <motion.h1
+        className="text-5xl sm:text-6xl font-extrabold mb-6 drop-shadow-lg"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        You did it!
+      </motion.h1>
 
-      <div className="w-36 h-36 bg-yellow-400 rounded-2xl flex items-center justify-center text-6xl mb-4 shadow-xl">
-        ⭐
-      </div>
+      {/* Star Trophy */}
+      <motion.div
+        initial={{ scale: 0, rotate: -45 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: "spring", stiffness: 120, damping: 10 }}
+        className="flex items-center justify-center w-36 h-36 sm:w-40 sm:h-40 bg-yellow-400 rounded-3xl shadow-[0_0_30px_rgba(255,215,0,0.7)] mb-6"
+      >
+        <span className="text-7xl sm:text-8xl">⭐</span>
+      </motion.div>
 
-      <p className="text-xl mb-2">
+      {/* Text (Lesson 3 wording) */}
+      <motion.p
+        className="text-lg sm:text-xl mb-4 leading-relaxed"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+      >
         You learned the numbers <strong>1, 2, 3, 4, 5, 6, and 7</strong>!
-      </p>
+      </motion.p>
 
-      <div className="text-sm opacity-90 mb-5">
-        {submitting && `Saving your progress (lessonId = ${resolvedLessonId})…`}
-        {!submitting && !submitError && "Progress saved! ✅"}
-        {submitError && <span className="text-yellow-200">{submitError}</span>}
+      {/* Status Message */}
+      <div className="text-sm sm:text-base opacity-90 mb-6">
+        {submitting && (
+          <p className="italic">Saving your progress (lessonId = {lessonId})…</p>
+        )}
+        {!submitting && !submitError && (
+          <p className="text-green-300">Progress saved successfully!</p>
+        )}
+        {submitError && (
+          <p className="text-yellow-300">{submitError}</p>
+        )}
       </div>
 
-      <div className="flex gap-3">
+      {/* Buttons */}
+      <motion.div
+        className="flex flex-wrap justify-center gap-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.6 }}
+      >
         {submitError && (
           <button
             onClick={submit}
-            className="px-4 py-2 rounded-lg bg-amber-500 text-gray-900 font-bold hover:bg-amber-400 transition"
+            className="px-5 py-3 rounded-xl bg-yellow-400 text-[#0b2344] font-bold hover:bg-yellow-500 transition-all shadow-md"
           >
             Retry Submit
           </button>
         )}
         <button
           onClick={() => navigate("/student-dashboard")}
-          className="px-4 py-2 rounded-lg bg-green-600 text-white font-bold hover:bg-green-500 transition disabled:opacity-60"
+          className={`px-5 py-3 rounded-xl font-bold transition-all shadow-md ${
+            submitting
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-green-600 hover:bg-green-700 text-white"
+          }`}
           disabled={submitting}
         >
           Return to Dashboard
         </button>
-      </div>
+      </motion.div>
     </div>
   );
 }

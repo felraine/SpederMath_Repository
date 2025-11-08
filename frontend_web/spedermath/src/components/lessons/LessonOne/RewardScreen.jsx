@@ -5,6 +5,58 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { postOnce } from "../../../utils/requestDedupe";
 import { currentStudentId } from "../../../utils/auth";
 import { motion } from "framer-motion";
+import StarRow from "../../reusable/StarRow";
+
+function BubbleField() {
+  const bubbles = React.useMemo(() => {
+    const N = 36;
+    const rnd = (seed, min, max) => {
+      const x = Math.sin(seed * 9301 + 49297) * 233280;
+      const u = x - Math.floor(x);
+      return min + u * (max - min);
+    };
+    return Array.from({ length: N }, (_, i) => {
+      const left = rnd(i + 1, 0, 100);     
+      const top = rnd(i + 2, 0, 100);     
+      const size = rnd(i + 3, 8, 26);
+      const delay = rnd(i + 4, 0, 6);
+      const duration = rnd(i + 5, 6.5, 11);
+      const driftX = rnd(i + 6, -40, 40);
+      const rise = -rnd(i + 7, 120, 320);  
+      return { left, top, size, delay, duration, driftX, rise };
+    });
+  }, []);
+
+  return (
+    <>
+      <style>{`
+        @keyframes roam {
+          0%   { transform: translate(0, 0) scale(0.9); opacity: 0; }
+          10%  { opacity: .55; }
+          100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+        }
+      `}</style>
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        {bubbles.map((b, i) => (
+          <span
+            key={i}
+            className="absolute rounded-full bg-white/35"
+            style={{
+              left: `${b.left}%`,
+              top: `${b.top}%`,
+              width: b.size,
+              height: b.size,
+              filter: "blur(0.5px)",
+              animation: `roam ${b.duration}s linear ${b.delay}s infinite`,
+              "--dx": `${b.driftX}px`,
+              "--dy": `${b.rise}px`,
+            }}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
 
 export default function RewardScreen() {
   const navigate = useNavigate();
@@ -23,14 +75,6 @@ export default function RewardScreen() {
   const timeSpent = () =>
     Math.max(0, Math.round((Date.now() - startedAtRef.current) / 1000));
 
-  /** ---- Frontend "upsert" into localStorage ----
-   * Key: lessonProgress
-   * Shape:
-   * {
-   *   "5": { status: "COMPLETED", score: 0, timeSpentInSeconds: 42, lastSubmitted: 169... },
-   *   "6": { ... }
-   * }
-   */
   const upsertLocalProgress = (lessonId, patch) => {
     let store = {};
     try { store = JSON.parse(localStorage.getItem("lessonProgress") || "{}"); } catch {}
@@ -51,7 +95,6 @@ export default function RewardScreen() {
     };
 
     const key = `submit:${currentStudentId()}:${payload.lessonId}`;
-
     await postOnce(key, () =>
       axios.post("http://localhost:8080/api/student-progress/submit", payload, { headers })
     );
@@ -61,14 +104,13 @@ export default function RewardScreen() {
     setSubmitting(true);
     setSubmitError("");
 
-    // 1) Always upsert locally first so UI unlocks
+    // local unlock
     upsertLocalProgress(lessonId, {
       status: "COMPLETED",
       score: 0,
       timeSpentInSeconds: timeSpent(),
     });
 
-    // 2) Best-effort backend submit (non-blocking for unlocks)
     try {
       await submitBackend({
         score: 10,
@@ -84,81 +126,67 @@ export default function RewardScreen() {
     }
   };
 
-  useEffect(() => { submit(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { submit(); /* eslint-disable-line */ }, []);
 
- return (
-  <div className="flex flex-col items-center justify-center min-h-screen text-center text-white px-4 py-8">
-    {/* Title */}
-    <motion.h1
-      className="text-5xl sm:text-6xl font-extrabold mb-6 drop-shadow-lg"
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-    >
-      You did it!
-    </motion.h1>
+  return (
+    <>
+      <BubbleField />
 
-    {/* Star Trophy */}
-    <motion.div
-      initial={{ scale: 0, rotate: -45 }}
-      animate={{ scale: 1, rotate: 0 }}
-      transition={{ type: "spring", stiffness: 120, damping: 10 }}
-      className="flex items-center justify-center w-36 h-36 sm:w-40 sm:h-40 bg-yellow-400 rounded-3xl shadow-[0_0_30px_rgba(255,215,0,0.7)] mb-6"
-    >
-      <span className="text-7xl sm:text-8xl">⭐</span>
-    </motion.div>
-
-    {/* Text */}
-    <motion.p
-      className="text-lg sm:text-xl mb-4 leading-relaxed"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.4 }}
-    >
-      You learned the numbers <strong>1, 2, and 3</strong>!
-    </motion.p>
-
-    {/* Status Message */}
-    <div className="text-sm sm:text-base opacity-90 mb-6">
-      {submitting && (
-        <p className="italic">Saving your progress (lessonId = {lessonId})…</p>
-      )}
-      {!submitting && !submitError && (
-        <p className="text-green-300">Progress saved successfully!</p>
-      )}
-      {submitError && (
-        <p className="text-yellow-300">{submitError}</p>
-      )}
-    </div>
-
-    {/* Buttons */}
-    <motion.div
-      className="flex flex-wrap justify-center gap-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.6 }}
-    >
-      {submitError && (
-        <button
-          onClick={submit}
-          className="px-5 py-3 rounded-xl bg-yellow-400 text-[#0b2344] font-bold hover:bg-yellow-500 transition-all shadow-md"
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen text-center text-white px-4 py-8">
+        <motion.h1
+          className="text-5xl sm:text-6xl font-extrabold mb-3 drop-shadow-[0_6px_22px_rgba(0,0,0,.45)]"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
         >
-          Retry Submit
-        </button>
-      )}
-      <button
-        onClick={() => navigate("/student-dashboard")}
-        className={`px-5 py-3 rounded-xl font-bold transition-all shadow-md ${
-          submitting
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-green-600 hover:bg-green-700 text-white"
-        }`}
-        disabled={submitting}
-      >
-        Return to Dashboard
-      </button>
-    </motion.div>
-  </div>
-);
+          You did it!
+        </motion.h1>
 
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
+          className="mb-4 rounded-2xl px-4 py-2"
+          style={{ animation: "glowPulse 2.6s ease-in-out infinite" }}
+        >
+          <StarRow score={10} />
+        </motion.div>
+
+        <motion.p
+          className="text-lg sm:text-xl mb-6 leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,.35)]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+        >
+          You learned the numbers <strong>1, 2, and 3</strong>!
+        </motion.p>
+
+        <motion.div
+          className="flex flex-wrap justify-center gap-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+        >
+          {submitError && (
+            <button
+              onClick={submit}
+              className="px-5 py-3 rounded-xl bg-yellow-400 text-[#0b2344] font-bold hover:bg-yellow-500 transition-all shadow-md"
+            >
+              Retry Submit
+            </button>
+          )}
+          <button
+            onClick={() => navigate("/student-dashboard")}
+            className={`px-5 py-3 rounded-xl font-bold transition-all shadow-md ${
+              submitting ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-green-600 hover:bg-green-700 text-white"
+            }`}
+            disabled={submitting}
+          >
+            Return to Dashboard
+          </button>
+        </motion.div>
+      </div>
+    </>
+  );
 }
