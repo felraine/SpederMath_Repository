@@ -38,7 +38,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   const wrongFallbacks = [lesson1Audio("wrong/good_attempt.mp3"), lesson1Audio("wrong/nice_try.mp3")];
 
   const fishImages = ["/photos/lesson3/monkey.png"];
-  const labelPlural = "fishes";
+  const labelPlural = "monkies";
 
   /* ===== Cleanup helpers ===== */
   const clearAllTimers = () => {
@@ -99,13 +99,20 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   /* ===== Round flow ===== */
   useEffect(() => {
     startNewRound();
-    return () => cleanupRound();
+    return () => {
+      if (activeAudio.current) {
+        activeAudio.current.pause();
+        activeAudio.current.currentTime = 0;
+      }
+    };
+  
   }, [roundIndex]);
 
   const startNewRound = () => {
     advanceLockRef.current = false;
     cleanupRound();
 
+    // pick 1–7 monk
     const randomCount = Math.floor(Math.random() * 7) + 1;
     const roundFish = Array.from({ length: randomCount }, () => fishImages[0]);
 
