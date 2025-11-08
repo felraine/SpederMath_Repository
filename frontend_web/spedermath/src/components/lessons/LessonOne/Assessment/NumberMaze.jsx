@@ -3,6 +3,39 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import axios from "axios";
 import { postOnce } from "../../../../utils/requestDedupe";
 import { currentStudentId } from "../../../../utils/auth";
+import { useNavigate } from "react-router-dom";
+
+function TopHeader({ title, progressLabel, onBack }) {
+  return (
+    <div
+      className="absolute top-0 left-0 w-full flex items-center justify-between p-3 sm:p-4 bg-black/40 backdrop-blur-sm text-white"
+      style={{ zIndex: 40, height: 72 }}
+    >
+      {/* Back */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 active:bg-white/30 transition"
+        aria-label="Go back"
+      >
+        <img
+          src="/Back Button.png"
+          alt=""
+          className="w-7 h-7 object-contain drop-shadow"
+          draggable="false"
+        />
+        <span className="hidden sm:inline font-semibold">Back</span>
+      </button>
+
+      {/* Title */}
+      <div className="flex-1 flex items-center justify-center pointer-events-none">
+        <div className="font-bold text-base sm:text-lg drop-shadow">{title}</div>
+      </div>
+
+      {/* Progress */}
+      <div className="font-semibold drop-shadow">{progressLabel}</div>
+    </div>
+  );
+} 
 
 /** ===== Tuning knobs ===== */
 const MAZE_ROWS = 6;
@@ -419,6 +452,7 @@ const ArrowBtn = ({ label, onPointerDown, onPointerUp }) => (
 );
 
 export default function NumberMaze({ onExit, lessonId, onFinish }) {
+  const navigate = useNavigate();
   const [seed, setSeed] = useState(0);
   const [cellPx, setCellPx] = useState(48);
   const HARDCODED_LESSON_ID = 2;          // <- change this anytime
@@ -1102,6 +1136,13 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
   const { top: playerPxTop, left: playerPxLeft } = animPosRef.current;
 
   return (
+  <>
+    <TopHeader
+      title="Number Maze"
+      progressLabel={`Round ${Math.min(round, TOTAL_ROUNDS)}/${TOTAL_ROUNDS}`}
+      onBack={() => navigate(-1)}
+    />
+
     <div
       ref={containerRef}
       style={{
@@ -1362,5 +1403,6 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
