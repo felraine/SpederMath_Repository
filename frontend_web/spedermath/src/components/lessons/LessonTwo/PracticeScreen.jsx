@@ -6,14 +6,17 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   const [correctAnswer, setCorrectAnswer] = useState(1);
   const [selected, setSelected] = useState(null);
   const [isCounting, setIsCounting] = useState(false);
-  const [shuffledAnswers, setShuffledAnswers] = useState([1, 2, 3, 4, 5]); // ← 1–5
+  const [shuffledAnswers, setShuffledAnswers] = useState([1, 2, 3, 4, 5]);
   const [showChoices, setShowChoices] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
-  const [fishSet, setFishSet] = useState([]); // ← randomized fish images per round
+  const [fishSet, setFishSet] = useState([]);
+
   const activeAudio = useRef(null);
+  const timeoutsRef = useRef([]);
+  const hasAdvancedRef = useRef(false); // ← prevent double-advance per round
 
   // ---- assets ----
-  const numberAudioMap = { 1: "one", 2: "two", 3: "three", 4: "four", 5: "five" }; // ← added 4 & 5
+  const numberAudioMap = { 1: "one", 2: "two", 3: "three", 4: "four", 5: "five" };
   const questionAudio = "/audio/lesson1/how_many_fish.mp3";
   const letsCountAudio = "/audio/lesson1/lets_count.mp3";
   const correctAudios = [
@@ -25,7 +28,6 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
     "/audio/lesson1/wrong/nice_try.mp3",
   ];
 
-  // your fish images
   const fishImages = [
     "/photos/lesson1/fish1.png",
     "/photos/lesson1/fish2.png",
@@ -34,6 +36,27 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   ];
 
   const labelPlural = "fishes";
+
+  const addTimeout = (fn, ms) => {
+    const id = setTimeout(fn, ms);
+    timeoutsRef.current.push(id);
+    return id;
+  };
+  const clearAllTimeouts = () => {
+    for (const id of timeoutsRef.current) clearTimeout(id);
+    timeoutsRef.current = [];
+  };
+  const stopAudio = () => {
+    if (activeAudio.current) {
+      try {
+        activeAudio.current.onended = null;
+        activeAudio.current.onerror = null;
+        activeAudio.current.pause();
+        activeAudio.current.currentTime = 0;
+      } catch {}
+      activeAudio.current = null;
+    }
+  };
 
   const shuffleArray = (array) =>
     array
@@ -44,27 +67,31 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   const playRandomAudio = (audioList, callback) => {
     const randomFile = audioList[Math.floor(Math.random() * audioList.length)];
     const audio = new Audio(randomFile);
+    stopAudio();
     activeAudio.current = audio;
-    audio.play().catch(() => {}); // ignore autoplay errors
+    audio.play().catch(() => {});
     if (callback) audio.onended = callback;
   };
 
   useEffect(() => {
     startNewRound();
     return () => {
-      if (activeAudio.current) {
-        activeAudio.current.pause();
-        activeAudio.current.currentTime = 0;
-      }
+      // cleanup on unmount or before next round starts
+      stopAudio();
+      clearAllTimeouts();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roundIndex]);
 
   const startNewRound = () => {
-    // pick 1–5 fishes
-    const randomCount = Math.floor(Math.random() * 5) + 1; // ← 1..5
+    stopAudio();
+    clearAllTimeouts();
+    hasAdvancedRef.current = false;
 
-    // prepare randomized fish images for this round (stable during the round)
+    // pick 1–5 fishes
+    const randomCount = Math.floor(Math.random() * 5) + 1;
+
+    // randomized fish images for this round
     const roundFish = Array.from({ length: randomCount }, () => {
       const idx = Math.floor(Math.random() * fishImages.length);
       return fishImages[idx];
@@ -72,27 +99,30 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
 
     setCorrectAnswer(randomCount);
     setFishSet(roundFish);
-    setShuffledAnswers(shuffleArray([1, 2, 3, 4, 5])); // ← choices 1..5
+    setShuffledAnswers(shuffleArray([1, 2, 3, 4, 5]));
     setSelected(null);
     setIsCounting(false);
     setShowChoices(false);
     setHighlightIndex(-1);
 
     const q1 = new Audio(questionAudio);
+    stopAudio();
     activeAudio.current = q1;
     q1.play().catch(() => {});
     q1.onended = () => {
       const q2 = new Audio(letsCountAudio);
+      stopAudio();
       activeAudio.current = q2;
       q2.play().catch(() => {});
       q2.onended = () => setShowChoices(true);
     };
   };
 
-  // Try playing a file; if it errors (e.g., four_fish/five_fish not added yet), fallback to base number audio
   const playWithFallback = (primarySrc, fallbackSrc, onEnded) => {
     const audio = new Audio(primarySrc);
+    stopAudio();
     activeAudio.current = audio;
+
     const cleanup = () => {
       audio.onended = null;
       audio.onerror = null;
@@ -104,6 +134,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
     audio.onerror = () => {
       cleanup();
       const fb = new Audio(fallbackSrc);
+      stopAudio();
       activeAudio.current = fb;
       fb.onended = onEnded || null;
       fb.play().catch(() => {});
@@ -111,9 +142,25 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
     audio.play().catch(() => {
       // If play fails (autoplay), still try fallback
       const fb = new Audio(fallbackSrc);
+      stopAudio();
       activeAudio.current = fb;
       fb.onended = onEnded || null;
       fb.play().catch(() => {});
+    });
+  };
+
+  const advanceRound = () => {
+    if (hasAdvancedRef.current) return; // already advanced this round
+    hasAdvancedRef.current = true;
+
+    // Use functional update so we read the freshest state
+    setRoundIndex((prev) => {
+      const isLast = prev >= rounds - 1;
+      if (isLast) {
+        onNext?.();
+        return prev; // keep at last; don’t overflow
+      }
+      return prev + 1;
     });
   };
 
@@ -126,7 +173,6 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
     const playNextNumber = () => {
       if (i <= num) {
         const base = `/audio/numbers/${numberAudioMap[i]}.mp3`;
-        // Terminal clip (e.g., "one_fish.mp3"); if missing, we fallback to base
         const terminal = `/audio/lesson1/${numberAudioMap[i]}_fish.mp3`;
 
         setHighlightIndex(i - 1);
@@ -135,21 +181,19 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
           i === num ? terminal : base,
           base,
           () => {
-            setTimeout(() => {
+            addTimeout(() => {
               i++;
               playNextNumber();
             }, 400);
           }
         );
       } else {
-        setTimeout(() => {
+        addTimeout(() => {
           if (num === correctAnswer) {
-            playRandomAudio(correctAudios, () =>
-              setTimeout(() => advanceRound(), 700)
-            );
+            playRandomAudio(correctAudios, () => addTimeout(advanceRound, 700));
           } else {
             playRandomAudio(wrongAudios, () =>
-              setTimeout(() => {
+              addTimeout(() => {
                 setIsCounting(false);
                 setHighlightIndex(-1);
               }, 600)
@@ -162,13 +206,8 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
     playNextNumber();
   };
 
-  const advanceRound = () => {
-    const isLast = roundIndex >= rounds - 1;
-    if (isLast) onNext?.();
-    else setRoundIndex((i) => i + 1);
-  };
-
-  const progressText = `${roundIndex + 1}/${rounds}`;
+  const clampedIndex = Math.min(roundIndex, Math.max(0, rounds - 1));
+  const progressText = `${clampedIndex + 1}/${rounds}`;
 
   return (
     <section className="lesson-screen">

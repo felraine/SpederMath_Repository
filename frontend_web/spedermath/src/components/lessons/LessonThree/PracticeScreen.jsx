@@ -38,7 +38,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   const wrongFallbacks = [lesson1Audio("wrong/good_attempt.mp3"), lesson1Audio("wrong/nice_try.mp3")];
 
   const fishImages = ["/photos/lesson3/monkey.png"];
-  const labelPlural = "monkies";
+  const labelPlural = "monkeys";
 
   /* ===== Cleanup helpers ===== */
   const clearAllTimers = () => {

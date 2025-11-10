@@ -376,7 +376,7 @@ const TeachScreen = ({ onNext, meta }) => {
       )}
       {step === COUNT_START && (
         <div className="flex items-center justify-center mb-2">
-          <h1 className="text-3xl font-bold drop-shadow-sm">Now let's count the monkies!</h1>
+          <h1 className="text-3xl font-bold drop-shadow-sm">Now let's count the monkeys!</h1>
         </div>
       )}
 
@@ -400,7 +400,7 @@ const TeachScreen = ({ onNext, meta }) => {
 
         {/* Review row */}
         {step === REVIEW_STEP && (
-          <div className="flex flex-row gap-6 sm:gap-10 justify-center items-center flex-wrap">
+          <div className="grid grid-cols-5 gap-6 sm:gap-10 justify-center items-center flex-wrap">
             {Array.from({ length: MAX_N }, (_, i) => i + 1).map((num) => (
               <motion.img
                 key={num}
@@ -474,7 +474,7 @@ const TeachScreen = ({ onNext, meta }) => {
                   Click on monkey number {targetIndex}.
                 </h3>
 
-                <div className="flex flex-row gap-6 sm:gap-8 flex-wrap justify-center">
+                <div className="grid grid-cols-5 gap-6 sm:gap-8 flex-wrap justify-center">
                   {challengeFish.map((src, i) => (
                     <motion.div
                       key={`${src}-challenge-${i}`}

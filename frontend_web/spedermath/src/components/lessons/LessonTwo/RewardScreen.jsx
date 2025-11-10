@@ -1,19 +1,18 @@
-// src/lessons/lesson2/RewardScreen.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { currentStudentId } from "../../../utils/auth";
 import { postOnce } from "../../../utils/requestDedupe";
+import StarRow from "../../reusable/StarRow";
+import { ShootingStars } from "../../ui/shadcn-io/shooting-stars";
 
 export default function RewardScreen({ meta }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Prefer meta.lessonId, then router state, then fallback to 6 (Lesson 2)
+  // Prefer meta.lessonId, then router state, then fallback to 3 (Lesson 2)
   const resolvedLessonId =
-    Number(meta?.lessonId) ||
-    Number(location.state?.lessonId) ||
-    3;
+    Number(meta?.lessonId) || Number(location.state?.lessonId) || 3;
 
   const startedAtRef = useRef(Date.now());
   const submittedRef = useRef(false);
@@ -103,77 +102,82 @@ export default function RewardScreen({ meta }) {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen text-center text-white px-4 py-8">
-      {/* Title */}
-      <motion.h1
-        className="text-5xl sm:text-6xl font-extrabold mb-6 drop-shadow-lg"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        You did it!
-      </motion.h1>
+      <div className="relative min-h-screen flex flex-col items-center justify-center text-center text-white overflow-hidden">
+        <div className="fixed inset-0 -z-10">
+          <ShootingStars
+            count={10}               
+            minSpeed={7}
+            maxSpeed={14}
+            minDelay={600}
+            maxDelay={1400}
+            starColor="#AEE8FF"      
+            trailColor="rgba(110,203,255,0.9)"
+            starWidth={20}
+            starHeight={2.2}
+          />
+        </div>
 
-      {/* Star Trophy */}
-      <motion.div
-        initial={{ scale: 0, rotate: -45 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: "spring", stiffness: 120, damping: 10 }}
-        className="flex items-center justify-center w-36 h-36 sm:w-40 sm:h-40 bg-yellow-400 rounded-3xl shadow-[0_0_30px_rgba(255,215,0,0.7)] mb-6"
-      >
-        <span className="text-7xl sm:text-8xl">⭐</span>
-      </motion.div>
-
-      {/* Text */}
-      <motion.p
-        className="text-lg sm:text-xl mb-4 leading-relaxed"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-      >
-        You learned the numbers <strong>1, 2, 3, 4, and 5</strong>!
-      </motion.p>
-
-      {/* Status */}
-      <div className="text-sm sm:text-base opacity-90 mb-6">
-        {submitting && (
-          <p className="italic">
-            Saving your progress (lessonId = {resolvedLessonId})…
-          </p>
-        )}
-        {!submitting && !submitError && (
-          <p className="text-green-300">Progress saved successfully!</p>
-        )}
-        {submitError && <p className="text-yellow-300">{submitError}</p>}
-      </div>
-
-      {/* Buttons */}
-      <motion.div
-        className="flex flex-wrap justify-center gap-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
-      >
-        {submitError && (
-          <button
-            onClick={submit}
-            className="px-5 py-3 rounded-xl bg-yellow-400 text-[#0b2344] font-bold hover:bg-yellow-500 transition-all shadow-md"
-          >
-            Retry Submit
-          </button>
-        )}
-        <button
-          onClick={() => navigate("/student-dashboard")}
-          className={`px-5 py-3 rounded-xl font-bold transition-all shadow-md ${
-            submitting
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-green-600 hover:bg-green-700 text-white"
-          }`}
-          disabled={submitting}
+      {/* Foreground content */}
+      <div className="relative z-10 px-4 py-8">
+        {/* Title */}
+        <motion.h1
+          className="text-5xl sm:text-6xl font-extrabold mb-6 drop-shadow-lg"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
         >
-          Return to Dashboard
-        </button>
-      </motion.div>
+          You did it!
+        </motion.h1>
+
+        {/* StarRow (3 stars like Lesson 1) */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
+          className="mb-4 rounded-2xl px-4 py-2"
+          style={{ animation: "glowPulse 2.6s ease-in-out infinite" }}
+        >
+          <StarRow score={10} />
+        </motion.div>
+
+        {/* Text */}
+        <motion.p
+          className="text-lg sm:text-xl mb-4 leading-relaxed"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+        >
+          You learned the numbers <strong>1, 2, 3, 4, and 5</strong>!
+        </motion.p>
+
+        {/* Buttons */}
+        <motion.div
+          className="flex flex-wrap justify-center gap-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+        >
+          {submitError && (
+            <button
+              onClick={submit}
+              className="px-5 py-3 rounded-xl bg-yellow-400 text-[#0b2344] font-bold hover:bg-yellow-500 transition-all shadow-md"
+            >
+              Retry Submit
+            </button>
+          )}
+          <button
+            onClick={() => navigate("/student-dashboard")}
+            className={`px-5 py-3 rounded-xl font-bold transition-all shadow-md ${
+              submitting
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700 text-white"
+            }`}
+            disabled={submitting}
+          >
+            Return to Dashboard
+          </button>
+        </motion.div>
+      </div>
     </div>
   );
 }
