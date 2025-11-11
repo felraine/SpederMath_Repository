@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import "../../css/overlays.css";
 
-const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
+const PracticeScreenUnified = ({ onNext, rounds = 5 }) => {
   const [roundIndex, setRoundIndex] = useState(0);
   const [correctAnswer, setCorrectAnswer] = useState(1);
   const [selected, setSelected] = useState(null);
@@ -17,7 +17,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
 
   // ---- assets ----
   const numberAudioMap = { 1: "one", 2: "two", 3: "three", 4: "four", 5: "five" };
-  const questionAudio = "/audio/lesson1/how_many_fish.mp3";
+  const questionAudio = "/audio/lesson2/how_many_star.mp3";
   const letsCountAudio = "/audio/lesson1/lets_count.mp3";
   const correctAudios = [
     "/audio/lesson1/correct/good_job.mp3",
@@ -29,13 +29,10 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   ];
 
   const fishImages = [
-    "/photos/lesson1/fish1.png",
-    "/photos/lesson1/fish2.png",
-    "/photos/lesson1/fish3.png",
-    "/photos/lesson1/fish4.png",
+    "/photos/lesson2/star.png",
   ];
 
-  const labelPlural = "fishes";
+  const labelPlural = "stars";
 
   const addTimeout = (fn, ms) => {
     const id = setTimeout(fn, ms);
@@ -56,6 +53,28 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
       } catch {}
       activeAudio.current = null;
     }
+  };
+
+  // NEW — non-repeating pool of 1..5
+  const poolRef = useRef([]);
+  const poolIndexRef = useRef(0);
+
+  const refillPool = () => {
+    poolRef.current = shuffleArray([1, 2, 3, 4, 5]); // reuse your shuffleArray
+    poolIndexRef.current = 0;
+  };
+
+  useEffect(() => {
+    // build the first pool on mount
+    refillPool();
+  }, []);
+
+  const nextNonRepeatingCount = () => {
+    // when we exhaust the pool, reshuffle for a fresh cycle
+    if (poolIndexRef.current >= poolRef.current.length) refillPool();
+    const n = poolRef.current[poolIndexRef.current];
+    poolIndexRef.current += 1;
+    return n;
   };
 
   const shuffleArray = (array) =>
@@ -89,7 +108,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
     hasAdvancedRef.current = false;
 
     // pick 1–5 fishes
-    const randomCount = Math.floor(Math.random() * 5) + 1;
+    const randomCount = nextNonRepeatingCount();
 
     // randomized fish images for this round
     const roundFish = Array.from({ length: randomCount }, () => {
@@ -173,7 +192,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
     const playNextNumber = () => {
       if (i <= num) {
         const base = `/audio/numbers/${numberAudioMap[i]}.mp3`;
-        const terminal = `/audio/lesson1/${numberAudioMap[i]}_fish.mp3`;
+        const terminal = `/audio/lesson2/${numberAudioMap[i]}_star.mp3`;
 
         setHighlightIndex(i - 1);
 
