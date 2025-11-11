@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import "../../css/overlays.css";
 
-const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
+const PracticeScreenUnified = ({ onNext, rounds = 5 }) => {
   const [roundIndex, setRoundIndex] = useState(0);
   const [correctAnswer, setCorrectAnswer] = useState(1);
   const [selected, setSelected] = useState(null);
@@ -24,8 +24,8 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
 
   // Try several possible filenames for the question just in case
   const QUESTION_FILES = [
-    lesson3Audio("how_many_fish.mp3"),
-    lesson1Audio("how_many_fish.mp3"),
+    lesson3Audio("how_many_monkey.mp3"),
+    lesson1Audio("how_many_monkey.mp3"),
     lesson3Audio("how_many_do_you_see.mp3"),
     lesson1Audio("how_many_do_you_see.mp3"),
   ];
@@ -38,7 +38,29 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   const wrongFallbacks = [lesson1Audio("wrong/good_attempt.mp3"), lesson1Audio("wrong/nice_try.mp3")];
 
   const fishImages = ["/photos/lesson3/monkey.png"];
-  const labelPlural = "monkies";
+  const labelPlural = "monkeys";
+
+  const poolRef = useRef([]);
+
+  const buildPool = (firstCycle = false) => {
+    const all = [1, 2, 3, 4, 5, 6, 7];
+    if (firstCycle) {
+      // 6 & 7 first, then 1–5 shuffled
+      return [6, 7, ...shuffleArray([1, 2, 3, 4, 5])];
+    }
+    return shuffleArray(all);
+  };
+
+  const nextCountFromPool = () => {
+    if (poolRef.current.length === 0) {
+      poolRef.current = buildPool(roundIndex === 0);
+      // avoid immediate repeat with previous correctAnswer when refilling mid-session
+      if (roundIndex > 0 && poolRef.current[0] === correctAnswer) {
+        poolRef.current.push(poolRef.current.shift());
+      }
+    }
+    return poolRef.current.shift();
+  };
 
   /* ===== Cleanup helpers ===== */
   const clearAllTimers = () => {
@@ -113,7 +135,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
     cleanupRound();
 
     // pick 1–7 monk
-    const randomCount = Math.floor(Math.random() * 7) + 1;
+    const randomCount = nextCountFromPool();
     const roundFish = Array.from({ length: randomCount }, () => fishImages[0]);
 
     setCorrectAnswer(randomCount);
