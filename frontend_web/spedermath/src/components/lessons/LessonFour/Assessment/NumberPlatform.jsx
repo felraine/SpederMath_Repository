@@ -1,7 +1,12 @@
-// src/lessons/LessonFour/Assessment/NumberPlatform.jsx
 import React, { useEffect, useRef, useState } from "react";
-import { postOnce } from "../../../../utils/requestDedupe"; 
-import { currentStudentId } from "../../../../utils/auth";     
+import { postOnce } from "../../../../utils/requestDedupe";
+import { currentStudentId } from "../../../../utils/auth";
+import { useNavigate } from "react-router-dom";
+
+/* === NEW: tutorial overlay === */
+import NumberPlatformTutorial, {
+  numberPlatformTourSteps,
+} from "../../tutorial/NumberPlatformTutorial";
 
 const clampNum = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
@@ -10,13 +15,57 @@ const AVATAR_SIZE = 84;    // avatar circle size
 const AVATAR_GAP  = 8;     // rest gap above bottom grass
 const LAND_GAP    = 6;     // landing gap above top grass
 
+
+function TopHeader({ title, progressLabel, onBack, onShowTutorial }) {
+  return (
+    <div
+      className="absolute top-0 left-0 w-full flex items-center justify-between p-3 sm:p-4 bg-black/40 backdrop-blur-sm text-white"
+      style={{ zIndex: 40, height: 72 }}
+    >
+      {/* Back */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 active:bg-white/30 transition"
+        aria-label="Go back"
+      >
+        <img
+          src="/Back Button.png"
+          alt=""
+          className="w-7 h-7 object-contain drop-shadow"
+          draggable="false"
+        />
+        <span className="hidden sm:inline font-semibold">Back</span>
+      </button>
+
+      {/* Title */}
+      <div className="flex-1 flex items-center justify-center pointer-events-none">
+        <div className="font-bold text-base sm:text-lg drop-shadow">{title}</div>
+      </div>
+
+      {/* Tutorial + Progress */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onShowTutorial}
+          className="px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 active:bg-white/30 text-sm font-semibold"
+        >
+          Tutorial
+        </button>
+        <div className="font-semibold drop-shadow">{progressLabel}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function NumberPlatform({
   rounds = 5,
   livesPerRound = 3,
-  range = [1, 10],
-  lessonId,              // ← submit with this lessonId when game ends
-  onGameOver,            // ← optional callback (will be called after guarded submit)
+  range = [0, 10],            // ← start from 0 now
+  lessonId,                   // submit with this lessonId when game ends
+  onGameOver,                 // optional callback(result)
+  /* === NEW: allow disabling tutorial if needed === */
+  enableTutorial = true,
 }) {
+  const navigate = useNavigate();
   const [roundIndex, setRoundIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [wrongs, setWrongs] = useState(0);
@@ -29,11 +78,16 @@ export default function NumberPlatform({
 
   const [isLocked, setIsLocked] = useState(false);
   const [avatarOffset, setAvatarOffset] = useState({ x: 0, y: 0 });
+  const RAISE_UP_PX = 24;
 
   const [minN, maxN] = range;
   const startedAtRef = useRef(Date.now());
 
-  // ------- detect desktop vs tablet (>= 1024px is desktop) -------
+  /* === NEW: tutorial state === */
+  const [showTut, setShowTut] = useState(false);
+  const [tutStep, setTutStep] = useState(0);
+
+  // ------- responsive breakpoint -------
   const [isDesktop, setIsDesktop] = useState(
     typeof window !== "undefined" ? window.innerWidth >= 1024 : false
   );
@@ -78,12 +132,19 @@ export default function NumberPlatform({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* === NEW: open tutorial shortly after first layout so the selectors exist === */
+  useEffect(() => {
+    if (!enableTutorial) return;
+    const t = setTimeout(() => setShowTut(true), 600);
+    return () => clearTimeout(t);
+  }, [enableTutorial]);
+
   // finish condition
   useEffect(() => {
     if (roundIndex >= rounds) {
       const durationSec = Math.max(0, Math.round((Date.now() - startedAtRef.current) / 1000));
       const total = rounds;
-      const status = score >= Math.ceil(total * 0.6) ? "PASSED" : "FAILED";
+      const status = score >= Math.ceil(total * 0.6) ? "COMPLETED" : "FAILED";
 
       const result = {
         lessonId,
@@ -96,7 +157,6 @@ export default function NumberPlatform({
         game: "NumberPlatform",
       };
 
-      // Submit with guard if we have a lessonId
       (async () => {
         if (!lessonId) {
           onGameOver?.(result);
@@ -108,7 +168,6 @@ export default function NumberPlatform({
           if (!token) throw new Error("Missing auth token");
 
           const sid = currentStudentId();
-          // status is part of the key to dedupe repeated finishes with the same outcome
           const key = `submit:${sid}:${lessonId}:${status}`;
 
           await postOnce(key, async () => {
@@ -133,7 +192,6 @@ export default function NumberPlatform({
           });
         } catch (e) {
           console.warn("NumberPlatform submit failed (guarded):", e);
-          // continue; result still returned to parent so UX isn’t blocked
         } finally {
           onGameOver?.(result);
         }
@@ -228,14 +286,11 @@ export default function NumberPlatform({
 
   // ---------------- visuals ----------------
   const hud = "px-4 py-2 rounded-full bg-black/30 text-white font-bold backdrop-blur";
-
-  // Slim grass cap; numbers live in the dirt (kept as a runtime gradient)
   const PLATFORM_BG = "linear-gradient(#59c94b 0 18%, #3aa33a 18% 22%, #8b5a2b 22% 100%)";
 
-  // Layout config per form factor
   const layout = isDesktop
     ? {
-        arenaH: "min(66vh, 560px)",                            // desktop: a bit shorter
+        arenaH: "min(66vh, 560px)",
         topTop: "clamp(80px, calc(var(--arena-h) * 0.22), 180px)",
         bottomBottom: "clamp(60px, calc(var(--arena-h) * 0.11), 110px)",
         avatarBottom: "clamp(92px, calc(var(--arena-h) * 0.25), 150px)",
@@ -246,7 +301,7 @@ export default function NumberPlatform({
         bottomW: "clamp(340px, 30vw, 560px)",
       }
     : {
-        arenaH: "min(78vh, 580px)",                            // tablets: taller/denser
+        arenaH: "min(78vh, 580px)",
         topTop: "clamp(120px, calc(var(--arena-h) * 0.32), 240px)",
         bottomBottom: "clamp(72px, calc(var(--arena-h) * 0.13), 120px)",
         avatarBottom: "clamp(104px, calc(var(--arena-h) * 0.29), 160px)",
@@ -258,7 +313,7 @@ export default function NumberPlatform({
       };
 
   const Platform = React.forwardRef(function Platform(
-    { label, highlight = false, onClick, disabled, style },
+    { label, highlight = false, onClick, disabled, style, className = "" },
     ref
   ) {
     return (
@@ -267,11 +322,10 @@ export default function NumberPlatform({
         onClick={onClick}
         disabled={disabled}
         className={`relative rounded-2xl border border-black/25 shadow-[0_10px_24px_rgba(0,0,0,0.28)]
-                    transition active:scale-[0.99] ${highlight ? "ring-4 ring-yellow-300/70" : ""}`}
+                    transition active:scale-[0.99] ${highlight ? "ring-4 ring-yellow-300/70" : ""} ${className}`}
         style={{ width: layout.platW, height: layout.platH, background: PLATFORM_BG, ...style }}
         aria-label={`Platform ${label}`}
       >
-        {/* subtle dirt texture */}
         <div
           className="absolute inset-0 opacity-[0.10] pointer-events-none rounded-2xl"
           style={{
@@ -279,7 +333,6 @@ export default function NumberPlatform({
               "repeating-linear-gradient(45deg, #000, #000 2px, transparent 2px, transparent 6px)",
           }}
         />
-        {/* number sits in the dirt just below grass */}
         <div className="absolute left-0 right-0 flex justify-center" style={{ top: "34%" }}>
           <span className="text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] text-3xl sm:text-4xl font-extrabold">
             {label}
@@ -289,75 +342,118 @@ export default function NumberPlatform({
     );
   });
 
+  const openTutorial = () => {
+    if (!enableTutorial) return;
+    setTutStep(0);
+    setShowTut(true);
+  };
+
   return (
-    <div className="relative w-full h-full min-h-[640px] flex flex-col items-center justify-start pt-8 text-white">
-      {/* HUD */}
-      <div className="w-full max-w-6xl flex items-center justify-between px-4">
-        <div className="flex gap-2">
-          <span className={hud}>Round {roundIndex + 1}/{rounds}</span>
-          <span className={hud}>⭐ Points: {score}</span>
-          <span className={hud}>❌ Wrongs: {wrongs}</span>
-        </div>
-        <div className={hud}>❤️ Lives: {lives}</div>
-      </div>
+    <>
+    <TopHeader
+      title="Number Platform"
+      progressLabel={`Round ${Math.min(roundIndex + 1, rounds)}/${rounds}`}
+      onBack={() => (typeof onExit === "function" ? onExit() : navigate(-1))}
+      onShowTutorial={openTutorial}
+    />
+      {/* === NEW: Tutorial overlay (renders to a portal, not blocked by z-index) === */}
+      {enableTutorial && (
+        <NumberPlatformTutorial
+          open={showTut}
+          steps={numberPlatformTourSteps}
+          step={tutStep}
+          onPrev={() => setTutStep((s) => Math.max(0, s - 1))}
+          onNext={() =>
+            setTutStep((s) => Math.min(numberPlatformTourSteps.length - 1, s + 1))
+          }
+          onClose={() => setShowTut(false)}
+          modeLabel="Counting"
+          targetN={current}
+          afterBase={current}
+          minN={minN}
+          maxN={maxN}
+        />
+      )}
 
-      {/* Prompt */}
-      <div className="mt-4 text-center text-black/90">
-        <div className="text-3xl sm:text-4xl font-extrabold">
-          Go to <span className="underline">number {correctNext}</span>
-        </div>
-        <div className="mt-1">
-          You’re standing on <strong>{current}</strong>. Reach <strong>{maxN}</strong> to earn a point!
-        </div>
-      </div>
-
-      {/* ARENA (CSS var so positions scale consistently per layout) */}
       <div
-        className="relative w-full max-w-6xl mt-8"
-        style={{ "--arena-h": layout.arenaH, height: "var(--arena-h)" }}
+        className="relative w-full min-h-[640px] flex flex-col items-center justify-start pt-8 text-white z-10"
+        style={{ marginTop: 120, height: "calc(100vh - 72px)", overflowY: "auto" }}
       >
-        {/* upper platforms (choices) */}
-        <div
-          className={`absolute left-1/2 -translate-x-1/2 ${layout.topWidthClass} flex items-start justify-between px-4`}
-          style={{ top: layout.topTop, gap: layout.gap }}
-        >
-          <Platform
-            ref={platLeftRef}
-            label={leftValue}
-            onClick={() => handlePick("left")}
-            disabled={isLocked}
-          />
-          <Platform
-            ref={platRightRef}
-            label={rightValue}
-            onClick={() => handlePick("right")}
-            disabled={isLocked}
-          />
+        {/* HUD */}
+        <div className="np-hud max-w-6xl flex items-center justify-start px-4 gap-3 self-start ml-6">
+          <div className="flex gap-2">
+            <span className={hud}>⭐ Points: {score}</span>
+            <div className={hud}>❤️ Lives: {lives}</div>
+          </div> 
         </div>
 
-        {/* bottom center platform (current) */}
-        <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: layout.bottomBottom }}>
-          <Platform ref={platBottomRef} label={current} highlight disabled style={{ width: layout.bottomW }} />
+        {/* Prompt */}
+        <div className="np-prompt mt-4 text-center text-black/90">
+          <div className="text-3xl sm:text-4xl font-extrabold">
+            Go to <span className="underline">number {correctNext}</span>
+          </div>
+          <div className="mt-1">
+            You’re standing on <strong>{current}</strong>. Reach <strong>{maxN}</strong> to earn a point!
+          </div>
         </div>
 
-        {/* avatar anchor (movement is via transform offsets) */}
+        {/* ARENA */}
         <div
-          ref={avatarAnchorRef}
-          className="pointer-events-none absolute left-1/2 -translate-x-1/2"
-          style={{ bottom: layout.avatarBottom }}
-          aria-hidden="true"
+          className="relative w-full max-w-6xl mt-8"
+          style={{ "--arena-h": layout.arenaH, height: "var(--arena-h)" }}
         >
-          <div className="transition-transform duration-300 ease-out" style={{ transform: `translate(${avatarOffset.x}px, ${avatarOffset.y}px)` }}>
-            {/* avatar */}
-            <div className="w-[84px] h-[84px] rounded-full border-2 border-white/80 bg-gradient-to-b from-sky-200 to-sky-500 flex items-center justify-center shadow-[0_10px_24px_rgba(0,0,0,0.33)] text-3xl">
-              🐟
+          {/* upper platforms */}
+          <div
+            className={`absolute left-1/2 -translate-x-1/2 ${layout.topWidthClass} flex items-start justify-between px-4`}
+            style={{ top: `calc(${layout.topTop} - ${RAISE_UP_PX}px)`, gap: layout.gap }}
+          >
+            <Platform
+              ref={platLeftRef}
+              label={leftValue}
+              onClick={() => handlePick("left")}
+              disabled={isLocked}
+              className="np-platform-left"
+            />
+            <Platform
+              ref={platRightRef}
+              label={rightValue}
+              onClick={() => handlePick("right")}
+              disabled={isLocked}
+              className="np-platform-right"
+            />
+          </div>
+
+          {/* bottom center platform */}
+          <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: layout.bottomBottom }}>
+            <Platform
+              ref={platBottomRef}
+              label={current}
+              highlight
+              disabled
+              style={{ width: layout.bottomW }}
+              className="np-platform-bottom"
+            />
+          </div>
+
+          {/* avatar */}
+          <div
+            ref={avatarAnchorRef}
+            className="np-avatar pointer-events-none absolute left-1/2 -translate-x-1/2"
+            style={{ bottom: layout.avatarBottom }}
+            aria-hidden="true"
+          >
+            <div
+              className="transition-transform duration-300 ease-out"
+              style={{ transform: `translate(${avatarOffset.x}px, ${avatarOffset.y}px)` }}
+            >
+              <div className="np-avatar-circle w-[84px] h-[84px] rounded-full border-2 border-white/80 bg-gradient-to-b from-sky-200 to-sky-500 flex items-center justify-center shadow-[0_10px_24px_rgba(0,0,0,0.33)] text-3xl">
+                🐟
+              </div>
+              <div className="text-center mt-1 font-bold text-black/80">You</div>
             </div>
-            <div className="text-center mt-1 font-bold text-black/80">You</div>
           </div>
         </div>
       </div>
-
-      <div className="mt-1 text-black/70">Pick the raised platform with the next number.</div>
-    </div>
+    </>
   );
 }
