@@ -132,7 +132,7 @@ export default function RewardScreen() {
     <>
       <BubbleField />
 
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen text-center text-white px-4 py-8">
+      <div className="relative z-10 px-8 py-12 bg-black/30 backdrop-blur-sm rounded-2xl shadow-lg">
         <motion.h1
           className="text-5xl sm:text-6xl font-extrabold mb-3 drop-shadow-[0_6px_22px_rgba(0,0,0,.45)]"
           initial={{ opacity: 0, y: -20 }}
