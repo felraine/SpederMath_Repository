@@ -431,13 +431,12 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
   const [showTutorial, setShowTutorial] = useState(false);
   const [tStep, setTStep] = useState(0);
   useEffect(() => {
-    const k = "nm_tutorial_done_v3";
-    if (!localStorage.getItem(k)) setShowTutorial(true);
+    setShowTutorial(true);
   }, []);
   const closeTutorial = () => {
     setShowTutorial(false);
-    localStorage.setItem("nm_tutorial_done_v3", "1");
   };
+  const inputLocked = showTutorial;
 
   /* -------- Core game state -------- */
   const [seed, setSeed] = useState(0);
@@ -543,7 +542,7 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
 
   const playQueued = useCallback(
     (src) => {
-      if (!src || !soundReady) return;
+      if (!src || !soundReady || inputLocked) return;
       if (!audioRef.current) {
         audioRef.current = new Audio();
         audioRef.current.addEventListener("ended", () => {
@@ -565,12 +564,12 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
         audioRef.current.play().catch(() => {});
       }
     },
-    [soundReady]
+    [soundReady, inputLocked]
   );
 
   const playAudio = useCallback(
     (src) => {
-      if (!src || !soundReady) return;
+      if (!src || !soundReady || inputLocked) return;
       try {
         if (!audioRef.current) audioRef.current = new Audio();
         const a = audioRef.current;
@@ -580,12 +579,13 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
         a.play().catch(() => {});
       } catch {}
     },
-    [soundReady]
+    [soundReady, inputLocked]
   );
 
   useEffect(() => {
-    if (soundReady) return;
+    if (soundReady || inputLocked ) return;
     const unlock = () => {
+      if (inputLocked) return;
       setSoundReady(true);
       setTimeout(() => {
         if (round <= TOTAL_ROUNDS && targetN) {
@@ -611,16 +611,16 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
     };
-  }, [soundReady, round, targetN, mode]);
+  }, [soundReady, round, targetN, mode, inputLocked]);
 
   const prevModeRef = useRef(mode);
   useEffect(() => {
-    if (!soundReady) return;
+    if (!soundReady || inputLocked) return;
     if (prevModeRef.current !== mode) {
       playAudio(mode === "count" ? VOICES_MODE_CHANGE.toCounting : VOICES_MODE_CHANGE.toRecognition);
       prevModeRef.current = mode;
     }
-  }, [mode, soundReady, playAudio]);
+  }, [mode, soundReady, playAudio, inputLocked]);
 
   const playRandom = useCallback(
     (arr) => {
@@ -702,9 +702,9 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
   /* Prompt lines */
   useEffect(() => {
     const assessmentDone = round > TOTAL_ROUNDS;
-    if (!soundReady || assessmentDone || !targetN) return;
+    if (!soundReady || assessmentDone || !targetN || inputLocked) return;
     playAudio(VOICES_FIND[targetN]);
-  }, [round, mode, targetN, playAudio, soundReady]);
+  }, [round, mode, targetN, playAudio, soundReady, inputLocked]);
 
   const finishedRef = useRef(false);
   useEffect(() => {
@@ -716,6 +716,7 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
 
   /* Keyboard */
   useEffect(() => {
+    if (inputLocked) return;
     const keyToDir = (k) => {
       if (k === "arrowup" || k === "w") return "up";
       if (k === "arrowdown" || k === "s") return "down";
@@ -754,10 +755,11 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
       window.removeEventListener("keydown", onDown);
       window.removeEventListener("keydown", onUp);
     };
-  }, [heldDir, canMove]);
+  }, [heldDir, canMove, inputLocked]);
 
   /* Touch D-pad */
   const startHold = (dir) => () => {
+    if (inputLocked) return;
     setHeldDir(dir);
     if (currentDirRef.current && dir === opposite(currentDirRef.current)) {
       reverseMidEdge();
@@ -771,6 +773,7 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
     }
   };
   const stopHold = () => {
+    if (inputLocked) return;
     setHeldDir(null);
     queuedDirRef.current = null;
   };
@@ -797,6 +800,7 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
       const dtMs = t - lastTimeRef.current;
       lastTimeRef.current = t;
 
+      const activeHeld = inputLocked ? null : heldDir;
       let dir = currentDirRef.current;
       let prog = progressRef.current;
 
@@ -848,7 +852,7 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [cellPx, heldDir, canMove]);
+  }, [cellPx, heldDir, canMove, inputLocked]);
 
   function stepFrom(r, c, dir) {
     if (dir === "up") return { r: r - 1, c };
@@ -1099,11 +1103,11 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
             }}
           >
             <div />
-            <ArrowBtn dir="up" onPointerDown={startHold("up")} onPointerUp={stopHold} />
+            <ArrowBtn dir="up" onPointerDown={inputLocked ? undefined : startHold("up")} onPointerUp={stopHold} />
             <div />
-            <ArrowBtn dir="left" onPointerDown={startHold("left")} onPointerUp={stopHold} />
-            <ArrowBtn dir="down" onPointerDown={startHold("down")} onPointerUp={stopHold} />
-            <ArrowBtn dir="right" onPointerDown={startHold("right")} onPointerUp={stopHold} />
+            <ArrowBtn dir="left" onPointerDown={inputLocked ? undefined : startHold("left")} onPointerUp={stopHold} />
+            <ArrowBtn dir="down" onPointerDown={inputLocked ? undefined : startHold("down")} onPointerUp={stopHold} />
+            <ArrowBtn dir="right" onPointerDown={inputLocked ? undefined : startHold("right")} onPointerUp={stopHold} />
             </div>
 
           {/* Bottom bar: Regenerate + score + (optional) finished/back */}

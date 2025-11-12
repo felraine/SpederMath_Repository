@@ -12,7 +12,10 @@ const AssessmentIndex = () => {
   const handleFinish = (result) => {
     const raw = result?.score ?? 0;          // 0..5
     const total = result?.total ?? 5;        // should be 5 rounds
-    const scaled10 = Math.round((raw / total) * 10); // 0..10 for StarRow
+    const scaled10 =
+      raw === 5 ? 10 :           // 5/5 → 10 → 3 stars
+      raw >= 3 ? 7 :             // 3–4/5 → 7 → 2 stars
+      Math.max(0, raw);          // 0–2 → 0–2 (still 1 star)
     setFinalScore5(raw);
     setFinalScore10(scaled10);
     setStep(2);

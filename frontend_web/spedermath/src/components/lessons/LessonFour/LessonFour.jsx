@@ -36,9 +36,7 @@ const LessonTwo = () => {
 
   // 🎨 Pick one random background at mount
   const bgImage = useRandomBackground([
-    "/photos/lesson4/sky.jpg",
-    "/photos/lesson4/sky.jpg",
-    "/photos/lesson4/sky.jpg",
+    "/photos/lesson4/sky.png",
   ]);
 
   const handleBack = () => {
