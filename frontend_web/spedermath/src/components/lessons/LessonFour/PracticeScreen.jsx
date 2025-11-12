@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import "../../css/overlays.css";
 
 /** Uses /audio/numbers/{word}.mp3 for counting (no TTS). */
-const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
+const PracticeScreenUnified = ({ onNext, rounds = 5 }) => {
   const [roundIndex, setRoundIndex] = useState(0);
   const [correctAnswer, setCorrectAnswer] = useState(1);
   const [selected, setSelected] = useState(null);
@@ -17,10 +17,12 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
   const timeoutsRef = useRef([]);     // collect timeouts for cleanup
   const finishedRef = useRef(false);  // ensure result SFX plays once
 
+  const POOL = [6, 7, 8, 9, 10];
+
   // ---- assets ----
   const numberAudioMap = {1:"one",2:"two",3:"three",4:"four",5:"five",6:"six",7:"seven",8:"eight",9:"nine",10:"ten"};
   const NUMBER_DIR = "/audio/numbers";           // <-- UPDATED
-  const questionAudio = "/audio/lesson1/how_many_fish.mp3";
+  const questionAudio = "/audio/lesson4/how_many_bird.mp3";
   const letsCountAudio = "/audio/lesson1/lets_count.mp3";
   const correctAudios = ["/audio/lesson1/correct/good_job.mp3","/audio/lesson1/correct/nice_work.mp3"];
   const wrongAudios   = ["/audio/lesson1/wrong/good_attempt.mp3","/audio/lesson1/wrong/nice_try.mp3"];
@@ -31,12 +33,16 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
     "/photos/lesson4/bird3.png",
     "/photos/lesson4/bird4.png",
   ];
-  const labelPlural = "fishes";
+  const labelPlural = "birds";
 
   const shuffleArray = (array) =>
     array.map((v) => ({ v, r: Math.random() }))
          .sort((a, b) => a.r - b.r)
          .map(({ v }) => v);
+
+  const [remainingCounts, setRemainingCounts] = useState(() =>
+    shuffleArray([...POOL])
+  );
 
   const clearTimers = () => {
     timeoutsRef.current.forEach(clearTimeout);
@@ -81,8 +87,11 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
     clearTimers();
     stopAllAudio();
 
-    // 1..10 fishes
-    const randomCount = Math.floor(Math.random() * 10) + 1;
+    let poolNow = remainingCounts;
+        if (poolNow.length === 0) poolNow = shuffleArray([...POOL]); // refill
+        const randomCount = poolNow[0];
+        setRemainingCounts(poolNow.slice(1));
+
     const roundFish = Array.from({ length: randomCount }, () => {
       const idx = Math.floor(Math.random() * fishImages.length);
       return fishImages[idx];
@@ -167,7 +176,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
         // UPDATED: use /audio/numbers/{word}.mp3 as primary
         const baseNumbers = `${NUMBER_DIR}/${name}.mp3`;        // primary
         const baseL1      = `/audio/lesson1/${name}.mp3`;       // optional fallback if you have it
-        const terminal    = `/audio/lesson1/${name}_fish.mp3`;  // only when i === num (optional)
+        const terminal    = `/audio/lesson4/${name}_bird.mp3`;  // only when i === num (optional)
 
         setHighlightIndex(i - 1);
 
@@ -219,7 +228,16 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
         How many {labelPlural} do you see?
       </h2>
 
-      <div className="fish-wrap">
+      <div className="fish-wrap"
+      style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(5, auto)",
+          justifyContent: "center",
+          gap: "16px", // space between birds
+          maxWidth: "750px",
+          margin: "0 auto",
+        }}
+      > 
         {fishSet.map((src, i) => (
           <img
             key={`${src}-${i}`}
@@ -227,6 +245,7 @@ const PracticeScreenUnified = ({ onNext, rounds = 3 }) => {
             alt={labelPlural}
             className="fish-img"
             style={{
+              height: 100,
               transform: highlightIndex === i ? "scale(1.4)" : "scale(1)",
               filter:
                 highlightIndex === i

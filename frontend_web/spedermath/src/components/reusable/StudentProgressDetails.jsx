@@ -156,13 +156,18 @@ export default function StudentAttemptDetails({ studentId }) {
     arr.sort((A, B) => (A.sortKey ?? 0) - (B.sortKey ?? 0));
 
     // Compute nextUnlockThreshold for each lesson
+    const FINAL_LESSON_FALLBACK_GOAL = 3;
+
     for (let i = 0; i < arr.length; i++) {
-      const next = arr[i + 1];
-      arr[i].nextUnlockThreshold =
-        toNum(next?.unlockThreshold) ??
-        toNum(arr[i].unlockThreshold) ??
-        toNum(arr[i].maxScore) ??
-        10;
+    const next = arr[i + 1];
+    arr[i].nextUnlockThreshold = next
+      ? (
+          toNum(next.unlockThreshold) ??
+          toNum(arr[i].unlockThreshold) ??
+          toNum(arr[i].maxScore) ??
+          10
+        )
+      : FINAL_LESSON_FALLBACK_GOAL;
     }
 
     return arr;
@@ -259,6 +264,7 @@ export default function StudentAttemptDetails({ studentId }) {
         title={current.title}
         list={current.list}
         goalScore={goalFromNext}
+        maxScore={current.maxScore}
       />
       <div className="text-[11px] text-gray-500">
         Goal line uses the <span className="font-medium">next lesson’s</span> unlock threshold.
@@ -270,7 +276,7 @@ export default function StudentAttemptDetails({ studentId }) {
 
 /* ====================== Per-Lesson Apex Chart ====================== */
 
-function LessonAttemptsChart({ title, list, goalScore = 10 }) {
+function LessonAttemptsChart({ title, list, goalScore = 10, maxScore = 10 }) {
   const [showTime, setShowTime] = React.useState(false);
 
   const prepared = React.useMemo(() => {
@@ -279,17 +285,25 @@ function LessonAttemptsChart({ title, list, goalScore = 10 }) {
       return {
         label: isNaN(d.getTime())
           ? `#${i + 1}`
-          : d.toLocaleString([], { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
+          : d.toLocaleString([], {
+              month: "short",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
         score: Number(a.score ?? 0),
         seconds: Number(a.timeSpentSeconds ?? 0),
       };
     });
   }, [list]);
 
-  const categories = prepared.map(d => d.label);
-  const scoreData  = prepared.map(d => d.score);
-  const timeData   = prepared.map(d => d.seconds);
-  const timeNulls  = React.useMemo(() => new Array(timeData.length).fill(null), [timeData.length]);
+  const categories = prepared.map((d) => d.label);
+  const scoreData = prepared.map((d) => d.score);
+  const timeData = prepared.map((d) => d.seconds);
+  const timeNulls = React.useMemo(
+    () => new Array(timeData.length).fill(null),
+    [timeData.length]
+  );
 
   if (!scoreData.length) {
     return (
@@ -297,38 +311,58 @@ function LessonAttemptsChart({ title, list, goalScore = 10 }) {
         <div className="flex items-center justify-between mb-2">
           <div>
             <div className="font-semibold">{title}</div>
-            <div className="text-[11px] text-gray-500">Score over recent attempts</div>
+            <div className="text-[11px] text-gray-500">
+              Score over recent attempts
+            </div>
           </div>
           <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={showTime} onChange={(e)=>setShowTime(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+            <input
+              type="checkbox"
+              checked={showTime}
+              onChange={(e) => setShowTime(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
             Show time
           </label>
         </div>
-        <div className="h-[300px] grid place-items-center text-sm text-gray-500">No attempts yet.</div>
+        <div className="h-[300px] grid place-items-center text-sm text-gray-500">
+          No attempts yet.
+        </div>
       </div>
     );
   }
 
   const lastScore = scoreData.at(-1) ?? 0;
-  const maxScoreForAxis = Math.max(goalScore, ...scoreData, 10);
+
+  // === Y-axis max logic ===
+  // For small assessments (maxScore ≤ 5), pin axis max to 6.
+  // Otherwise, give ~10% headroom (but never below 10).
+  const basePeak = Math.max(goalScore, ...scoreData, maxScore);
+  const axisMax =
+    maxScore <= 5 ? 6 : Math.max(10, Math.ceil(basePeak * 1.1));
 
   const options = {
-    chart: { type: "line", toolbar: { show: false }, animations: { easing: "easeinout", speed: 250 } },
+    chart: {
+      type: "line",
+      toolbar: { show: false },
+      animations: { easing: "easeinout", speed: 250 },
+    },
     colors: ["#0ea5e9", "#94a3b8"], // score line, time bars
     stroke: { width: [3, 0], curve: "smooth" },
-
-    // 👉 dots at each attempt
     markers: {
       size: 4,
       strokeWidth: 2,
       hover: { size: 7 },
       colors: ["#0ea5e9"],
       strokeColors: "#ffffff",
-      discrete: [], // keep default markers on every point
+      discrete: [],
     },
-
     dataLabels: { enabled: false },
-    grid: { borderColor: "#e5e7eb", strokeDashArray: 3, xaxis: { lines: { show: false } } },
+    grid: {
+      borderColor: "#e5e7eb",
+      strokeDashArray: 3,
+      xaxis: { lines: { show: false } },
+    },
     xaxis: {
       categories,
       labels: { style: { fontSize: "12px" }, rotate: -10 },
@@ -336,51 +370,65 @@ function LessonAttemptsChart({ title, list, goalScore = 10 }) {
       axisTicks: { show: false },
     },
     yaxis: [
-      { title: { text: "Score" }, min: 0, max: Math.ceil(maxScoreForAxis * 1.15), decimalsInFloat: 0 },
-      { opposite: true, show: showTime, title: { text: "Seconds" }, min: 0, max: Math.ceil((Math.max(0, ...timeData) || 10) * 1.15), decimalsInFloat: 0 },
+      { title: { text: "Score" }, min: 0, max: axisMax, decimalsInFloat: 0 },
+      {
+        opposite: true,
+        show: showTime,
+        title: { text: "Seconds" },
+        min: 0,
+        max: Math.ceil((Math.max(0, ...timeData) || 10) * 1.15),
+        decimalsInFloat: 0,
+      },
     ],
     plotOptions: { bar: { columnWidth: "42%", borderRadius: 6 } },
     legend: { show: false },
     tooltip: {
       theme: "dark",
       shared: true,
-      y: { formatter: (val, ctx) => ctx.seriesIndex === 0 ? `${val} pts` : `${val}s` },
+      y: {
+        formatter: (val, ctx) =>
+          ctx.seriesIndex === 0 ? `${val} pts` : `${val}s`,
+      },
     },
-
     annotations: {
-      // 👉 goal line with label nudged left/down to avoid overlapping the last dot
-      yaxis: [{
-        y: goalScore,
-        borderColor: "#16a34a",
-        strokeDashArray: 4,
-        label: {
-          text: `Goal: ${goalScore}`,
+      yaxis: [
+        {
+          y: goalScore,
           borderColor: "#16a34a",
-          position: "left",       // move to left side
-          offsetX: -8,            // slight left nudge
-          offsetY: 6,             // slight down nudge
-          style: { background: "#a7f3d0", color: "#065f46", fontSize: "11px", fontWeight: 700 },
+          strokeDashArray: 4,
+          label: {
+            text: `Goal: ${goalScore}`,
+            borderColor: "#16a34a",
+            position: "left",
+            offsetX: -8,
+            offsetY: 6,
+            style: {
+              background: "#a7f3d0",
+              color: "#065f46",
+              fontSize: "11px",
+              fontWeight: 700,
+            },
+          },
         },
-      }],
-
-      // 👉 last point callout nudged up/right so it doesn't collide with goal label
-      points: [{
-        x: categories[categories.length - 1],
-        y: scoreData[scoreData.length - 1],
-        marker: { size: 6, fillColor: "#0ea5e9", strokeColor: "#0ea5e9" },
-        label: {
-          text: `Last: ${lastScore}`,
-          offsetX: 12,            // right nudge
-          offsetY: -16,           // up nudge
-          style: { background: "#e0f2fe", color: "#075985", fontWeight: 700 },
+      ],
+      points: [
+        {
+          x: categories[categories.length - 1],
+          y: scoreData[scoreData.length - 1],
+          marker: { size: 6, fillColor: "#0ea5e9", strokeColor: "#0ea5e9" },
+          label: {
+            text: `Last: ${lastScore}`,
+            offsetX: 12,
+            offsetY: -16,
+            style: { background: "#e0f2fe", color: "#075985", fontWeight: 700 },
+          },
         },
-      }],
+      ],
     },
   };
 
-  // Always two series; hide bars by feeding nulls when toggle is off
   const series = [
-    { name: "Score", type: "line",   data: scoreData },
+    { name: "Score", type: "line", data: scoreData },
     { name: "Time (s)", type: "column", data: showTime ? timeData : timeNulls },
   ];
 
@@ -390,14 +438,16 @@ function LessonAttemptsChart({ title, list, goalScore = 10 }) {
         <div>
           <div className="font-semibold">{title}</div>
           <div className="text-[11px] text-gray-500">
-            {showTime ? "Score = line • Time = bars" : "Score over recent attempts"}
+            {showTime
+              ? "Score = line • Time = bars"
+              : "Score over recent attempts"}
           </div>
         </div>
         <label className="flex items-center gap-2 text-xs">
           <input
             type="checkbox"
             checked={showTime}
-            onChange={(e)=>setShowTime(e.target.checked)}
+            onChange={(e) => setShowTime(e.target.checked)}
             className="h-4 w-4 rounded border-gray-300"
           />
           Show time
@@ -412,12 +462,18 @@ function LessonAttemptsChart({ title, list, goalScore = 10 }) {
         <span>Showing last 10 attempts (oldest → newest).</span>
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1 text-xs">
-            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#0ea5e9" }} />
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{ background: "#0ea5e9" }}
+            />
             Score
           </span>
           {showTime && (
             <span className="inline-flex items-center gap-1 text-xs">
-              <span className="inline-block h-2.5 w-2.5 rounded" style={{ background: "#94a3b8" }} />
+              <span
+                className="inline-block h-2.5 w-2.5 rounded"
+                style={{ background: "#94a3b8" }}
+              />
               Seconds
             </span>
           )}
