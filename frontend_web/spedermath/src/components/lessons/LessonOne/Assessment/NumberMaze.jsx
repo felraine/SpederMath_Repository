@@ -60,6 +60,7 @@ const TOTAL_ROUNDS = 10;
 const ADAPTIVE = true;
 const DEFAULT_MODE = "recognize";
 const PASSING_SCORE = 7;
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 
 const High = ({ color = "#3F51B5", children }) => (
@@ -900,7 +901,7 @@ export default function NumberMaze({ onExit, lessonId, onFinish }) {
       };
       const key = `submit:${currentStudentId()}:${effectiveLessonId}`;
       const res = await postOnce(key, () =>
-        axios.post("http://localhost:8080/api/student-progress/submit", payload, { headers: baseHeaders })
+        axios.post(`${API_BASE}/api/student-progress/submit`, payload, { headers: baseHeaders })
       );
       console.log("Submit OK", res.status);
       postedRef.current = true;

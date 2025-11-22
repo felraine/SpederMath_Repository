@@ -28,6 +28,7 @@ const AddFeedMonkey = () => {
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
   const current = lessons[currentStep];
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -78,7 +79,7 @@ const AddFeedMonkey = () => {
     };
 
     try {
-      await axios.post('http://localhost:8080/api/student-progress/submit', progress, {
+      await axios.post(`${API_BASE}/api/student-progress/submit`, progress, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert('Progress submitted!');

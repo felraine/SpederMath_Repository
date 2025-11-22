@@ -16,6 +16,8 @@ const NavBtn = ({ disabled, onClick, children, ariaLabel }) => (
   </button>
 );
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
 /** Safe number helpers */
 const toNum = (v) => {
   const n = Number(v);
@@ -48,7 +50,7 @@ export default function StudentAttemptDetails({ studentId }) {
           return;
         }
 
-        const res = await axios.get(`http://localhost:8080/api/attempts/${studentId}/recent`, {
+        const res = await axios.get(`${API_BASE}/api/attempts/${studentId}/recent`, {
           params: { limit: 40, type: "ASSESSMENT", _ts: Date.now() },
           headers: { Authorization: `Bearer ${token}` },
         });

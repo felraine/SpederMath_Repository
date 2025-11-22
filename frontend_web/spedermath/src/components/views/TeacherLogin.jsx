@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import GoogleLoginButton from "../reusable/GoogleLoginButton";
 
 /* ================ helpers (added) ================ */
 async function readJsonSafe(response) {
@@ -27,7 +28,7 @@ function Login() {
   const handleLogin = async () => {
     setErrorMsg("");
     try {
-      const response = await fetch("http://localhost:8080/api/teachers/login", {
+      const response = await fetch(`${API_BASE}/api/teachers/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -114,6 +115,16 @@ function Login() {
                 Login
               </button>
             </form>
+
+            <div className="mt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex-1 h-px bg-gray-300" />
+                <span className="text-xs text-gray-500">or</span>
+                <div className="flex-1 h-px bg-gray-300" />
+              </div>
+
+              <GoogleLoginButton/>
+            </div>
 
             <p className="text-sm text-center mt-6 text-gray-700">
               Don't have an account?{" "}

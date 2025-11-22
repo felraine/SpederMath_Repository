@@ -20,6 +20,7 @@ const CountLesson = () => {
   const token = localStorage.getItem('token');
   const current = mainLessonPhase[currentStep];
   const [hasPlayedSound, setHasPlayedSound] = useState(false);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   //play sound once
   useEffect(() => {
@@ -108,7 +109,7 @@ const CountLesson = () => {
     };
 
     try {
-      await axios.post('http://localhost:8080/api/student-progress/submit', updatedProgress, {
+      await axios.post(`${API_BASE}/api/student-progress/submit`, updatedProgress, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -129,7 +130,7 @@ const CountLesson = () => {
     };
 
     try {
-      await axios.post('http://localhost:8080/api/student-progress/submit', updatedProgress, {
+      await axios.post(`${API_BASE}/api/student-progress/submit`, updatedProgress, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

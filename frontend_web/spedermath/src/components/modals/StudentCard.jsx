@@ -129,7 +129,7 @@ function StudentCard({
         open={showAI}
         onClose={() => setShowAI(false)}
         student={student}
-        endpoint={import.meta.env.VITE_AI_SUMMARY_URL ?? "http://localhost:8080/api/summarize"} // <- easy swap later
+        endpoint={import.meta.env.VITE_AI_SUMMARY_URL ?? "https://spedermath-backend.fly.dev/api/summarize"} // <- easy swap later
       />
     </>
   );

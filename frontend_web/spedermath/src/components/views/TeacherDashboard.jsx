@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import StudentList from "../reusable/StudentList";
-import TeacherHeader from "../reusable/TeacherHeader";
 import StudentProgress from "../reusable/StudentProgress";
 import StudentCard from "../modals/StudentCard";
 import StudentProgressDetails from "../reusable/StudentProgressDetails";
@@ -16,6 +15,7 @@ function Dashboard() {
 
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showStudentModal, setShowStudentModal] = useState(false);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -29,7 +29,7 @@ function Dashboard() {
         const token = localStorage.getItem("token");
         if (!token) { navigate("/teacher-login"); return; }
 
-        const response = await axios.get("http://localhost:8080/api/students/all", {
+        const response = await axios.get(`${API_BASE}/api/students/all`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -48,7 +48,7 @@ function Dashboard() {
         const token = localStorage.getItem("token");
         if (!token) { navigate("/teacher-login"); return; }
 
-        const response = await axios.get("http://localhost:8080/api/lesson-stats", {
+        const response = await axios.get(`${API_BASE}/api/lesson-stats`, {
           headers: { Authorization: `Bearer ${token}` },
           params: { type: "ASSESSMENT" },
         });

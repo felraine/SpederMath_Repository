@@ -36,8 +36,11 @@ public class Teacher {
 
     @Lob
     @JdbcTypeCode(SqlTypes.VARBINARY)
-    @Column(name = "photo_blob", columnDefinition = "LONGBLOB")
+    @Column(name = "photo_blob", columnDefinition = "BYTEA")
     private byte[] photoBlob;
+
+    @Column(name = "google_id", length = 255, unique = true)
+    private String googleId;
 
     @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Student> students = new ArrayList<>();
@@ -121,6 +124,14 @@ public class Teacher {
 
     public byte[] getPhotoBlob() { return photoBlob; }
     public void setPhotoBlob(byte[] photoBlob) { this.photoBlob = photoBlob; }
+
+    public String getGoogleId() {
+        return googleId;
+    }
+
+    public void setGoogleId(String googleId) {
+        this.googleId = googleId;
+    }
 
 
     //functions

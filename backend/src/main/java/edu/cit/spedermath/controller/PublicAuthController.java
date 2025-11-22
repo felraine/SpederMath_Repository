@@ -85,7 +85,7 @@ public class PublicAuthController {
      */
     @GetMapping("/qr-login")
     public ResponseEntity<?> redirectQr(@RequestParam("token") String rawToken) {
-        String url = "http://localhost:5173/student-login?token=" 
+        String url = "https://spedermath.app/student-login?token=" 
                 + java.net.URLEncoder.encode(rawToken, java.nio.charset.StandardCharsets.UTF_8);
         return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
                 .header("Location", url)

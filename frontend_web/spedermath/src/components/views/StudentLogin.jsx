@@ -17,10 +17,11 @@ function StudentLogin() {
   const [autoLogging, setAutoLogging] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const handleLogin = async (user = username, pass = password) => {
     try {
-      const response = await fetch("http://localhost:8080/api/students/student-login", {
+      const response = await fetch(`${API_BASE}/api/students/student-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ username: user, password: pass }),
@@ -62,7 +63,7 @@ function StudentLogin() {
           setErrorMsg("");
 
           // CHANGED: use POST (JSON body) for QR exchange
-          const res = await fetch("http://localhost:8080/public/qr-exchange", {
+          const res = await fetch("https://spedermath-backend.fly.dev/public/qr-exchange", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

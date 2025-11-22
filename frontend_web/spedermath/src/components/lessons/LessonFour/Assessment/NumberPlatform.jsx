@@ -82,6 +82,7 @@ export default function NumberPlatform({
 
   const [minN, maxN] = range;
   const startedAtRef = useRef(Date.now());
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   /* === NEW: tutorial state === */
   const [showTut, setShowTut] = useState(false);
@@ -171,7 +172,7 @@ export default function NumberPlatform({
           const key = `submit:${sid}:${lessonId}:${status}`;
 
           await postOnce(key, async () => {
-            const res = await fetch("http://localhost:8080/api/student-progress/submit", {
+            const res = await fetch(`${API_BASE}/api/student-progress/submit`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",

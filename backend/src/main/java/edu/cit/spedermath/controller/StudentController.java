@@ -166,7 +166,7 @@ public class StudentController {
 
     @GetMapping("/{studentID}/login")
     public ResponseEntity<String> getLoginUrl(@PathVariable Long studentID) {
-        String loginUrl = "http://localhost:5173/login/" + studentID;
+        String loginUrl = "https://spedermath.app/login/" + studentID;
         return new ResponseEntity<>(loginUrl, HttpStatus.OK);
     }
 

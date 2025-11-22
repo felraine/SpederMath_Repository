@@ -9,6 +9,7 @@ import StarRow from "../../reusable/StarRow";
 export default function RewardScreen({ meta }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const resolvedLessonId =
     Number(meta?.lessonId) || Number(location.state?.lessonId) || 7;
@@ -56,7 +57,7 @@ export default function RewardScreen({ meta }) {
     };
 
     return postOnce(`submit:${payload.idempotencyKey}`, () =>
-      fetch("http://localhost:8080/api/student-progress/submit", {
+      fetch(`${API_BASE}/api/student-progress/submit`, {
         method: "POST",
         headers,
         body: JSON.stringify(payload),
