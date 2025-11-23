@@ -10,6 +10,7 @@ function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
@@ -47,7 +48,7 @@ function Register() {
 
     try {
       setIsLoading(true);
-      const response = await fetch("http://localhost:8080/api/teachers/register", {
+      const response = await fetch(`${API_BASE}/api/teachers/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fname, lname, name, email, password }),
@@ -137,8 +138,9 @@ function Register() {
             </div>
           </div>
 
+          <div className="flex flex-col sm:flex-row gap-4 w-full">
           {/* Username */}
-          <div>
+          <div className="w-full sm:w-1/2">
             <input
               type="text"
               placeholder="Username"
@@ -154,7 +156,7 @@ function Register() {
           </div>
 
           {/* Email */}
-          <div>
+          <div className="w-full sm:w-1/2">
             <input
               type="text"
               placeholder="Email"
@@ -168,9 +170,11 @@ function Register() {
               <p className="text-xs text-red-500 mt-1">{errors.email}</p>
             )}
           </div>
+        </div>
 
+          <div className="flex flex-col sm:flex-row gap-4 w-full">
           {/* Password */}
-          <div>
+          <div className="w-full sm:w-1/2">
             <input
               type="password"
               placeholder="Password"
@@ -186,7 +190,7 @@ function Register() {
           </div>
 
           {/* Confirm Password */}
-          <div>
+          <div className="w-full sm:w-1/2">
             <input
               type="password"
               placeholder="Confirm Password"
@@ -204,6 +208,7 @@ function Register() {
               </p>
             )}
           </div>
+        </div>
 
           {/* Submit */}
           <button

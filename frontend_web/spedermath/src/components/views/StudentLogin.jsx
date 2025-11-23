@@ -17,10 +17,11 @@ function StudentLogin() {
   const [autoLogging, setAutoLogging] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const handleLogin = async (user = username, pass = password) => {
     try {
-      const response = await fetch("http://localhost:8080/api/students/student-login", {
+      const response = await fetch(`${API_BASE}/api/students/student-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ username: user, password: pass }),
@@ -29,11 +30,12 @@ function StudentLogin() {
       const result = await readJsonSafe(response);
 
       if (result.token || result.jwt) {
-        // keep your existing keys
         localStorage.setItem("token", result.token || result.jwt);
         localStorage.setItem("student_username", user);
-        // optionally store ids if backend returns them
-        if (result.studentId != null) localStorage.setItem("student_id", String(result.studentId));
+
+        if (result.studentId != null)
+          localStorage.setItem("student_id", String(result.studentId));
+
         navigate("/student-dashboard");
       } else {
         setErrorMsg(result.message || "Login failed: Invalid username or password.");
@@ -44,25 +46,23 @@ function StudentLogin() {
     }
   };
 
-  // QR token flow (auto-login)
+  // QR token auto-login
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const urlToken = params.get("token"); // from /public/qr-login?token=...
-    const urlUsername = params.get("username");
-    const urlPassword = params.get("password");
+    const urlToken = params.get("token");
+    const urlUsername = params.get("username"); // username prefilling is OK
 
     const existingToken = localStorage.getItem("token");
     if (existingToken && !urlToken) return;
 
-    // 1) If a QR token is present, exchange it and auto-login
+    // 1) QR login
     if (urlToken) {
       (async () => {
         try {
           setAutoLogging(true);
           setErrorMsg("");
 
-          // CHANGED: use POST (JSON body) for QR exchange
-          const res = await fetch("http://localhost:8080/public/qr-exchange", {
+          const res = await fetch("https://spedermath-backend.fly.dev/public/qr-exchange", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -73,7 +73,6 @@ function StudentLogin() {
 
           const data = await readJsonSafe(res);
 
-          // accept direct payload { jwt, studentId, username }
           const jwt = data.jwt || data.token;
           if (!jwt && data.error) {
             setErrorMsg(data.error || "QR token invalid or expired.");
@@ -82,17 +81,12 @@ function StudentLogin() {
 
           if (data.username) setUsername(data.username);
 
-          if (jwt) {
-            localStorage.setItem("token", jwt); // keep your 'token' key
-          }
-          if (data.studentId != null) {
+          if (jwt) localStorage.setItem("token", jwt);
+          if (data.studentId != null)
             localStorage.setItem("student_id", String(data.studentId));
-          }
-          if (data.username) {
+          if (data.username)
             localStorage.setItem("student_username", data.username);
-          }
 
-          // Clean URL so refreshes don't retry the one-time token
           window.history.replaceState({}, "", window.location.pathname);
           navigate("/student-dashboard", { replace: true });
         } catch (e) {
@@ -103,15 +97,14 @@ function StudentLogin() {
         }
       })();
 
-      return; // Don't also run the username/password autologin block below
+      return;
     }
 
-    // 2) If username & password were passed in URL, auto-submit them
-    if (urlUsername && urlPassword) {
+    // 2) Prefill ONLY username — password autologin removed for security
+    if (urlUsername) {
       setUsername(urlUsername);
-      setPassword(urlPassword);
-      handleLogin(urlUsername, urlPassword);
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
@@ -198,6 +191,7 @@ function StudentLogin() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 1, ease: "easeOut", delay: 2.5 }}
       />
+
       <motion.img
         src="/yellow.png"
         alt="yellow"
@@ -206,6 +200,7 @@ function StudentLogin() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 1.2, delay: 3, ease: "easeOut" }}
       />
+
       <motion.img
         src="/blue.png"
         alt="blue"
@@ -214,6 +209,7 @@ function StudentLogin() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 1.4, delay: 3.5, ease: "easeOut" }}
       />
+
       <motion.img
         src="/pink.png"
         alt="pink"

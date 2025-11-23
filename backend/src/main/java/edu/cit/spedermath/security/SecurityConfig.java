@@ -46,6 +46,7 @@ public class SecurityConfig {
                                 "/api/teachers/login",
                                 "/api/teachers/register",
                                 "/api/students/student-login",
+                                "/api/teachers/google-login",
                                 "/api/lessons/**",
                                 "/api/lesson-stats",
                                 "/api/students/*/qr-token",
@@ -78,7 +79,8 @@ public class SecurityConfig {
                 "http://localhost:5173",
                 "http://127.0.0.1:5173",
                 "http://localhost:3000",
-                "http://127.0.0.1:3000"
+                "http://127.0.0.1:3000",
+                "https://spedermath.app"
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));

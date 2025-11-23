@@ -9,6 +9,7 @@ function StudentRow({ student, togglePassword, onEdit, onDelete }) {
   const [qrUrl, setQrUrl] = useState("");
   const [loadingQR, setLoadingQR] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false); 
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const handleDeleteConfirm = () => {
     onDelete(student.studentID);
@@ -19,7 +20,7 @@ function StudentRow({ student, togglePassword, onEdit, onDelete }) {
     try {
       setLoadingQR(true);
       const res = await axios.post(
-        `http://localhost:8080/api/students/${student.studentID}/qr-token`
+        `${API_BASE}/api/students/${student.studentID}/qr-token`
       );
       const { qrUrl } = res.data;
       setQrUrl(qrUrl);

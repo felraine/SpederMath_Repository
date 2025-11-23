@@ -38,7 +38,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/students/*/qr-token",
             "/public/**",
             "/error",
-            "/api/summarize"
+            "/api/summarize",
+            "/api/teachers/google-login"
     );
 
     private boolean isPublic(String path) {

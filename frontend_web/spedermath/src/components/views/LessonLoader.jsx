@@ -24,6 +24,8 @@ const ROUTE_REGISTRY = {
   "assessment-1-10": AssessmentFour,
 };
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
 // --- ABSOLUTE map by DB id (your current data)
 const ID_MAP = {
   1: LessonOne,
@@ -62,7 +64,7 @@ export default function LessonLoader() {
         setState({ loading: true, error: null });
         const token =
           localStorage.getItem("jwtToken") || sessionStorage.getItem("jwtToken");
-        const res = await fetch(`http://localhost:8080/api/lessons/${lessonId}`, {
+        const res = await fetch(`${API_BASE}/api/lessons/${lessonId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
 

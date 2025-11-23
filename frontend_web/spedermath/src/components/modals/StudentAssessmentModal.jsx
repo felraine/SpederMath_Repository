@@ -124,13 +124,14 @@ const ReadyAnim = () => (
     <div className="text-sm font-medium text-emerald-700">Assessment ready</div>
   </div>
 );
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 /* ================= Component ================= */
 export default function StudentAssessmentModal({
   open = false,
   onClose = () => {},
   student = null,
-  endpoint = "http://localhost:8080/api/summarize",
+  endpoint = `${API_BASE}/api/summarize`,
   useGpt = true,
 }) {
   const [phase, setPhase] = useState("idle");

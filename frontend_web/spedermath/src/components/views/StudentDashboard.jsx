@@ -10,6 +10,7 @@ function StudentDashboard() {
   const [student, setStudent] = useState(null);
   const [progress, setProgress] = useState([]);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const confirmLogout = () => {
     localStorage.removeItem("token");
@@ -48,7 +49,7 @@ function StudentDashboard() {
 
     const fetchLessons = async () => {
       try {
-        const res = await fetch("http://localhost:8080/api/lessons", {
+        const res = await fetch(`${API_BASE}/api/lessons`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -65,7 +66,7 @@ function StudentDashboard() {
     const fetchStudent = async () => {
       try {
         const res = await fetch(
-          `http://localhost:8080/api/students/${studentID}`,
+          `${API_BASE}/api/students/${studentID}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -85,7 +86,7 @@ function StudentDashboard() {
     const fetchProgress = async () => {
       try {
         const res = await fetch(
-          "http://localhost:8080/api/student-progress/my",
+          `${API_BASE}/api/student-progress/my`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

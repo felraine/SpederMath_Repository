@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class TeacherService {
@@ -148,5 +149,38 @@ public class TeacherService {
 
     public Optional<Teacher> findByEmail(String email) {
         return teacherRepository.findByEmail(email.toLowerCase());
+    }
+
+    public Teacher findOrCreateFromGoogle(String googleId, String email, String name, String givenName, String familyName) {
+        String normalizedEmail = email.toLowerCase().trim();
+
+        // 1) If teacher exists by email, reuse it
+        Optional<Teacher> existingOpt = teacherRepository.findByEmail(normalizedEmail);
+        if (existingOpt.isPresent()) {
+            Teacher existing = existingOpt.get();
+            // Attach googleId if not set yet
+            if (existing.getGoogleId() == null || existing.getGoogleId().isBlank()) {
+                existing.setGoogleId(googleId);
+                teacherRepository.save(existing);
+            }
+            return existing;
+        }
+
+        String randomRaw = "GOOGLE_" + UUID.randomUUID(); // user never sees this
+        String encoded = passwordEncoder.encode(randomRaw);
+    
+        Teacher t = new Teacher(
+                givenName,        //fname
+                familyName,   //lname        
+                name,          //username
+                normalizedEmail, //email
+                encoded,    //password
+                LocalDateTime.now()
+        );
+        t.setGoogleId(googleId);
+
+        // you can set a default photo or leave photoBlob null
+        teacherRepository.save(t);
+        return t;
     }
 }

@@ -61,6 +61,7 @@ function BubbleField() {
 export default function RewardScreen() {
   const navigate = useNavigate();
   const location = useLocation();
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const lessonId = Number(location.state?.lessonId ?? 1);
 
@@ -96,7 +97,7 @@ export default function RewardScreen() {
 
     const key = `submit:${currentStudentId()}:${payload.lessonId}`;
     await postOnce(key, () =>
-      axios.post("http://localhost:8080/api/student-progress/submit", payload, { headers })
+      axios.post(`${API_BASE}/api/student-progress/submit`, payload, { headers })
     );
   };
 

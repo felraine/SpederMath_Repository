@@ -78,6 +78,7 @@ export default function FeedMunchieCounting({
   const navigate = useNavigate();
   const current = rounds[currentStep];
   const passThreshold = Math.ceil(passRate * rounds.length);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   // lock a set of fruit images per round
   const fruitPerStep = useMemo(() => {
@@ -228,7 +229,7 @@ export default function FeedMunchieCounting({
       const key = `submit:${sid}:${lessonId}:${status}`;
 
       await postOnce(key, async () => {
-        const res = await fetch("http://localhost:8080/api/student-progress/submit", {
+        const res = await fetch(`${API_BASE}/api/student-progress/submit`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

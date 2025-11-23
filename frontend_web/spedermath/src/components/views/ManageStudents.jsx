@@ -9,6 +9,7 @@ import { postOnce } from "../../utils/requestDedupe";
 
 function ManageStudent() {
   const navigate = useNavigate();
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -34,7 +35,7 @@ function ManageStudent() {
           return;
         }
 
-        const response = await axios.get("http://localhost:8080/api/students/all", {
+        const response = await axios.get(`${API_BASE}/api/students/all`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setStudents(response.data.map((student) => ({ ...student, showPassword: false })));
@@ -105,7 +106,7 @@ function ManageStudent() {
         // Deduplicate UPDATE requests for the same student id within ~1.5s
         response = await postOnce(
           `student:update:${editingStudentID}`,
-          () => axios.put(`http://localhost:8080/api/students/${editingStudentID}`, form, { headers })
+          () => axios.put(`${API_BASE}/api/students/${editingStudentID}`, form, { headers })
         );
 
         setStudents((prev) =>
@@ -119,7 +120,7 @@ function ManageStudent() {
 
         response = await postOnce(
           `student:create:${createKey}`,
-          () => axios.post("http://localhost:8080/api/students/create", form, { headers })
+          () => axios.post(`${API_BASE}/api/students/create`, form, { headers })
         );
 
         setStudents((prev) => [...prev, { ...response.data, showPassword: false }]);
@@ -156,7 +157,7 @@ function ManageStudent() {
         Authorization: `Bearer ${token}`,
       };
 
-      await axios.delete(`http://localhost:8080/api/students/${studentID}`, { headers });
+      await axios.delete(`${API_BASE}/api/students/${studentID}`, { headers });
 
       setStudents(students.filter((student) => student.studentID !== studentID));
       console.log(`Student deleted successfully.`);

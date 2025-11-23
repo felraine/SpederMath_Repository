@@ -9,6 +9,7 @@ import { ShootingStars } from "../../ui/shadcn-io/shooting-stars";
 export default function RewardScreen({ meta }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   // Prefer meta.lessonId, then router state, then fallback to 3 (Lesson 2)
   const resolvedLessonId =
@@ -51,7 +52,7 @@ export default function RewardScreen({ meta }) {
     };
 
     return postOnce(`submit:${payload.idempotencyKey}`, () =>
-      fetch("http://localhost:8080/api/student-progress/submit", {
+      fetch(`${API_BASE}/api/student-progress/submit`, {
         method: "POST",
         headers,
         body: JSON.stringify(payload),

@@ -17,6 +17,10 @@ import java.util.Map;
 import java.util.Optional;
 import jakarta.servlet.http.HttpServletRequest;
 
+import edu.cit.spedermath.service.GoogleAuthService;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import java.util.HashMap;
+
 @CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/teachers")
@@ -33,6 +37,9 @@ public class TeacherController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private GoogleAuthService googleAuthService;
 
     
     @PostMapping("/register")
@@ -64,13 +71,45 @@ public class TeacherController {
         }
     }
 
-    
-    @GetMapping("/test-connection")
-    public ResponseEntity<String> testConnection() {
-        String result = teacherService.testConnection();
-        return new ResponseEntity<>(result, HttpStatus.OK);
-    }
+    @PostMapping("/google-login")
+    public ResponseEntity<Map<String, String>> googleLogin(@RequestBody Map<String, String> request) {
+        String token = request.get("token");
+        Map<String, String> response = new HashMap<>();
 
+        if (token == null || token.isBlank()) {
+            response.put("error", "Missing Google token");
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        }
+
+        try {
+            GoogleIdToken.Payload payload = googleAuthService.verify(token);
+            if (payload == null) {
+                response.put("error", "Invalid Google token");
+                return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+            }
+
+            String googleId = payload.getSubject();       // unique Google user id
+            String email = payload.getEmail();
+            String name = (String) payload.get("name");
+            String givenName  = (String) payload.get("given_name");
+            String familyName = (String) payload.get("family_name");
+
+            // 1) Find or create Teacher
+            Teacher teacher = teacherService.findOrCreateFromGoogle(googleId, email, name, givenName, familyName);
+
+            // 2) Generate same kind of JWT as normal login
+            String jwt = jwtUtil.generateTeacherToken(teacher.getId(), teacher.getEmail());
+
+            response.put("token", jwt);
+            response.put("message", "Google login successful");
+            return new ResponseEntity<>(response, HttpStatus.OK);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("error", "Google login error");
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
    
     @GetMapping("/{email}")
     public ResponseEntity<?> getTeacherInfo(@PathVariable String email) {

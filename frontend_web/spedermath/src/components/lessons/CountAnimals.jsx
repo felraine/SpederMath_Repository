@@ -4,6 +4,7 @@ import LessonLayout from '../reusable/LessonLayout';
 import { useNavigate } from 'react-router-dom';
 
 const animals = ['fish', 'dog', 'sheep', 'pig'];
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 // Generates a random lesson with a specified number of animals and choices
 const generateAnimalLesson = (total = 10) => {
@@ -143,7 +144,7 @@ const CountAnimals = () => {
     };
 
     try {
-      await axios.post('http://localhost:8080/api/student-progress/submit', updatedProgress, {
+      await axios.post(`${API_BASE}/api/student-progress/submit`, updatedProgress, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
