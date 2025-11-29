@@ -24,6 +24,7 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const handleLogin = async () => {
     setErrorMsg("");
