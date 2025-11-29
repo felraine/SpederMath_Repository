@@ -10,7 +10,8 @@ import StudentLogin from "./components/views/StudentLogin";
 import StudentDashboard from "./components/views/StudentDashboard";
 import LessonLoader from "./components/views/LessonLoader";
 import SpederLayout from "./components/views/SpederLayout";
-import Settings from "./components/views/Settings"; 
+import Settings from "./components/views/Settings";
+import TeacherVerifyEmail from "./components/reusable/TeacherVerifyEmail"; 
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/teacher-login" element={<Login />} />
         <Route path="/student-login" element={<StudentLogin />} />
+        <Route path="/teacher-verify" element={<TeacherVerifyEmail />} />
 
         {/* Teacher Routes wrapped in SpederLayout */}
         <Route
