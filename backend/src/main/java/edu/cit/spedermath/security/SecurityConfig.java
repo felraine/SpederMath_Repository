@@ -54,7 +54,8 @@ public class SecurityConfig {
                                 "/public/**",
                                 "/error",
                                 "/api/debug/echo-auth",
-                                "/api/teachers/*/photo"
+                                "/api/teachers/*/photo",
+                                "/api/teachers/verify-email"
                         ).permitAll()
 
                         // Protected endpoints
