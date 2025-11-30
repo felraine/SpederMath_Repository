@@ -47,12 +47,13 @@ function StudentCard({
           aria-label="Student details"
         >
           <div
-            className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-fadeIn"
+            className="w-full max-w-[calc(100vw-32px)] sm:max-w-3xl bg-white rounded-2xl shadow-2xl border border-gray-200 box-border max-h-[calc(100vh-40px)] overflow-auto animate-fadeIn"
             onClick={(e) => e.stopPropagation()}
+            style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5">
-              <h3 className="font-bold text-lg truncate">Student Details</h3>
+            <div className="flex items-center justify-between px-4 sm:px-5">
+              <h3 className="font-bold text-base sm:text-lg truncate">Student Details</h3>
               <button
                 onClick={onClose}
                 className="p-2 rounded-lg hover:bg-gray-100 active:scale-95 transition"
@@ -63,14 +64,14 @@ function StudentCard({
             </div>
 
             {/* Body */}
-            <div className="pl-5 pr-5 pb-2 pt-2">
+            <div className="px-4 sm:px-5 pb-2 pt-2 overflow-auto">
               {/* Avatar + Name + Username + AI Assessment button */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                   <img
                     src="/display-pic.png"
                     alt={fullName || "Student"}
-                    className="w-16 h-16 rounded-full object-cover border"
+                    className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover border"
                   />
                   <div className="min-w-0">
                     <div className="font-semibold text-base truncate">
@@ -86,7 +87,7 @@ function StudentCard({
                 <button
                   type="button"
                   onClick={() => setShowAI(true)}
-                  className="flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl font-medium
+                  className="flex items-center gap-1.5 text-sm sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-medium
                              text-white shadow-sm active:scale-95 transition
                              bg-gradient-to-r from-indigo-400 to-indigo-900 hover:opacity-90"
                 >

@@ -49,7 +49,11 @@ function StudentRow({ student, togglePassword, onEdit, onDelete }) {
           >
             {student.showPassword ? student.password : "********"}
           </span>
-          <button onClick={() => togglePassword(student.studentID)}>
+          <button
+            onClick={() => togglePassword(student.studentID)}
+            aria-label={student.showPassword ? "Hide password" : "Show password"}
+            className="p-2"
+          >
             {student.showPassword ? <EyeOff /> : <Eye />}
           </button>
         </td>
@@ -61,18 +65,24 @@ function StudentRow({ student, togglePassword, onEdit, onDelete }) {
           })}
         </td>
         <td className="p-3 text-center">
-          <button onClick={() => onEdit(student)}>
+          <button
+            onClick={() => onEdit(student)}
+            aria-label="Edit student"
+            className="p-2"
+          >
             <Pencil className="text-blue-600 hover:text-blue-800" />
           </button>
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="ml-2 text-red-600 hover:text-red-800"
+            className="ml-2 p-2 text-red-600 hover:text-red-800"
+            aria-label="Delete student"
           >
             <Trash2 />
           </button>
           <button
             onClick={handleGenerateQR}
-            className="ml-2 text-green-600 hover:text-green-800"
+            className="ml-2 p-2 text-green-600 hover:text-green-800"
+            aria-label="Generate QR"
           >
             {loadingQR ? "..." : "QR"}
           </button>

@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import TeacherHeader from "../reusable/TeacherHeader";
 import { useNavigate } from "react-router-dom";
 import ResponseModal from "../modals/ResponseModal";
 import AvatarModal from "../modals/AvatarModal";
 import { Plus } from "lucide-react";
 
-/* ---------- default avatars (from frontend public/) ---------- */
 const PROFILE_PICS = [
   "/photos/profile_pictures/profile_man.png",
   "/photos/profile_pictures/profile_man2.png",
@@ -19,20 +17,20 @@ const PROFILE_PICS = [
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const FALLBACK = "/photos/profile_pictures/profile_man.png";
 
-/* ---------- helpers to convert to base64 ---------- */
 async function urlToBase64(url) {
   const res = await fetch(url);
   const blob = await res.blob();
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result); // data URL
+    reader.onloadend = () => resolve(reader.result);
     reader.readAsDataURL(blob);
   });
 }
+
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result); // data URL
+    reader.onloadend = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
@@ -42,11 +40,11 @@ function Settings() {
   const [activeTab, setActiveTab] = useState("profile");
   const [teacher, setTeacher] = useState({ id: "", name: "", email: "", fname: "", lname: "" });
 
-  // avatar states
-  const [photoUrl, setPhotoUrl] = useState("");        // backend URL to stream blob
-  const [photoPreview, setPhotoPreview] = useState(""); // what the <img> shows in UI
-  const [photoBase64, setPhotoBase64] = useState("");   // send only when changed
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [photoBase64, setPhotoBase64] = useState("");
   const [avatarDirty, setAvatarDirty] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -62,15 +60,11 @@ function Settings() {
   const [modalMessage, setModalMessage] = useState("");
   const [isError, setIsError] = useState(false);
 
-  // Fetch teacher info (and photo URL)
   useEffect(() => {
     const fetchTeacherInfo = async () => {
       try {
         const token = localStorage.getItem("token");
-        if (!token) {
-          navigate("/teacher-login");
-          return;
-        }
+        if (!token) return navigate("/teacher-login");
 
         const res = await axios.get(`${API_BASE}/api/teachers/me`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -90,30 +84,25 @@ function Settings() {
           setPhotoUrl(abs);
           setPhotoPreview(`${abs}?t=${Date.now()}`);
         } else {
-          setPhotoUrl("");
           setPhotoPreview(FALLBACK);
         }
       } catch (error) {
-        console.error("Error fetching teacher info:", error);
         if (error?.response?.status === 401) {
           localStorage.removeItem("token");
           navigate("/teacher-login");
         }
+      } finally {
+        setProfileLoaded(true);
       }
     };
-
     fetchTeacherInfo();
   }, [navigate]);
 
-  // Save updated info to DB (send photoBase64 only if avatarDirty)
   const handleSave = async () => {
     try {
       setIsLoading(true);
       const token = localStorage.getItem("token");
-      if (!token) {
-        navigate("/teacher-login");
-        return;
-      }
+      if (!token) return navigate("/teacher-login");
 
       const payload = {
         name: teacher.name,
@@ -121,33 +110,22 @@ function Settings() {
         fname: teacher.fname,
         lname: teacher.lname,
       };
-      if (avatarDirty && photoBase64) {
-        payload.photoBase64 = photoBase64; // backend will decode and store to BLOB
-      }
+      if (avatarDirty && photoBase64) payload.photoBase64 = photoBase64;
 
-      const res = await axios.put(`${API_BASE}/api/teachers/me`, payload, {
+      await axios.put(`${API_BASE}/api/teachers/me`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (res.status === 200) {
-        setModalMessage("Profile updated successfully!");
-        setIsError(false);
-        // refresh preview from server after save (cache-bust)
-        if (teacher.id) {
-          const abs = `${API_BASE}/api/teachers/${teacher.id}/photo`;
-          setPhotoUrl(abs);
-          setPhotoPreview(`${abs}?t=${Date.now()}`);
-        }
-        setAvatarDirty(false);
-        setPhotoBase64("");
-        window.dispatchEvent(new CustomEvent("teacher:updated"));
-      } else {
-        setModalMessage("Failed to update profile!");
-        setIsError(true);
+      setModalMessage("Profile updated successfully!");
+      setIsError(false);
+      if (teacher.id) {
+        setPhotoPreview(`${API_BASE}/api/teachers/${teacher.id}/photo?t=${Date.now()}`);
       }
+      setAvatarDirty(false);
+      setPhotoBase64("");
+      window.dispatchEvent(new CustomEvent("teacher:updated"));
     } catch (error) {
-      console.error("Error updating profile:", error);
-      setModalMessage(error.response?.data || "An error occurred while updating your profile.");
+      setModalMessage(error.response?.data || "Failed to update profile.");
       setIsError(true);
     } finally {
       setIsLoading(false);
@@ -157,138 +135,155 @@ function Settings() {
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-
     if (!passwordData.oldPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      setModalMessage("Please fill out all fields.");
-      setIsError(true);
-      setShowModal(true);
-      return;
+      setModalMessage("Please fill all fields."); setIsError(true); setShowModal(true); return;
     }
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setModalMessage("New password and confirm password do not match.");
-      setIsError(true);
-      setShowModal(true);
-      return;
+      setModalMessage("Passwords do not match."); setIsError(true); setShowModal(true); return;
     }
 
     try {
       setIsLoading(true);
       const token = localStorage.getItem("token");
-      if (!token) {
-        navigate("/teacher-login");
-        return;
-      }
-
-      const response = await axios.put(
-        `${API_BASE}/api/teachers/change-password`,
-        passwordData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setModalMessage(response.data || "Password changed successfully!");
+      await axios.put(`${API_BASE}/api/teachers/change-password`, passwordData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setModalMessage("Password changed successfully!");
       setIsError(false);
-      setShowModal(true);
-
       setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
     } catch (error) {
-      console.error("Error changing password:", error);
-      setModalMessage(error.response?.data || "Error changing password. Please try again.");
+      setModalMessage(error.response?.data || "Error changing password.");
       setIsError(true);
-      setShowModal(true);
     } finally {
       setIsLoading(false);
+      setShowModal(true);
     }
   };
 
-  // Upload avatar directly (used by modal "upload your own")
   const onUploadFromModal = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const dataUrl = await fileToBase64(file); // "data:image/png;base64,...."
-    setPhotoPreview(dataUrl); // show immediately
+    const dataUrl = await fileToBase64(file);
+    setPhotoPreview(dataUrl);
     setPhotoBase64(dataUrl);
     setAvatarDirty(true);
     setShowAvatarModal(false);
   };
 
-  // Pick one of the system avatars
   const onPickSystemAvatar = async (picUrl) => {
     const dataUrl = await urlToBase64(picUrl);
-    setPhotoPreview(picUrl);  // preview can point to the asset
-    setPhotoBase64(dataUrl);  // but send base64 to backend
+    setPhotoPreview(picUrl);
+    setPhotoBase64(dataUrl);
     setAvatarDirty(true);
     setShowAvatarModal(false);
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col">
+    <div className="min-h-screen bg-gray-50">
+      <main className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden relative">
 
-        <section
-          className="bg-white p-6 shadow-md rounded-md overflow-y-auto scrollbar-hide"
-          style={{ height: "500px", maxHeight: "1000px", scrollbarWidth: "none", msOverflowStyle: "none" }}
-        >
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-semibold text-left flex-1">Settings</h3>
-          </div>
-
-        {/* Tabs */}
-        <div className="ml-2 mt-5 mb-8 flex flex-col space-y-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab("profile")}
-            className={`text-left w-fit cursor-pointer select-none transition ${
-              activeTab === "profile"
-                ? "font-bold text-black before:content-['>'] before:mr-1"
-                : "text-gray-600 hover:text-black"
-            }`}
-          >
-            Profile
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("subscription")}
-            className={`text-left w-fit cursor-pointer select-none transition ${
-              activeTab === "subscription"
-                ? "font-bold text-black before:content-['>'] before:mr-1"
-                : "text-gray-600 hover:text-black"
-            }`}
-          >
-            Subscription
-          </button>
-        </div>
-
-          {/* ====================== PROFILE CONTENT ====================== */}
-          {activeTab === "profile" && (
-            <div className="flex flex-col items-center">
-              {/* Avatar */}
-              <div className="relative mb-5" style={{ marginTop: "-120px" }}>
-                <div className="w-[100px] h-[100px] rounded-full bg-gray-200 flex items-center justify-center shadow-md relative overflow-hidden border">
-                  {photoPreview ? (
+          {/* ====== MOBILE: Fixed Profile Picture + Top Tabs ====== */}
+          <div className="sm:hidden">
+            {/* Profile Picture - Fixed at top, overlapping content */}
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20">
+              <div className="relative">
+                { !profileLoaded ? (
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-2xl bg-gray-100" />
+                ) : (
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-2xl bg-gray-200">
                     <img
-                      src={photoPreview}
-                      alt="avatar"
+                      src={photoPreview || FALLBACK}
+                      alt="Profile"
                       className="w-full h-full object-cover"
                       onError={() => setPhotoPreview(FALLBACK)}
                     />
-                  ) : (
-                    <span className="text-gray-500">No photo</span>
-                  )}
+                  </div>
+                )}
+                <button
+                  onClick={() => setShowAvatarModal(true)}
+                  className="absolute bottom-0 right-0 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-4 border-white"
+                >
+                  <Plus size={16} strokeWidth={3} />
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Top Tabs */}
+            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 pt-4">
+              <div className="flex justify-center gap-12 pb-4">
+                <button
+                  onClick={() => setActiveTab("profile")}
+                  className={`px-6 py-2 text-sm font-bold relative transition-all ${
+                    activeTab === "profile"
+                      ? "text-indigo-600 after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-1 after:bg-indigo-600"
+                      : "text-gray-500"
+                  }`}
+                >
+                  Profile
+                </button>
+                <button
+                  onClick={() => setActiveTab("subscription")}
+                  className={`px-6 py-2 text-sm font-bold relative transition-all ${
+                    activeTab === "subscription"
+                      ? "text-indigo-600 after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-1 after:bg-indigo-600"
+                      : "text-gray-500"
+                  }`}
+                >
+                  Subscription
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* ====== DESKTOP/TABLET: Original Tabs + Avatar ====== */}
+          <div className="hidden sm:block border-b border-gray-200">
+            <div className="flex gap-10 px-6 py-5">
+              <button
+                onClick={() => setActiveTab("profile")}
+                className={`text-lg font-medium transition ${activeTab === "profile" ? "text-indigo-600 border-b-2 border-indigo-600" : "text-gray-600 hover:text-black"}`}
+              >
+                Profile
+              </button>
+              <button
+                onClick={() => setActiveTab("subscription")}
+                className={`text-lg font-medium transition ${activeTab === "subscription" ? "text-indigo-600 border-b-2 border-indigo-600" : "text-gray-600 hover:text-black"}`}
+              >
+                Subscription
+              </button>
+            </div>
+          </div>
+
+          {/* ====== CONTENT (with padding for mobile avatar) ====== */}
+          <div className="pt-28 sm:pt-8 p-5 sm:p-8">
+
+            {/* PROFILE TAB */}
+            {activeTab === "profile" && (
+              <>
+                {/* Desktop Avatar (hidden on mobile) */}
+                <div className="hidden sm:flex sm:justify-center sm:-mt-16">
+                  <div className="relative">
+                      { !profileLoaded ? (
+                        <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-2xl bg-gray-100" />
+                      ) : (
+                        <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-2xl bg-gray-200">
+                          <img
+                            src={photoPreview || FALLBACK}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                            onError={() => setPhotoPreview(FALLBACK)}
+                          />
+                        </div>
+                      )}
+                    <button
+                      onClick={() => setShowAvatarModal(true)}
+                      className="absolute bottom-0 right-0 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg border-4 border-white"
+                    >
+                      <Plus size={20} strokeWidth={3} />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Floating + button to open avatar chooser */}
-                <button
-                  type="button"
-                  onClick={() => setShowAvatarModal(true)}
-                  className="absolute -bottom-1 -right-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full w-9 h-9 flex items-center justify-center shadow-lg border-2 border-white"
-                  title="Change Avatar"
-                >
-                  <Plus size={18} strokeWidth={3} />
-                </button>
-
-                {/* Avatar chooser modal */}
                 {showAvatarModal && (
                   <AvatarModal
                     choices={PROFILE_PICS}
@@ -297,149 +292,84 @@ function Settings() {
                     onClose={() => setShowAvatarModal(false)}
                   />
                 )}
-              </div>
 
-              {/* Form Area */}
-              <div className="w-full max-w-3xl ml-30 space-y-10">
-                {/* Personal Information Section */}
-                <div>
-                  <h4 className="font-bold text-lg mb-5">Personal Information</h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-5 items-end">
-                    {/* Username */}
-                    <div>
-                      <label className="block text-sm font-bold mb-1">Username</label>
-                      <input
-                        type="text"
-                        value={teacher.name}
-                        onChange={(e) => setTeacher({ ...teacher, name: e.target.value })}
-                        placeholder="Enter username"
-                        className="w-72 border border-gray-300 rounded-md px-2.5 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      />
+                <div className="space-y-10 mt-8 sm:mt-12">
+                  <div>
+                    <h4 className="text-lg font-bold text-gray-800 text-center sm:text-left">Personal Information</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-6">
+                      {[
+                        { label: "Username", key: "name" },
+                        { label: "Email Address", key: "email" },
+                        { label: "First Name", key: "fname" },
+                        { label: "Last Name", key: "lname" },
+                      ].map((field) => (
+                        <div key={field.key}>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
+                          <input
+                            type="text"
+                            value={teacher[field.key]}
+                            onChange={(e) => setTeacher({ ...teacher, [field.key]: e.target.value })}
+                            className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            placeholder={`Enter ${field.label.toLowerCase()}`}
+                          />
+                        </div>
+                      ))}
                     </div>
-
-                    {/* Email */}
-                    <div>
-                      <label className="block text-sm font-bold mb-1">Email Address</label>
-                      <input
-                        type="text"
-                        value={teacher.email}
-                        onChange={(e) => setTeacher({ ...teacher, email: e.target.value })}
-                        placeholder="Enter email address"
-                        className="w-72 border border-gray-300 rounded-md px-2.5 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      />
-                    </div>
-
-                    {/* First Name */}
-                    <div>
-                      <label className="block text-sm font-bold mb-1">First Name</label>
-                      <input
-                        type="text"
-                        value={teacher.fname}
-                        onChange={(e) => setTeacher({ ...teacher, fname: e.target.value })}
-                        placeholder="Enter first name"
-                        className="w-72 border border-gray-300 rounded-md px-2.5 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      />
-                    </div>
-
-                    {/* Last Name */}
-                    <div>
-                      <label className="block text-sm font-bold mb-1">Last Name</label>
-                      <input
-                        type="text"
-                        value={teacher.lname}
-                        onChange={(e) => setTeacher({ ...teacher, lname: e.target.value })}
-                        placeholder="Enter last name"
-                        className="w-72 border border-gray-300 rounded-md px-2.5 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      />
-                    </div>
-
-                    <div></div>
-
-                    {/* Save Changes */}
-                    <div className="flex justify-end md:justify-start mt-2">
+                    <div className="flex justify-center sm:justify-end mt-6">
                       <button
                         onClick={handleSave}
-                        className="w-72 bg-[#1C90F3] text-white px-5 py-1.5 rounded-full hover:bg-[#137de5] transition"
+                        disabled={isLoading}
+                        className="w-full sm:w-auto px-12 py-3 bg-indigo-600 text-white font-medium rounded-full hover:bg-indigo-700 transition text-sm"
                       >
                         {isLoading ? "Saving..." : "Save Changes"}
                       </button>
-
-                      {showModal && (
-                        <ResponseModal
-                          message={modalMessage}
-                          isError={isError}
-                          onClose={() => setShowModal(false)}
-                        />
-                      )}
                     </div>
                   </div>
-                </div>
 
-                {/* Change Password Section */}
-                <div>
-                  <h4 className="font-bold text-lg mb-5">Change Password</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-5 items-end">
-                    <div>
-                      <label className="block text-sm font-bold mb-1">Old Password</label>
-                      <input
-                        type="password"
-                        value={passwordData.oldPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
-                        className="w-72 border border-gray-300 rounded-md px-2.5 py-1.5"
-                      />
+                  <div className="border-t border-gray-200 pt-8">
+                    <h4 className="text-lg font-bold text-gray-800 text-center sm:text-left">Change Password</h4>
+                    <div className="grid grid-cols-1 gap-5 mt-6">
+                      {["oldPassword", "newPassword", "confirmPassword"].map((key) => (
+                        <div key={key}>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {key === "oldPassword" ? "Current Password" : key === "newPassword" ? "New Password" : "Confirm New Password"}
+                          </label>
+                          <input
+                            type="password"
+                            value={passwordData[key]}
+                            onChange={(e) => setPasswordData({ ...passwordData, [key]: e.target.value })}
+                            className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                      ))}
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-bold mb-1">New Password</label>
-                      <input
-                        type="password"
-                        value={passwordData.newPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                        className="w-72 border border-gray-300 rounded-md px-2.5 py-1.5"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-bold mb-1">Confirm New Password</label>
-                      <input
-                        type="password"
-                        value={passwordData.confirmPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                        className="w-72 border border-gray-300 rounded-md px-2.5 py-1.5"
-                      />
-                    </div>
-
-                    <div className="flex justify-end md:justify-start mt-2">
+                    <div className="flex justify-center sm:justify-end mt-6">
                       <button
                         onClick={handleChangePassword}
-                        className="w-72 bg-[#1C90F3] text-white px-5 py-1.5 rounded-full hover:bg-[#137de5] transition"
+                        disabled={isLoading}
+                        className="w-full sm:w-auto px-12 py-3 bg-indigo-600 text-white font-medium rounded-full hover:bg-indigo-700 transition text-sm"
                       >
-                        {isLoading ? "Saving..." : "Save Changes"}
+                        {isLoading ? "Changing..." : "Change Password"}
                       </button>
-
-                      {showModal && (
-                        <ResponseModal
-                          message={modalMessage}
-                          isError={isError}
-                          onClose={() => setShowModal(false)}
-                        />
-                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </>
+            )}
 
-          {/* ====================== SUBSCRIPTION CONTENT ====================== */}
-          {activeTab === "subscription" && (
-            <div className="text-gray-700 mt-10 ml-4">
-              <h4 className="font-semibold text-lg mb-2">Subscription Settings</h4>
-              <p>Here you can manage your subscription plan and billing information.</p>
-            </div>
-          )}
-        </section>
+            {/* SUBSCRIPTION TAB */}
+            {activeTab === "subscription" && (
+              <div className="text-center py-20">
+                <h4 className="text-xl font-bold text-gray-800 mb-4">Subscription Settings</h4>
+                <p className="text-gray-600">Manage your plan and billing information here.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {showModal && (
+          <ResponseModal message={modalMessage} isError={isError} onClose={() => setShowModal(false)} />
+        )}
       </main>
     </div>
   );
