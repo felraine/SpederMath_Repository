@@ -170,20 +170,20 @@ function ManageStudent() {
     <div className="flex h-screen">
       <main className="flex-1 flex flex-col">
         <section
-          className="bg-white p-4 shadow-md rounded-md overflow-x-auto"
+          className="bg-white p-3 sm:p-4 shadow-md rounded-md overflow-x-auto"
           style={{ height: "500px", maxHeight: "1000px" }}
         >
-          <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <h3 className="text-lg font-semibold">Student List</h3>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 gap-2 sm:gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+              <h3 className="text-base sm:text-lg font-semibold whitespace-nowrap">Student List</h3>
               <input
                 type="text"
                 placeholder="Search for students..."
-                className="border rounded-xl px-4 py-2 w-64 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="border rounded-xl px-3 sm:px-4 py-2 text-sm sm:text-base w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
             <button
-              className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-800"
+              className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-xl hover:bg-blue-800 text-sm sm:text-base whitespace-nowrap"
               onClick={() => setShowForm(true)}
             >
               + Create New Student

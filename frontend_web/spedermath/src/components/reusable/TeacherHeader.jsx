@@ -60,9 +60,9 @@ function TeacherHeader() {
   }, [navigate]);
 
   return (
-    <header className="flex justify-between items-center bg-white p-4 shadow-md rounded-md">
-      <div className="flex items-center space-x-3">
-        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 border border-gray-300">
+    <header className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-white p-2 sm:p-4 shadow-md rounded-md gap-1.5 sm:gap-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 border border-gray-300 flex-shrink-0">
           <img
             src={photoUrl || FALLBACK}
             alt="Teacher Avatar"
@@ -70,12 +70,12 @@ function TeacherHeader() {
             onError={() => setPhotoUrl(FALLBACK)}
           />
         </div>
-        <div>
-          <h3 className="font-semibold">Teacher {teacherName}</h3>
-          <p className="text-sm text-gray-500">Hello! Welcome back!</p>
+        <div className="min-w-0">
+          <h3 className="font-semibold text-xs sm:text-base truncate">Teacher {teacherName}</h3>
+          <p className="text-xs sm:text-sm text-gray-500 truncate">Hello! Welcome back!</p>
         </div>
       </div>
-      <p className="text-sm text-gray-500">{plan}</p>
+      <p className="text-xs sm:text-sm text-gray-500 flex-shrink-0">{plan}</p>
     </header>
   );
 }
