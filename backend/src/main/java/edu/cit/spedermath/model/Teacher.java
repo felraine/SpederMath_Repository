@@ -34,6 +34,15 @@ public class Teacher {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "email_verified")
+    private boolean emailVerified = false;
+
+    @Column(name = "verification_code")
+    private String verificationCode;
+
+    @Column(name = "verification_code_created_at")
+    private LocalDateTime verificationCodeCreatedAt;
+
     @Lob
     @JdbcTypeCode(SqlTypes.VARBINARY)
     @Column(name = "photo_blob", columnDefinition = "BYTEA")
@@ -133,6 +142,29 @@ public class Teacher {
         this.googleId = googleId;
     }
 
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
+    }
+
+    public String getVerificationCode() {
+        return verificationCode;
+    }
+
+    public void setVerificationCode(String verificationCode) {
+        this.verificationCode = verificationCode;
+    }
+
+    public LocalDateTime getVerificationCodeCreatedAt() {
+        return verificationCodeCreatedAt;
+    }
+
+    public void setVerificationCodeCreatedAt(LocalDateTime verificationCodeCreatedAt) {
+        this.verificationCodeCreatedAt = verificationCodeCreatedAt;
+    }
 
     //functions
   /*  public void addStudent(Student student) {

@@ -3,6 +3,7 @@ package edu.cit.spedermath.service;
 import edu.cit.spedermath.model.Teacher;
 import edu.cit.spedermath.repository.TeacherRepository;
 import edu.cit.spedermath.util.JwtUtil;
+import edu.cit.spedermath.service.EmailService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +28,9 @@ public class TeacherService {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private EmailService emailService;
+
     private static final List<String> DEFAULT_AVATARS = List.of(
         "avatars/profile_man.png",
         "avatars/profile_man2.png",
@@ -50,29 +54,55 @@ public class TeacherService {
     }
 
     public String registerTeacher(String fname, String lname, String email, String name,
-                                  String password, String photoBase64) {
+                                String password, String photoBase64) {
         String normalizedEmail = email.toLowerCase().trim();
 
-        if (teacherRepository.findByEmail(normalizedEmail).isPresent()) {
-            return "Email already registered!";
+        Optional<Teacher> existingOpt = teacherRepository.findByEmail(normalizedEmail);
+        Teacher teacher;
+
+        if (existingOpt.isPresent()) {
+            teacher = existingOpt.get();
+
+            // If already verified, we block re-registration
+            if (teacher.isEmailVerified()) {
+                return "Email already registered!";
+            }
+
+            // Allow updating pending (unverified) registration
+            teacher.setFname(fname);
+            teacher.setLname(lname);
+            teacher.setName(name);
+            teacher.setPassword(passwordEncoder.encode(password));
+        } else {
+            String hashedPassword = passwordEncoder.encode(password);
+
+            teacher = new Teacher(fname, lname, name, normalizedEmail, hashedPassword, LocalDateTime.now());
         }
 
-        String hashedPassword = passwordEncoder.encode(password);
-
+        // Photo
         byte[] photoBytes;
         if (photoBase64 != null && !photoBase64.isBlank()) {
-            // support plain base64 or data URL
-            String b64 = photoBase64.contains(",") ? photoBase64.substring(photoBase64.indexOf(',') + 1) : photoBase64;
+            String b64 = photoBase64.contains(",")
+                    ? photoBase64.substring(photoBase64.indexOf(',') + 1)
+                    : photoBase64;
             photoBytes = java.util.Base64.getDecoder().decode(b64);
         } else {
             photoBytes = randomDefaultAvatarBytes();
         }
-
-        Teacher teacher = new Teacher(fname, lname, name, normalizedEmail, hashedPassword, LocalDateTime.now());
         teacher.setPhotoBlob(photoBytes);
 
+        // Mark as not verified, generate code
+        String code = generateVerificationCode();
+        teacher.setEmailVerified(false);
+        teacher.setVerificationCode(code);
+        teacher.setVerificationCodeCreatedAt(LocalDateTime.now());
+
         teacherRepository.save(teacher);
-        return "Registration successful!";
+
+        // Send code to email
+        emailService.sendVerificationCode(normalizedEmail, code);
+
+        return "Verification code sent to your email!";
     }
 
     @Transactional
@@ -92,25 +122,25 @@ public class TeacherService {
         Map<String, String> response = new HashMap<>();
 
         if (teacherOptional.isEmpty()) {
-            response.put("error", "Invalid email or password!");
+            response.put("error", "Invalid email or password.");
             return response;
         }
 
         Teacher teacher = teacherOptional.get();
 
-        if (teacher.getPassword() != null && teacher.getPassword().equals(password)) {
-            teacher.setPassword(passwordEncoder.encode(password));
-            teacherRepository.save(teacher);
+        if (!teacher.isEmailVerified()) {
+            response.put("error", "Please verify your email before logging in.");
+            return response;
         }
 
-        if (passwordEncoder.matches(password, teacher.getPassword())) {
-            String token = jwtUtil.generateTeacherToken(teacher.getId(), teacher.getEmail());
-            response.put("token", token);
-            response.put("message", "Login successful!");
-        } else {
-            response.put("error", "Invalid email or password!");
+        if (!passwordEncoder.matches(password, teacher.getPassword())) {
+            response.put("error", "Invalid email or password.");
+            return response;
         }
 
+        String token = jwtUtil.generateTeacherToken(teacher.getId(), teacher.getEmail());
+        response.put("token", token);
+        response.put("message", "Login successful!");
         return response;
     }
 
@@ -158,29 +188,90 @@ public class TeacherService {
         Optional<Teacher> existingOpt = teacherRepository.findByEmail(normalizedEmail);
         if (existingOpt.isPresent()) {
             Teacher existing = existingOpt.get();
-            // Attach googleId if not set yet
+            boolean changed = false;
+
             if (existing.getGoogleId() == null || existing.getGoogleId().isBlank()) {
                 existing.setGoogleId(googleId);
-                teacherRepository.save(existing);
+                changed = true;
             }
+
+            if (!existing.isEmailVerified()) {
+                existing.setEmailVerified(true);
+                existing.setVerificationCode(null);
+                existing.setVerificationCodeCreatedAt(null);
+                changed = true;
+            }
+
+            if (changed) {
+                existing = teacherRepository.save(existing);
+            }
+
             return existing;
         }
 
-        String randomRaw = "GOOGLE_" + UUID.randomUUID(); // user never sees this
+        // 2) Otherwise, create a new teacher from Google info
+        String randomRaw = "GOOGLE_" + UUID.randomUUID(); 
         String encoded = passwordEncoder.encode(randomRaw);
-    
+
         Teacher t = new Teacher(
-                givenName,        //fname
-                familyName,   //lname        
-                name,          //username
-                normalizedEmail, //email
-                encoded,    //password
+                givenName,        // fname
+                familyName,       // lname
+                name,             // username 
+                normalizedEmail, // email
+                encoded,         
                 LocalDateTime.now()
         );
-        t.setGoogleId(googleId);
 
-        // you can set a default photo or leave photoBlob null
-        teacherRepository.save(t);
-        return t;
+        t.setGoogleId(googleId);
+        t.setEmailVerified(true);             
+        t.setVerificationCode(null);
+        t.setVerificationCodeCreatedAt(null);
+
+        return teacherRepository.save(t);
+    }
+
+    private String generateVerificationCode() {
+        int n = java.util.concurrent.ThreadLocalRandom.current()
+                .nextInt(0, 1_000_000);
+        return String.format("%06d", n);
+    }
+
+    public Map<String, String> verifyEmailCode(String email, String code) {
+        Map<String, String> response = new HashMap<>();
+        String normalizedEmail = email.toLowerCase().trim();
+
+        Optional<Teacher> opt = teacherRepository.findByEmail(normalizedEmail);
+        if (opt.isEmpty()) {
+            response.put("error", "No pending registration found for this email.");
+            return response;
+        }
+
+        Teacher teacher = opt.get();
+
+        if (teacher.isEmailVerified()) {
+            response.put("message", "Email already verified.");
+            return response;
+        }
+
+        String storedCode = teacher.getVerificationCode();
+        if (storedCode == null || !storedCode.equals(code)) {
+            response.put("error", "Invalid verification code.");
+            return response;
+        }
+
+        // Optional: code expiry (15 mins)
+        LocalDateTime createdAt = teacher.getVerificationCodeCreatedAt();
+        if (createdAt != null && createdAt.isBefore(LocalDateTime.now().minusMinutes(15))) {
+            response.put("error", "Verification code has expired. Please request a new one.");
+            return response;
+        }
+
+        teacher.setEmailVerified(true);
+        teacher.setVerificationCode(null);
+        teacher.setVerificationCodeCreatedAt(null);
+        teacherRepository.save(teacher);
+
+        response.put("message", "Email verified successfully. You can now log in.");
+        return response;
     }
 }

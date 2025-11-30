@@ -30,7 +30,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const ID_MAP = {
   1: LessonOne,
   2: AssessmentOne,
-  3: LessonTwo,       // <-- your Lesson 2 (1–5)
+  3: LessonTwo, // <-- your Lesson 2 (1–5)
   4: AssessmentTwo,
   5: LessonThree,
   6: AssessmentThree,
@@ -50,8 +50,33 @@ function detectRangeFromTitle(titleRaw) {
   return null;
 }
 
+// safely derive a string title from meta
+function getSafeTitle(meta) {
+  if (!meta) return "";
+  if (typeof meta.title === "string") return meta.title;
+  if (typeof meta.name === "string") return meta.name;
+  if (typeof meta.description === "string") return meta.description;
+  return "";
+}
+
+// safely derive a string type from meta.type (handles objects / numbers)
+function getSafeType(meta) {
+  if (!meta) return "";
+  const rawType = meta.type;
+
+  if (typeof rawType === "string") return rawType;
+  if (typeof rawType === "number") return String(rawType);
+
+  if (rawType && typeof rawType === "object") {
+    if (typeof rawType.name === "string") return rawType.name;
+    if (typeof rawType.label === "string") return rawType.label;
+  }
+
+  return "";
+}
+
 export default function LessonLoader() {
-  const { lessonId } = useParams();          // route: /lessons/:lessonId  (this is your DB id)
+  const { lessonId } = useParams(); // route: /lessons/:lessonId  (this is your DB id)
   const location = useLocation();
 
   const [meta, setMeta] = useState(null);
@@ -59,11 +84,14 @@ export default function LessonLoader() {
 
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       try {
         setState({ loading: true, error: null });
+
         const token =
           localStorage.getItem("jwtToken") || sessionStorage.getItem("jwtToken");
+
         const res = await fetch(`${API_BASE}/api/lessons/${lessonId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -75,18 +103,30 @@ export default function LessonLoader() {
           setState({ loading: false, error: null });
           return;
         }
+
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
-          throw new Error(`Failed to load lesson ${lessonId}: ${res.status} ${txt}`);
+          throw new Error(
+            `Failed to load lesson ${lessonId}: ${res.status} ${txt}`
+          );
         }
+
         const data = await res.json();
         setMeta(data);
         setState({ loading: false, error: null });
       } catch (e) {
-        if (!cancelled) setState({ loading: false, error: e.message || String(e) });
+        if (!cancelled) {
+          setState({
+            loading: false,
+            error: e?.message || String(e),
+          });
+        }
       }
     })();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [lessonId]);
 
   const ResolvedComponent = useMemo(() => {
@@ -100,7 +140,9 @@ export default function LessonLoader() {
     // 1) Hard map by DB id (most reliable with your current schema)
     const idNum = Number(lessonId);
     if (Number.isFinite(idNum) && ID_MAP[idNum]) {
-      console.info(`[LessonLoader] Resolved by ID map: ${idNum} -> ${ID_MAP[idNum].name}`);
+      console.info(
+        `[LessonLoader] Resolved by ID map: ${idNum} -> ${ID_MAP[idNum].name}`
+      );
       return ID_MAP[idNum];
     }
 
@@ -114,11 +156,12 @@ export default function LessonLoader() {
       return ROUTE_REGISTRY[meta.componentKey];
     }
 
-    // 3) Type + title range fallback
-    const title = meta?.title || meta?.name || meta?.description || "";
+    // 3) Type + title range fallback (fully guarded)
+    const title = getSafeTitle(meta);
+    const typeStr = getSafeType(meta);
     const isAssessment =
       /assessment/i.test(title) ||
-      String(meta?.type || "").toUpperCase() === "ASSESSMENT";
+      typeStr.toUpperCase() === "ASSESSMENT";
 
     const range = detectRangeFromTitle(title);
     if (range) {
@@ -136,6 +179,7 @@ export default function LessonLoader() {
       }
     }
 
+    // If nothing matched, fall through so <LessonNotFound> can render
     return null;
   }, [lessonId, location.search, meta]);
 
@@ -143,7 +187,9 @@ export default function LessonLoader() {
     return (
       <div className="w-full h-full grid place-items-center p-8">
         <div className="text-center">
-          <div className="animate-pulse text-xl font-semibold">Loading lesson…</div>
+          <div className="animate-pulse text-xl font-semibold">
+            Loading lesson…
+          </div>
           <div className="opacity-70 text-sm mt-2">Please wait</div>
         </div>
       </div>
@@ -167,6 +213,9 @@ export default function LessonLoader() {
   }
 
   if (!ResolvedComponent) {
+    const title = getSafeTitle(meta);
+    const typeStr = getSafeType(meta);
+
     return (
       <LessonNotFound>
         <p className="mt-2 text-sm opacity-80">
@@ -174,16 +223,16 @@ export default function LessonLoader() {
           Try adding <code>?component=lesson-two</code> to the URL.
         </p>
         <pre className="text-xs bg-black/5 rounded p-2 mt-3 overflow-auto">
-{JSON.stringify(
-  {
-    id: meta?.id,
-    title: meta?.title || meta?.name || meta?.description,
-    type: meta?.type,
-    lessonOrder: meta?.lessonOrder ?? meta?.lessonNumber,
-  },
-  null,
-  2
-)}
+          {JSON.stringify(
+            {
+              id: meta?.id,
+              title,
+              type: typeStr,
+              lessonOrder: meta?.lessonOrder ?? meta?.lessonNumber,
+            },
+            null,
+            2
+          )}
         </pre>
       </LessonNotFound>
     );

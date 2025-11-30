@@ -47,14 +47,17 @@ public class TeacherController {
         String fname = request.get("fname");
         String lname = request.get("lname");
         String email = request.get("email");
-        String name = request.get("name"); // username
+        String name = request.get("name");
         String password = request.get("password");
         String photoBase64 = request.get("photoBase64");
 
-        String response = teacherService.registerTeacher(fname, lname, email, name, password, photoBase64);
-        return response.equals("Registration successful!") ?
-                new ResponseEntity<>(response, HttpStatus.CREATED) :
-                new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        String result = teacherService.registerTeacher(fname, lname, email, name, password, photoBase64);
+
+        if (result.startsWith("Verification code sent")) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(result);
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
+        }
     }
 
     
@@ -298,5 +301,18 @@ public class TeacherController {
             return MediaType.IMAGE_GIF;
         }
         return MediaType.APPLICATION_OCTET_STREAM;
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<Map<String, String>> verifyEmail(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String code  = request.get("code");
+
+        Map<String, String> response = teacherService.verifyEmailCode(email, code);
+
+        if (response.containsKey("error")) {
+            return ResponseEntity.badRequest().body(response);
+        }
+        return ResponseEntity.ok(response);
     }
 }
