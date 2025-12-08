@@ -5,13 +5,12 @@ const tutorialSteps = [
   { text: "Hi! I'm Munchie!", img: "/munchie/neutral_Munchie.png" },
   { text: "Drag the fruit to my mouth to feed me.", img: "/munchie/neutral_Munchie.png", animateFruit: true },
   { text: "Feed me the right number of fruits!", img: "/munchie/yum_Munchie.png" },
-  { text: "If wrong, tray will turn red and I’m sad and hungry. Try again!", img: "/munchie/frown_Munchie.png" },
+  { text: "If wrong, I will be sad and hungry. Try again!", img: "/munchie/frown_Munchie.png" },
 ];
 
 export default function MunchieTutorial({ onNext, onSkip }) {
   const [step, setStep] = useState(0);
   const [mouthOpen, setMouthOpen] = useState(false);
-  const [showReadyModal, setShowReadyModal] = useState(false);
   const fruitRef = useRef(null);
   const munchieRef = useRef(null);
 
@@ -32,8 +31,12 @@ export default function MunchieTutorial({ onNext, onSkip }) {
     return () => clearInterval(interval);
   }, [step]);
 
-  /* --- show modal when finished --- */
-  useEffect(() => setShowReadyModal(step === tutorialSteps.length), [step]);
+  /* --- auto-advance tutorial when last step is reached --- */
+  useEffect(() => {
+    if (step === tutorialSteps.length) {
+      onNext?.();
+    }
+  }, [step, onNext]);
 
   const handleNext = () => setStep((s) => Math.min(s + 1, tutorialSteps.length));
   const handlePrev = () => setStep((s) => Math.max(s - 1, 0));
@@ -48,32 +51,30 @@ export default function MunchieTutorial({ onNext, onSkip }) {
       }}
     >
       {/* Top-right controls */}
-      {!showReadyModal && (
-        <div className="absolute top-5 right-5 flex gap-3">
-          {step > 0 && step < tutorialSteps.length && (
-            <button
-              onClick={handlePrev}
-              className="bg-yellow-400 hover:bg-yellow-500 text-black font-neucha px-6 py-2 rounded-lg shadow-md mt-16"
-            >
-              Previous
-            </button>
-          )}
-          {step < tutorialSteps.length && (
-            <button
-              onClick={handleNext}
-              className="bg-green-500 hover:bg-green-600 text-white font-neucha px-6 py-2 rounded-lg shadow-md mt-16"
-            >
-              Next
-            </button>
-          )}
+      <div className="absolute top-5 right-5 flex gap-3">
+        {step > 0 && step < tutorialSteps.length && (
           <button
-            onClick={onSkip || onNext}
-            className="bg-white/90 border border-gray-400 text-gray-700 font-neucha px-5 py-2 rounded-lg hover:bg-white shadow-md mt-16"
+            onClick={handlePrev}
+            className="bg-yellow-400 hover:bg-yellow-500 text-black font-neucha px-6 py-2 rounded-lg shadow-md mt-16"
           >
-            Skip Tutorial
+            Previous
           </button>
-        </div>
-      )}
+        )}
+        {step < tutorialSteps.length && (
+          <button
+            onClick={handleNext}
+            className="bg-green-500 hover:bg-green-600 text-white font-neucha px-6 py-2 rounded-lg shadow-md mt-16"
+          >
+            Next
+          </button>
+        )}
+        <button
+          onClick={onSkip || onNext}
+          className="bg-white/90 border border-gray-400 text-gray-700 font-neucha px-5 py-2 rounded-lg hover:bg-white shadow-md mt-16"
+        >
+          Skip Tutorial
+        </button>
+      </div>
 
       {/* Transparent centered overlay */}
       <div className="bg-white/65 backdrop-blur-sm rounded-3xl px-8 sm:px-10 py-6 shadow-lg border border-white/70 max-w-2xl w-[90%] flex flex-col items-center justify-center max-h-[90vh] overflow-hidden mt-16">
@@ -141,28 +142,6 @@ export default function MunchieTutorial({ onNext, onSkip }) {
           </>
         )}
       </div>
-
-      {/* Ready modal */}
-      {showReadyModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-6">
-          <div className="bg-white p-10 rounded-xl shadow-md border border-black max-w-md w-full text-center">
-            <img
-              src="/munchie/yum_Munchie.png"
-              alt="Happy Munchie"
-              className="mx-auto mb-6 h-32 select-none"
-              draggable={false}
-            />
-            <h2 className="text-[32px] mb-4 font-neucha">Yay! I'm hungry! 🍎</h2>
-            <p className="text-[20px] mb-6 font-neucha">Let’s feed me some fruits!</p>
-            <button
-              onClick={onNext}
-              className="bg-green-600 text-white px-6 py-3 rounded-xl text-lg hover:bg-green-700 transition"
-            >
-              Start
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

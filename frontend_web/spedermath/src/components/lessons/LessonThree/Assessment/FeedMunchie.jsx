@@ -31,13 +31,6 @@ const eatSound = () => new Audio("/munchie/munchie-eat.mp3").play();
 
 /**
  * Feed Munchie (Counting Version) — standalone (no LessonLayout)
- * Props:
- * - lessonId: number (backend submit)
- * - title:   string
- * - totalRounds?: number (default 10)
- * - maxCountPerRound?: number (default 7)
- * - passRate?: number (0..1, default 0.7)
- * - retakes_count?: number (default 0)
  */
 export default function FeedMunchieCounting({
   lessonId = 6,
@@ -72,8 +65,8 @@ export default function FeedMunchieCounting({
   const [showConfetti, setShowConfetti] = useState(false);
   const [showWrong, setShowWrong] = useState(false);
 
-  const wasDroppedRef = useRef(false);
   const munchieRef = useRef(null);
+  const dragCloneRef = useRef(null);
 
   const navigate = useNavigate();
   const current = rounds[currentStep];
@@ -117,46 +110,90 @@ export default function FeedMunchieCounting({
     setTimerActive(true);
   };
 
-  // Drag handlers
-  const handleDropFruit = (e) => {
-    e.preventDefault();
-    setIsDraggingOver(false);
-    wasDroppedRef.current = true;
-
-    if (addedFruit < 7) {
-      setAddedFruit((prev) => prev + 1);
-      setMunchieFace("/munchie/muching_Munchie.png");
-      eatSound();
-      setTimeout(() => setMunchieFace("/munchie/neutral_Munchie.png"), 600);
-    }
-  };
-
-  const handleDragOverMouth = (e) => {
-    e.preventDefault();
-    if (!munchieRef.current) return;
-
+  // Munchie proximity check
+  const checkProximity = (x, y) => {
+    if (!munchieRef.current) return false;
     const rect = munchieRef.current.getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
     const margin = 50;
-
-    const isNearMouth =
+    return (
       x >= rect.left - margin &&
       x <= rect.right + margin &&
       y >= rect.top - margin &&
-      y <= rect.bottom + margin;
+      y <= rect.bottom + margin
+    );
+  };
 
-    setIsDraggingOver(isNearMouth);
+  // Custom drag handlers for touch & mouse
+  const startDrag = (e, index) => {
+    e.preventDefault();
+    const fruitImg = e.target;
+    const rect = fruitImg.getBoundingClientRect();
+    const clone = fruitImg.cloneNode(true);
+    clone.style.position = "fixed";
+    clone.style.left = `${rect.left}px`;
+    clone.style.top = `${rect.top}px`;
+    clone.style.width = `${rect.width}px`;
+    clone.style.height = `${rect.height}px`;
+    clone.style.pointerEvents = "none";
+    clone.style.zIndex = 9999;
+    document.body.appendChild(clone);
+    dragCloneRef.current = { clone, index };
 
-    if (isNearMouth) {
-      if (munchieFace !== "/munchie/openmouth_Munchie.png") {
-        setMunchieFace("/munchie/openmouth_Munchie.png");
+    // Prevent touch scrolling but keep scrollbar
+    document.body.style.touchAction = "none";
+
+    const moveHandler = (moveEvent) => {
+      moveEvent.preventDefault(); // prevent page scroll
+      let clientX, clientY;
+      if (moveEvent.touches) {
+        clientX = moveEvent.touches[0].clientX;
+        clientY = moveEvent.touches[0].clientY;
+      } else {
+        clientX = moveEvent.clientX;
+        clientY = moveEvent.clientY;
       }
-    } else {
-      if (munchieFace !== "/munchie/neutral_Munchie.png") {
-        setMunchieFace("/munchie/neutral_Munchie.png");
+      clone.style.left = `${clientX - rect.width / 2}px`;
+      clone.style.top = `${clientY - rect.height / 2}px`;
+
+      const nearMouth = checkProximity(clientX, clientY);
+      setIsDraggingOver(nearMouth);
+      setMunchieFace(nearMouth ? "/munchie/openmouth_Munchie.png" : "/munchie/neutral_Munchie.png");
+    };
+
+    const endHandler = (endEvent) => {
+      let clientX, clientY;
+      if (endEvent.changedTouches) {
+        clientX = endEvent.changedTouches[0].clientX;
+        clientY = endEvent.changedTouches[0].clientY;
+      } else {
+        clientX = endEvent.clientX;
+        clientY = endEvent.clientY;
       }
-    }
+
+      const nearMouth = checkProximity(clientX, clientY);
+      if (nearMouth && addedFruit < 7) {
+        setAddedFruit((prev) => prev + 1);
+        eatSound();
+      }
+
+      clone.remove();
+      dragCloneRef.current = null;
+      setMunchieFace("/munchie/neutral_Munchie.png");
+      setIsDraggingOver(false);
+
+      window.removeEventListener("mousemove", moveHandler);
+      window.removeEventListener("mouseup", endHandler);
+      window.removeEventListener("touchmove", moveHandler);
+      window.removeEventListener("touchend", endHandler);
+
+      // Restore default touch behavior
+      document.body.style.touchAction = "";
+    };
+
+    window.addEventListener("mousemove", moveHandler, { passive: false });
+    window.addEventListener("mouseup", endHandler);
+    window.addEventListener("touchmove", moveHandler, { passive: false });
+    window.addEventListener("touchend", endHandler);
   };
 
   const nextStepOrFinish = (nextScore) => {
@@ -204,16 +241,10 @@ export default function FeedMunchieCounting({
   };
 
   const submitProgress = async () => {
-    if (!lessonId) {
-      alert("Missing lessonId. Pass lessonId prop to FeedMunchieCounting.");
-      return;
-    }
+    if (!lessonId) return;
 
     const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Missing auth token. Please log in again.");
-      return;
-    }
+    if (!token) return;
 
     const progress = {
       lessonId,
@@ -222,12 +253,10 @@ export default function FeedMunchieCounting({
       timeSpentInSeconds: timeSpent,
       retakes_count: retakes_count ?? 0,
     };
-    console.log("Submitting progress payload (guarded):", progress);
 
     try {
       const sid = currentStudentId();
       const key = `submit:${sid}:${lessonId}:${status}`;
-
       await postOnce(key, async () => {
         const res = await fetch(`${API_BASE}/api/student-progress/submit`, {
           method: "POST",
@@ -238,37 +267,18 @@ export default function FeedMunchieCounting({
           body: JSON.stringify(progress),
         });
 
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          throw new Error(`Submit failed ${res.status}: ${text || res.statusText}`);
-        }
+        if (!res.ok) throw new Error(`Submit failed`);
       });
 
-      alert("Progress submitted!");
+      // Removed alert/log to avoid "localhost says..." popup
       navigate("/student-dashboard");
     } catch (err) {
-      console.error("Submit FAILED (guarded):", err);
-      alert(err.message || "Submit failed.");
+      console.error("Submit FAILED:", err);
     }
-  };
-
-  const handleDragEnd = (e) => {
-    const index = parseInt(e.dataTransfer.getData("text/plain"), 10);
-    if (!wasDroppedRef.current) {
-      requestAnimationFrame(() => {
-        setTrayFruits((prev) => {
-          const updated = [...prev];
-          updated[index] = true;
-          return updated;
-        });
-      });
-    }
-    setMunchieFace("/munchie/neutral_Munchie.png");
   };
 
   /* ===================== RENDER ===================== */
 
-  // 1) Tutorial
   if (showTutorial) {
     return (
       <div
@@ -279,7 +289,6 @@ export default function FeedMunchieCounting({
           backgroundPosition: "center",
         }}
       >
-        {/* Header bar (keeps consistent shell even during tutorial) */}
         <TopHeader
           title={title}
           progressLabel="Tutorial"
@@ -294,7 +303,6 @@ export default function FeedMunchieCounting({
     );
   }
 
-  // 2) Ready modal
   if (showReadyModal) {
     return (
       <div
@@ -334,7 +342,6 @@ export default function FeedMunchieCounting({
     );
   }
 
-  // 3) Main screen
   return (
     <div
       className="min-h-screen"
@@ -344,7 +351,6 @@ export default function FeedMunchieCounting({
         backgroundPosition: "center",
       }}
     >
-      {/* Top header like NumberMaze: back + title + progress + timer */}
       <TopHeader
         title={title}
         progressLabel={`${currentStep + 1}/${rounds.length}`}
@@ -353,7 +359,6 @@ export default function FeedMunchieCounting({
         showTimer={true}
       />
 
-      {/* Confetti */}
       {showConfetti && (
         <Confetti
           width={window.innerWidth}
@@ -369,7 +374,6 @@ export default function FeedMunchieCounting({
         />
       )}
 
-      {/* Result overlay */}
       {status !== "IN_PROGRESS" ? (
         <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50">
           <div className="bg-[#fffaf0] rounded-3xl p-10 max-w-xl w-full text-center shadow-2xl border-4 border-[#f1f2f6]">
@@ -416,37 +420,11 @@ export default function FeedMunchieCounting({
                       >
                         <img
                           src={fruitImages[i]}
-                          draggable
-                          onDragStart={(e) => {
-                            wasDroppedRef.current = false;
-
-                            const dragImg = e.target.cloneNode(true);
-                            dragImg.style.width = "60px";
-                            dragImg.style.height = "60px";
-                            dragImg.style.position = "absolute";
-                            dragImg.style.top = "-1000px";
-                            dragImg.style.left = "-1000px";
-                            dragImg.style.pointerEvents = "none";
-                            document.body.appendChild(dragImg);
-
-                            e.dataTransfer.setDragImage(dragImg, 30, 30);
-                            e.dataTransfer.setData("text/plain", i.toString());
-
-                            setTimeout(() => {
-                              setTrayFruits((prev) => {
-                                const updated = [...prev];
-                                updated[i] = true;
-                                return updated;
-                              });
-                            }, 0);
-
-                            setTimeout(() => {
-                              document.body.removeChild(dragImg);
-                            }, 1000);
-                          }}
-                          onDragEnd={handleDragEnd}
-                          className="h-14 w-14 object-contain cursor-grab z-10"
+                          className="h-14 w-14 object-contain cursor-pointer z-10"
                           alt="fruit"
+                          onMouseDown={(e) => startDrag(e, i)}
+                          onTouchStart={(e) => startDrag(e, i)}
+                          draggable={false}
                         />
                       </div>
                     )
@@ -457,15 +435,9 @@ export default function FeedMunchieCounting({
 
           {/* Munchie + Action */}
           <div className="flex flex-col items-center mt-2">
-            <div
-              ref={munchieRef}
-              className="h-52 sm:h-64 flex items-center justify-center"
-              onDrop={handleDropFruit}
-              onDragOver={handleDragOverMouth}
-              onDragLeave={() => setMunchieFace("/munchie/neutral_Munchie.png")}
-            >
+            <div ref={munchieRef} className="h-52 sm:h-64 flex items-center justify-center">
               <img
-                src={isDraggingOver ? "/munchie/openmouth_Munchie.png" : munchieFace}
+                src={munchieFace}
                 alt="Munchie"
                 className="h-full transition-all pointer-events-none drop-shadow-lg"
               />
@@ -478,7 +450,6 @@ export default function FeedMunchieCounting({
               Munchie is full!
             </button>
 
-            {/* Score chip to mirror NM left panel info */}
             <div className="mt-4 bg-white/85 rounded-full px-4 py-1 text-gray-800 font-neucha text-base shadow border">
               Score: <b>{score}</b> / {rounds.length}
             </div>
@@ -490,13 +461,12 @@ export default function FeedMunchieCounting({
 }
 
 /* ================= Header (matches NumberMaze’s simple shell) ================= */
-function TopHeader({ title, progressLabel, onBack /* timeLabel, showTimer */ }) {
+function TopHeader({ title, progressLabel, onBack }) {
   return (
     <div
       className="absolute top-0 left-0 w-full flex items-center justify-between p-3 sm:p-4 bg-black/40 backdrop-blur-sm z-40 text-white"
       style={{ "--header-h": "72px" }}
     >
-      {/* Back button (large hit area) */}
       <button
         onClick={onBack}
         className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 active:bg-white/30 transition focus:outline-none focus:ring-2 focus:ring-white/60"
@@ -511,14 +481,10 @@ function TopHeader({ title, progressLabel, onBack /* timeLabel, showTimer */ }) 
         <span className="hidden sm:inline font-semibold">Back</span>
       </button>
 
-      {/* Centered title */}
       <div className="flex-1 flex items-center justify-center text-center pointer-events-none">
-        <div className="font-bold text-base sm:text-lg drop-shadow">
-          {title}
-        </div>
+        <div className="font-bold text-base sm:text-lg drop-shadow">{title}</div>
       </div>
 
-      {/* Right: progress (no timer to match Lesson 1) */}
       <div className="font-semibold drop-shadow">{progressLabel}</div>
     </div>
   );
